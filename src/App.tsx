@@ -593,43 +593,49 @@ function App() {
     }
   };
 
-  return (
-    <div className="h-screen bg-stone-950 flex relative overflow-hidden">
-      {/* Hero Background Image */}
-      <div className="absolute inset-0">
-        <img
-          src={heroImage}
-          alt="Hero Background"
-          className="w-full h-full object-cover blur-sm"
-        />
-        {/* Dark overlay for UI readability */}
-        <div className="absolute inset-0 bg-black/60"></div>
+  return (<div>
+      <div className="h-screen bg-stone-950 flex relative overflow-hidden">
+        {/* Hero Background Image */}
+        <div className="absolute inset-0">
+          <img
+            src={heroImage}
+            alt="Hero Background"
+            className="w-full h-full object-cover blur-sm"
+          />
+          {/* Dark overlay for UI readability */}
+          <div className="absolute inset-0 bg-black/60"></div>
+        </div>
+    
+        {/* Main Content */}
+        <div className="relative z-10 flex w-full">
+          <LauncherSidebar
+            activeView={activeView}
+            onViewChange={setActiveView}
+          />
+    
+          {/* Titlebar */}
+          <div className="flex flex-col flex-1">
+            <div className="bg-stone-900/60 backdrop-blur-sm border-r border-amber-600/30 h-9" style={{ WebkitAppRegion: 'drag' as any }}>
+            </div>
+            {renderActiveView()}
+          </div>
+    
+          <CreateInstanceModal
+            isOpen={showCreateModal}
+            onClose={() => setShowCreateModal(false)}
+            onCreateInstance={handleCreateInstance}
+            minecraftVersions={mockVersions}
+            popularModpacks={mockModpacks}
+          />
+    
+          <JavaInstallModal
+            isOpen={showJavaInstallModal}
+            onClose={handleJavaInstallCancel}
+            onInstallComplete={handleJavaInstallComplete}
+          />
+        </div>
       </div>
-      
-      {/* Main Content */}
-      <div className="relative z-10 flex w-full">
-        <LauncherSidebar 
-          activeView={activeView} 
-          onViewChange={setActiveView} 
-        />
-        
-        {renderActiveView()}
-        
-        <CreateInstanceModal
-          isOpen={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
-          onCreateInstance={handleCreateInstance}
-          minecraftVersions={mockVersions}
-          popularModpacks={mockModpacks}
-        />
-        
-        <JavaInstallModal
-          isOpen={showJavaInstallModal}
-          onClose={handleJavaInstallCancel}
-          onInstallComplete={handleJavaInstallComplete}
-        />
-      </div>
-    </div>
+  </div>
   );
 }
 

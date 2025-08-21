@@ -68,7 +68,7 @@ const InstancesView: React.FC<InstancesViewProps> = ({
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white mb-1">Instances</h1>
-          <p className="text-gray-400">{instances.length} instances</p>
+          <p className="text-stone-400">{instances.length} instances</p>
         </div>
         <button
           onClick={onCreateInstance}
@@ -79,16 +79,16 @@ const InstancesView: React.FC<InstancesViewProps> = ({
         </button>
       </div>
 
-      <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-6">
+      <div className="bg-stone-800 border border-stone-700 rounded-lg p-4 mb-6">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1 relative">
-            <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-stone-400" />
             <input
               type="text"
               placeholder="Search instances..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
           
@@ -96,7 +96,7 @@ const InstancesView: React.FC<InstancesViewProps> = ({
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="bg-stone-700 border border-stone-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
               <option value="lastPlayed">Last Played</option>
               <option value="name">Name</option>
@@ -106,18 +106,18 @@ const InstancesView: React.FC<InstancesViewProps> = ({
             <select
               value={filterModded}
               onChange={(e) => setFilterModded(e.target.value as any)}
-              className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="bg-stone-700 border border-stone-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
               <option value="all">All</option>
               <option value="modded">Modded</option>
               <option value="vanilla">Vanilla</option>
             </select>
             
-            <div className="flex bg-gray-700 rounded-lg border border-gray-600">
+            <div className="flex bg-stone-700 rounded-lg border border-stone-600">
               <button
                 onClick={() => setViewMode('grid')}
                 className={`p-2 rounded-l-lg transition-colors ${
-                  viewMode === 'grid' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+                  viewMode === 'grid' ? 'bg-amber-600 text-white' : 'text-stone-400 hover:text-white'
                 }`}
               >
                 <Grid size={18} />
@@ -125,7 +125,7 @@ const InstancesView: React.FC<InstancesViewProps> = ({
               <button
                 onClick={() => setViewMode('list')}
                 className={`p-2 rounded-r-lg transition-colors ${
-                  viewMode === 'list' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+                  viewMode === 'list' ? 'bg-amber-600 text-white' : 'text-stone-400 hover:text-white'
                 }`}
               >
                 <List size={18} />
@@ -165,16 +165,16 @@ const InstancesView: React.FC<InstancesViewProps> = ({
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
-                  className="bg-gray-800 border border-gray-700 rounded-lg p-4 flex items-center gap-4 hover:border-gray-600 transition-colors group"
+                  className="bg-stone-800 border border-stone-700 rounded-lg p-4 flex items-center gap-4 hover:border-stone-600 transition-colors group"
                 >
-                  <div className="w-16 h-16 bg-gradient-to-br from-green-600 to-blue-600 rounded-lg flex-shrink-0"></div>
+                  <div className="w-16 h-16 bg-gradient-to-br from-green-600 to-amber-600 rounded-lg flex-shrink-0"></div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-white truncate">{instance.name}</h3>
-                    <p className="text-sm text-gray-400">
+                    <p className="text-sm text-stone-400">
                       Minecraft {instance.version}
                       {instance.modpack && ` • ${instance.modpack}`}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-stone-500">
                       {instance.lastPlayed ? instance.lastPlayed.toLocaleDateString() : 'Never played'}
                     </p>
                   </div>
@@ -187,7 +187,7 @@ const InstancesView: React.FC<InstancesViewProps> = ({
                     </button>
                     <button
                       onClick={() => onEditInstance(instance)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg transition-colors"
+                      className="bg-amber-600 hover:bg-amber-700 text-white p-2 rounded-lg transition-colors"
                     >
                       <Settings size={16} />
                     </button>
@@ -210,7 +210,7 @@ const InstancesView: React.FC<InstancesViewProps> = ({
             animate={{ opacity: 1, y: 0 }}
             className="text-center py-12"
           >
-            <div className="text-gray-400 mb-4">
+            <div className="text-stone-400 mb-4">
               {searchTerm || filterModded !== 'all' 
                 ? 'No instances match your search criteria' 
                 : 'No instances created yet'
@@ -219,7 +219,7 @@ const InstancesView: React.FC<InstancesViewProps> = ({
             {(!searchTerm && filterModded === 'all') && (
               <button
                 onClick={onCreateInstance}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
+                className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-2 rounded-lg transition-colors"
               >
                 Create Your First Instance
               </button>

@@ -68,7 +68,7 @@ const AccountsView: React.FC<AccountsViewProps> = ({
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white mb-1">Accounts</h1>
-          <p className="text-gray-400">Manage your Minecraft accounts</p>
+          <p className="text-stone-400">Manage your Minecraft accounts</p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
@@ -86,12 +86,12 @@ const AccountsView: React.FC<AccountsViewProps> = ({
               key={account.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`bg-gray-800 border rounded-lg p-4 transition-colors ${
-                account.isActive ? 'border-green-500' : 'border-gray-700 hover:border-gray-600'
+              className={`bg-stone-800 border rounded-lg p-4 transition-colors ${
+                account.isActive ? 'border-green-500' : 'border-stone-700 hover:border-stone-600'
               }`}
             >
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-gray-700 rounded-lg flex items-center justify-center">
+                <div className="w-16 h-16 bg-stone-700 rounded-lg flex items-center justify-center">
                   {account.skin ? (
                     <img 
                       src={account.skin} 
@@ -99,7 +99,7 @@ const AccountsView: React.FC<AccountsViewProps> = ({
                       className="w-full h-full rounded-lg object-cover"
                     />
                   ) : (
-                    <User size={32} className="text-gray-400" />
+                    <User size={32} className="text-stone-400" />
                   )}
                 </div>
                 
@@ -113,10 +113,10 @@ const AccountsView: React.FC<AccountsViewProps> = ({
                       </span>
                     )}
                   </div>
-                  <p className="text-gray-400 text-sm">{account.email}</p>
-                  <p className="text-gray-500 text-xs">{getAccountTypeLabel(account.type)}</p>
+                  <p className="text-stone-400 text-sm">{account.email}</p>
+                  <p className="text-stone-500 text-xs">{getAccountTypeLabel(account.type)}</p>
                   {account.lastUsed && (
-                    <p className="text-gray-500 text-xs">
+                    <p className="text-stone-500 text-xs">
                       Last used: {account.lastUsed.toLocaleDateString()}
                     </p>
                   )}
@@ -126,7 +126,7 @@ const AccountsView: React.FC<AccountsViewProps> = ({
                   {!account.isActive && (
                     <button
                       onClick={() => onSetActiveAccount(account.id)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm transition-colors"
+                      className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1 rounded text-sm transition-colors"
                     >
                       Set Active
                     </button>
@@ -143,12 +143,12 @@ const AccountsView: React.FC<AccountsViewProps> = ({
           ))
         ) : (
           <div className="text-center py-12">
-            <User size={64} className="mx-auto text-gray-600 mb-4" />
+            <User size={64} className="mx-auto text-stone-600 mb-4" />
             <h3 className="text-lg font-semibold text-white mb-2">No accounts added</h3>
-            <p className="text-gray-400 mb-4">Add an account to start playing Minecraft</p>
+            <p className="text-stone-400 mb-4">Add an account to start playing Minecraft</p>
             <button
               onClick={() => setShowAddModal(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
+              className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-2 rounded-lg transition-colors"
             >
               Add Your First Account
             </button>
@@ -161,7 +161,7 @@ const AccountsView: React.FC<AccountsViewProps> = ({
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-gray-800 rounded-lg border border-gray-700 p-6 w-full max-w-md"
+            className="bg-stone-800 rounded-lg border border-stone-700 p-6 w-full max-w-md"
           >
             <h3 className="text-lg font-semibold text-white mb-4">Add Account</h3>
             
@@ -191,7 +191,7 @@ const AccountsView: React.FC<AccountsViewProps> = ({
                 
                 <button
                   onClick={() => setShowOfflineForm(true)}
-                  className="w-full bg-gray-600 hover:bg-gray-700 text-white p-3 rounded-lg flex items-center gap-3 transition-colors"
+                  className="w-full bg-stone-600 hover:bg-stone-700 text-white p-3 rounded-lg flex items-center gap-3 transition-colors"
                 >
                   <EyeOff size={20} />
                   <div className="text-left">
@@ -203,7 +203,7 @@ const AccountsView: React.FC<AccountsViewProps> = ({
             ) : (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-stone-300 mb-2">
                     Username
                   </label>
                   <input
@@ -211,14 +211,14 @@ const AccountsView: React.FC<AccountsViewProps> = ({
                     value={offlineUsername}
                     onChange={(e) => setOfflineUsername(e.target.value)}
                     placeholder="Enter username"
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
                 
                 <div className="flex gap-2">
                   <button
                     onClick={() => setShowOfflineForm(false)}
-                    className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 rounded-lg transition-colors"
+                    className="flex-1 bg-stone-600 hover:bg-stone-700 text-white py-2 rounded-lg transition-colors"
                   >
                     Back
                   </button>
@@ -240,7 +240,7 @@ const AccountsView: React.FC<AccountsViewProps> = ({
                   setShowOfflineForm(false);
                   setOfflineUsername('');
                 }}
-                className="text-gray-400 hover:text-white transition-colors"
+                className="text-stone-400 hover:text-white transition-colors"
               >
                 Cancel
               </button>

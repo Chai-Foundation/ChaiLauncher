@@ -44,13 +44,13 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white mb-1">Settings</h1>
-          <p className="text-gray-400">Customize your launcher experience</p>
+          <p className="text-stone-400">Customize your launcher experience</p>
         </div>
         {hasChanges && (
           <div className="flex gap-2">
             <button
               onClick={handleReset}
-              className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+              className="px-4 py-2 text-stone-400 hover:text-white transition-colors"
             >
               Reset
             </button>
@@ -76,8 +76,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                   onClick={() => setActiveTab(tab.id as SettingsTab)}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-left ${
                     activeTab === tab.id
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                      ? 'bg-amber-600 text-white'
+                      : 'text-stone-400 hover:bg-stone-800 hover:text-white'
                   }`}
                 >
                   <Icon size={20} />
@@ -89,7 +89,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
         </div>
 
         <div className="lg:col-span-3">
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          <div className="bg-stone-800 border border-stone-700 rounded-lg p-6">
             {activeTab === 'general' && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -99,7 +99,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                 <h3 className="text-lg font-semibold text-white mb-4">General Settings</h3>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-stone-300 mb-2">
                     Instances Directory
                   </label>
                   <div className="flex gap-2">
@@ -107,22 +107,22 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                       type="text"
                       value={localSettings.instances_dir}
                       onChange={(e) => handleSettingChange('instances_dir', e.target.value)}
-                      className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="flex-1 px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
                     <button 
                       onClick={() => onOpenFolder && onOpenFolder(localSettings.instances_dir)}
-                      className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg transition-colors"
+                      className="bg-stone-600 hover:bg-stone-700 text-white px-3 py-2 rounded-lg transition-colors"
                     >
                       <Folder size={18} />
                     </button>
                   </div>
-                  <p className="text-sm text-gray-400 mt-1">
+                  <p className="text-sm text-stone-400 mt-1">
                     Directory where Minecraft instances will be stored
                   </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-stone-300 mb-2">
                     Downloads Directory
                   </label>
                   <div className="flex gap-2">
@@ -130,26 +130,26 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                       type="text"
                       value={localSettings.downloads_dir}
                       onChange={(e) => handleSettingChange('downloads_dir', e.target.value)}
-                      className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="flex-1 px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
                     <button 
                       onClick={() => onOpenFolder && onOpenFolder(localSettings.downloads_dir)}
-                      className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg transition-colors"
+                      className="bg-stone-600 hover:bg-stone-700 text-white px-3 py-2 rounded-lg transition-colors"
                     >
                       <Folder size={18} />
                     </button>
                   </div>
-                  <p className="text-sm text-gray-400 mt-1">
+                  <p className="text-sm text-stone-400 mt-1">
                     Directory where downloads will be stored
                   </p>
                 </div>
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <label className="text-sm font-medium text-gray-300">
+                    <label className="text-sm font-medium text-stone-300">
                       Keep launcher open after game starts
                     </label>
-                    <p className="text-sm text-gray-400">
+                    <p className="text-sm text-stone-400">
                       Launcher will stay open while playing
                     </p>
                   </div>
@@ -157,16 +157,16 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                     type="checkbox"
                     checked={localSettings.keepLauncherOpen}
                     onChange={(e) => handleSettingChange('keepLauncherOpen', e.target.checked)}
-                    className="rounded border-gray-600 bg-gray-700"
+                    className="rounded border-stone-600 bg-stone-700"
                   />
                 </div>
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <label className="text-sm font-medium text-gray-300">
+                    <label className="text-sm font-medium text-stone-300">
                       Show snapshot versions
                     </label>
-                    <p className="text-sm text-gray-400">
+                    <p className="text-sm text-stone-400">
                       Include development versions in version list
                     </p>
                   </div>
@@ -174,16 +174,16 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                     type="checkbox"
                     checked={localSettings.showSnapshots}
                     onChange={(e) => handleSettingChange('showSnapshots', e.target.checked)}
-                    className="rounded border-gray-600 bg-gray-700"
+                    className="rounded border-stone-600 bg-stone-700"
                   />
                 </div>
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <label className="text-sm font-medium text-gray-300">
+                    <label className="text-sm font-medium text-stone-300">
                       Auto-update launcher
                     </label>
-                    <p className="text-sm text-gray-400">
+                    <p className="text-sm text-stone-400">
                       Automatically check for and install updates
                     </p>
                   </div>
@@ -191,7 +191,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                     type="checkbox"
                     checked={localSettings.auto_update}
                     onChange={(e) => handleSettingChange('auto_update', e.target.checked)}
-                    className="rounded border-gray-600 bg-gray-700"
+                    className="rounded border-stone-600 bg-stone-700"
                   />
                 </div>
               </motion.div>
@@ -206,7 +206,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                 <h3 className="text-lg font-semibold text-white mb-4">Java Settings</h3>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-stone-300 mb-2">
                     Java Executable Path
                   </label>
                   <div className="flex gap-2">
@@ -215,16 +215,16 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                       value={localSettings.default_java_path || ''}
                       onChange={(e) => handleSettingChange('default_java_path', e.target.value || undefined)}
                       placeholder="Auto-detect"
-                      className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="flex-1 px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
-                    <button className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg transition-colors">
+                    <button className="bg-stone-600 hover:bg-stone-700 text-white px-3 py-2 rounded-lg transition-colors">
                       <Folder size={18} />
                     </button>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-stone-300 mb-2">
                     Default Memory (MB)
                   </label>
                   <input
@@ -233,21 +233,21 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                     onChange={(e) => handleSettingChange('default_memory', parseInt(e.target.value))}
                     min="1024"
                     max="16384"
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-stone-300 mb-2">
                     Default JVM Arguments
                   </label>
                   <textarea
                     value={localSettings.default_jvm_args.join(' ')}
                     onChange={(e) => handleSettingChange('default_jvm_args', e.target.value.split(' ').filter(arg => arg.trim()))}
                     placeholder="-XX:+UnlockExperimentalVMOptions -XX:+UseG1GC"
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 h-24 resize-none"
+                    className="w-full px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500 h-24 resize-none"
                   />
-                  <p className="text-sm text-gray-400 mt-1">
+                  <p className="text-sm text-stone-400 mt-1">
                     Default JVM arguments for new instances
                   </p>
                 </div>
@@ -263,7 +263,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                 <h3 className="text-lg font-semibold text-white mb-4">Appearance</h3>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-3">
+                  <label className="block text-sm font-medium text-stone-300 mb-3">
                     Theme
                   </label>
                   <div className="grid grid-cols-2 gap-3">
@@ -271,11 +271,11 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                       onClick={() => handleSettingChange('theme', 'dark')}
                       className={`p-4 rounded-lg border-2 transition-colors ${
                         localSettings.theme === 'dark'
-                          ? 'border-blue-600 bg-blue-600 bg-opacity-20'
-                          : 'border-gray-600 hover:border-gray-500'
+                          ? 'border-amber-600 bg-amber-600 bg-opacity-20'
+                          : 'border-stone-600 hover:border-stone-500'
                       }`}
                     >
-                      <div className="w-full h-16 bg-gray-900 rounded mb-2"></div>
+                      <div className="w-full h-16 bg-stone-900 rounded mb-2"></div>
                       <p className="text-white font-medium">Dark</p>
                     </button>
                     
@@ -283,11 +283,11 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                       onClick={() => handleSettingChange('theme', 'light')}
                       className={`p-4 rounded-lg border-2 transition-colors ${
                         localSettings.theme === 'light'
-                          ? 'border-blue-600 bg-blue-600 bg-opacity-20'
-                          : 'border-gray-600 hover:border-gray-500'
+                          ? 'border-amber-600 bg-amber-600 bg-opacity-20'
+                          : 'border-stone-600 hover:border-stone-500'
                       }`}
                     >
-                      <div className="w-full h-16 bg-gray-200 rounded mb-2"></div>
+                      <div className="w-full h-16 bg-stone-200 rounded mb-2"></div>
                       <p className="text-white font-medium">Light</p>
                     </button>
                   </div>
@@ -322,7 +322,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                     Reset Launcher Settings
                   </button>
                   
-                  <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors">
+                  <button className="w-full bg-amber-600 hover:bg-amber-700 text-white py-2 px-4 rounded-lg transition-colors">
                     Export Settings
                   </button>
                   

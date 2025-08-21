@@ -18,8 +18,8 @@ const LauncherSidebar: React.FC<LauncherSidebarProps> = ({ activeView, onViewCha
   ];
 
   return (
-    <div className="w-64 bg-stone-900/30 backdrop-blur-sm border-r border-amber-600/30 flex flex-col">
-      <div className="p-4 border-b border-amber-600/30">
+    <div className="w-64 bg-stone-900/60 backdrop-blur-sm flex flex-col">
+      <div className="p-4">
         <h1 className="text-xl font-bold bg-gradient-to-r from-amber-200 via-white to-amber-200 bg-clip-text text-transparent">ChaiLauncher</h1>
         <p className="text-sm text-stone-300">Minecraft Launcher</p>
       </div>
