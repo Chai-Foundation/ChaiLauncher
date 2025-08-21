@@ -8,6 +8,7 @@ import CreateInstanceModal from './components/CreateInstanceModal';
 import JavaInstallModal from './components/JavaInstallModal';
 import { MinecraftInstance, MinecraftVersion, ModpackInfo, LauncherSettings, NewsItem, InstallProgressEvent, InstallCompleteEvent } from './types/minecraft';
 import heroImage from './assets/hero.png';
+import React, { CSSProperties } from 'react';
 import './index.css';
 
 function App() {
@@ -625,13 +626,13 @@ function App() {
             <div className="flex flex-col flex-1">
             <div
               className="bg-stone-900/60 backdrop-blur-sm border-r border-amber-600/30 h-9 flex items-center justify-between"
-              style={{ WebkitAppRegion: 'drag' as any }}
+              style={{ WebkitAppRegion: 'drag' } as CSSProperties}
             >
               <div className="flex-1"></div>
               {/* Windows Buttons */}
               <div
-              className="flex items-center gap-1 px-2"
-              style={{ WebkitAppRegion: 'no-drag' }}
+                className="flex items-center gap-1 px-2"
+                style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
               >
               <button
                 className="w-6 h-6 flex items-center justify-center hover:bg-stone-800 rounded"
