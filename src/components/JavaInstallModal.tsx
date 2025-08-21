@@ -68,9 +68,9 @@ const JavaInstallModal: React.FC<JavaInstallModalProps> = ({ isOpen, onClose, on
       const javaPath = await invoke('download_and_install_java') as string;
       console.log('Java installation complete:', javaPath);
       onInstallComplete(javaPath);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Java installation failed:', error);
-      setInstallError(error.toString());
+      setInstallError(String(error));
       setIsInstalling(false);
     }
   };
