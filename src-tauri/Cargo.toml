@@ -1,6 +1,6 @@
 [package]
 name = "chailauncher"
-version = "0.1.0"
+version = "0.1.1"
 description = "Modern Minecraft launcher inspired by GDLauncher"
 authors = ["ChaiLauncher Team"]
 license = "MIT"
@@ -9,32 +9,32 @@ edition = "2021"
 
 
 [dependencies]
-tauri = { version = "2.7.0", features = ["unstable"] }
-tauri-plugin-fs = "2.4.1"
+tauri = { version = "2.8.2", features = ["unstable"] }
+tauri-plugin-fs = "2.4.2"
 tauri-plugin-shell = "2.3.0"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-tokio = { version = "1.0", features = ["full"] }
-reqwest = { version = "0.11", features = ["json", "stream"] }
-anyhow = "1.0"
-uuid = { version = "1.0", features = ["v4"] }
-chrono = { version = "0.4", features = ["serde"] }
-futures = "0.3"
-bytes = "1.0"
-base64 = "0.22"
-sha1 = "0.10"
-zip = "0.6"
-async-trait = "0.1"
-dirs = "5.0"
-log = "0.4"
-urlencoding = "2.1"
-walkdir = "2.3"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.143"
+tokio = { version = "1.47.1", features = ["full"] }
+reqwest = { version = "0.12.23", features = ["json", "stream"] }
+anyhow = "1.0.99"
+uuid = { version = "1.18.0", features = ["v4"] }
+chrono = { version = "0.4.41", features = ["serde"] }
+futures = "0.3.31"
+bytes = "1.10.1"
+base64 = "0.22.1"
+sha1 = "0.10.6"
+zip = "4.4.0"
+async-trait = "0.1.89"
+dirs = "6.0.0"
+log = "0.4.27"
+urlencoding = "2.1.3"
+walkdir = "2.5.0"
 
 [target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = ["sysinfoapi", "memoryapi"] }
+winapi = { version = "0.3.9", features = ["sysinfoapi", "memoryapi"] }
 
 [build-dependencies]
-tauri-build = { version = "2.3.1", features = [] }
+tauri-build = { version = "2.4.0", features = [] }
 
 [features]
 default = ["custom-protocol"]

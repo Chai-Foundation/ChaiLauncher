@@ -19,9 +19,14 @@ const LauncherSidebar: React.FC<LauncherSidebarProps> = ({ activeView, onViewCha
 
   return (
     <div className="w-64 bg-stone-900/60 backdrop-blur-sm flex flex-col" style={{ WebkitAppRegion: 'drag' } as CSSProperties}>
-      <div className="p-4">
-      <h1 className="text-xl font-bold bg-gradient-to-r from-amber-200 via-white to-amber-200 bg-clip-text text-transparent">ChaiLauncher</h1>
-      <p className="text-sm text-stone-300">Minecraft Launcher</p>
+      <div className="flex flex-row items-center p-2">
+        <img src="Square310x310Logo.png" className="w-16 h-16 mr-3" alt="ChaiLauncher Logo" />
+        <div>
+          <h1 className="text-xl font-bold bg-gradient-to-r from-amber-200 via-white to-amber-200 bg-clip-text text-transparent">
+        ChaiLauncher
+          </h1>
+          <p className="text-sm text-stone-300">Minecraft Launcher</p>
+        </div>
       </div>
       
       <nav className="flex-1 p-4">
