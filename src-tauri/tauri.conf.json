@@ -1,12 +1,12 @@
 {
   "$schema": "https://schema.tauri.app/config/2.0.json",
-  "productName": "StellarS3",
+  "productName": "ChaiLauncher",
   "version": "2.0.0",
-  "identifier": "com.stellars3.app",
+  "identifier": "com.ChaiLauncher.app",
   "app": {
     "windows": [
       {
-        "title": "StellarS3",
+        "title": "ChaiLauncher",
         "width": 1600,
         "height": 900,
         "resizable": false,

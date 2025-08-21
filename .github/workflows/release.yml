@@ -1,4 +1,4 @@
-name: 'Release StellarS3'
+name: 'Release ChaiLauncher'
 
 on:
   push:
@@ -56,8 +56,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: stellars3-v__VERSION__
-          releaseName: 'StellarS3 v__VERSION__'
+          tagName: ChaiLauncher-v__VERSION__
+          releaseName: 'ChaiLauncher v__VERSION__'
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: true
           prerelease: false
