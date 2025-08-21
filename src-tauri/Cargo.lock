@@ -396,6 +396,7 @@ dependencies = [
  "tokio",
  "urlencoding",
  "uuid",
+ "walkdir",
  "winapi",
  "zip",
 ]

@@ -28,6 +28,7 @@ async-trait = "0.1"
 dirs = "5.0"
 log = "0.4"
 urlencoding = "2.1"
+walkdir = "2.3"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["sysinfoapi", "memoryapi"] }

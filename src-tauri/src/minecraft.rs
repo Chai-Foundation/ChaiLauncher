@@ -583,7 +583,10 @@ pub async fn launch_instance(
     
     // Check if this instance has been properly set up with Minecraft
     let versions_dir = instance_path_buf.join("versions").join(&version);
+    println!("Checking for Minecraft version directory: {}", versions_dir.display());
     let version_jar = versions_dir.join(format!("{}.jar", version));
+    println!("Checking for Minecraft version JAR: {}", version_jar.display());
+
     
     if !version_jar.exists() {
         return Err(format!(
@@ -594,17 +597,73 @@ pub async fn launch_instance(
     
     // Check if libraries exist
     let libraries_dir = instance_path_buf.join("libraries");
+    println!("Checking for Minecraft libraries directory: {}", libraries_dir.display());
     if !libraries_dir.exists() {
         return Err(format!(
             "Minecraft libraries are missing for this instance. Please reinstall the instance."
         ));
     }
     
-    // For now, return a helpful error message instead of attempting to launch incomplete instances
-    Err(format!(
-        "Minecraft launching is not fully implemented yet. Instance '{}' is installed but the launcher needs to build the proper classpath and download all required libraries to launch Minecraft {}.",
-        instance_id, version
-    ))
+    // Launch Minecraft
+    let mut args = Vec::new();
+
+    // Memory arguments
+    args.push(format!("-Xmx{}M", memory));
+    args.push(format!("-Xms{}M", memory));
+
+    // JVM arguments
+    args.extend(jvm_args.clone());
+
+    // Build classpath: version JAR + all library JARs
+    let mut classpath_entries = Vec::new();
+    // Add all library JARs recursively
+    if let Ok(entries) = std::fs::read_dir(&libraries_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                let walker = match walkdir::WalkDir::new(&path).into_iter().collect::<Vec<_>>() {
+                    v => v,
+                };
+                for file in walker {
+                    if let Ok(file) = file {
+                        if let Some(ext) = file.path().extension() {
+                            if ext == "jar" {
+                                classpath_entries.push(file.path().to_string_lossy().to_string());
+                            }
+                        }
+                    }
+                }
+            } else if let Some(ext) = path.extension() {
+                if ext == "jar" {
+                    classpath_entries.push(path.to_string_lossy().to_string());
+                }
+            }
+        }
+    }
+    // Add the version JAR
+    classpath_entries.push(version_jar.to_string_lossy().to_string());
+    // Join with semicolon for Windows
+    let classpath = classpath_entries.join(";");
+    // Minecraft launch arguments
+    args.extend([
+        "-cp".to_string(),
+        classpath,
+        "net.minecraft.client.main.Main".to_string(),
+        "--version".to_string(),
+        version.clone(),
+        "--gameDir".to_string(),
+        instance_path.clone(),
+    ]);
+
+    println!("Launching Minecraft with command: {} {}", java_path, args.join(" "));
+
+    let _child = Command::new(java_path)
+        .args(&args)
+        .current_dir(&instance_path)
+        .spawn()
+        .map_err(|e| format!("Failed to launch Minecraft: {}", e))?;
+
+    Ok(())
 }
 
 #[command]
