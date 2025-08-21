@@ -18,7 +18,7 @@ const LauncherSidebar: React.FC<LauncherSidebarProps> = ({ activeView, onViewCha
   ];
 
   return (
-    <div className="w-64 bg-stone-900/60 backdrop-blur-sm flex flex-col">
+    <div className="w-64 bg-stone-900/60 backdrop-blur-sm flex flex-col" style={{ WebkitAppRegion: 'drag' as any }}>
       <div className="p-4">
         <h1 className="text-xl font-bold bg-gradient-to-r from-amber-200 via-white to-amber-200 bg-clip-text text-transparent">ChaiLauncher</h1>
         <p className="text-sm text-stone-300">Minecraft Launcher</p>
@@ -33,6 +33,9 @@ const LauncherSidebar: React.FC<LauncherSidebarProps> = ({ activeView, onViewCha
             return (
               <li key={item.id}>
                 <button
+                  ref={el => {
+                    if (el) el.setAttribute('style', 'WebkitAppRegion: no-drag;');
+                  }}
                   onClick={() => onViewChange(item.id)}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-300 relative ${
                     isActive 

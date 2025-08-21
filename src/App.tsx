@@ -393,7 +393,15 @@ function App() {
       setInstances(prev => 
         prev.map(inst => 
           inst.status === 'installing' 
-            ? { ...inst, status: 'failed', errorMessage: error.toString() }
+            ? { 
+                ...inst, 
+                status: 'failed', 
+                errorMessage: typeof error === 'string' 
+                  ? error 
+                  : error instanceof Error 
+                    ? error.message 
+                    : JSON.stringify(error) 
+              }
             : inst
         )
       );
@@ -613,12 +621,67 @@ function App() {
             onViewChange={setActiveView}
           />
     
-          {/* Titlebar */}
-          <div className="flex flex-col flex-1">
-            <div className="bg-stone-900/60 backdrop-blur-sm border-r border-amber-600/30 h-9" style={{ WebkitAppRegion: 'drag' as any }}>
+            {/* Titlebar */}
+            <div className="flex flex-col flex-1">
+            <div
+              className="bg-stone-900/60 backdrop-blur-sm border-r border-amber-600/30 h-9 flex items-center justify-between"
+              style={{ WebkitAppRegion: 'drag' as any }}
+            >
+              <div className="flex-1"></div>
+              {/* Windows Buttons */}
+              <div
+              className="flex items-center gap-1 px-2"
+              style={{ WebkitAppRegion: 'no-drag' }}
+              >
+              <button
+                className="w-6 h-6 flex items-center justify-center hover:bg-stone-800 rounded"
+                title="Minimize"
+                onClick={async (e) => {
+                e.stopPropagation();
+                const { appWindow } = await import('@tauri-apps/api/window');
+                appWindow.minimize();
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14">
+                <rect x="3" y="10" width="8" height="1.5" fill="#eab308" />
+                </svg>
+              </button>
+              <button
+                className="w-6 h-6 flex items-center justify-center hover:bg-stone-800 rounded"
+                title="Maximize"
+                onClick={async (e) => {
+                e.stopPropagation();
+                const { appWindow } = await import('@tauri-apps/api/window');
+                const isMaximized = await appWindow.isMaximized();
+                if (isMaximized) {
+                  appWindow.unmaximize();
+                } else {
+                  appWindow.maximize();
+                }
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14">
+                <rect x="3" y="3" width="8" height="8" stroke="#eab308" strokeWidth="1.5" fill="none" />
+                </svg>
+              </button>
+              <button
+                className="w-6 h-6 flex items-center justify-center hover:bg-red-700 rounded"
+                title="Close"
+                onClick={async (e) => {
+                e.stopPropagation();
+                const { appWindow } = await import('@tauri-apps/api/window');
+                appWindow.close();
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14">
+                <line x1="4" y1="4" x2="10" y2="10" stroke="#fff" strokeWidth="1.5" />
+                <line x1="10" y1="4" x2="4" y2="10" stroke="#fff" strokeWidth="1.5" />
+                </svg>
+              </button>
+              </div>
             </div>
             {renderActiveView()}
-          </div>
+            </div>
     
           <CreateInstanceModal
             isOpen={showCreateModal}

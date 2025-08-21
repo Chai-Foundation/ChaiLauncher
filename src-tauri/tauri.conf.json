@@ -7,11 +7,11 @@
     "windows": [
       {
         "title": "StellarS3",
-        "width": 1200,
-        "height": 800,
-        "resizable": true,
+        "width": 1600,
+        "height": 900,
+        "resizable": false,
         "fullscreen": false,
-        "decorations": true,
+        "decorations": false,
         "transparent": false
       }
     ],
