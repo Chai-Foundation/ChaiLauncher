@@ -18,6 +18,9 @@ export interface MinecraftInstance {
   sizeMb?: number;
   description?: string;
   tags?: string[];
+  status?: 'ready' | 'installing' | 'failed' | 'invalid';
+  installProgress?: number;
+  errorMessage?: string;
 }
 
 export interface MinecraftVersion {
@@ -40,14 +43,20 @@ export interface ModpackInfo {
 }
 
 export interface LauncherSettings {
-  javaPath: string;
-  maxMemory: number;
-  minMemory: number;
-  jvmArgs: string[];
-  gameDir: string;
-  keepLauncherOpen: boolean;
-  showSnapshots: boolean;
-  theme: 'light' | 'dark';
+  default_java_path?: string;
+  default_memory: number;
+  default_jvm_args: string[];
+  instances_dir: string;
+  downloads_dir: string;
+  theme: string;
+  auto_update: boolean;
+  keepLauncherOpen?: boolean;
+  showSnapshots?: boolean;
+  javaPath?: string;
+  maxMemory?: number;
+  minMemory?: number;
+  jvmArgs?: string[];
+  gameDir?: string;
 }
 
 export interface NewsItem {
@@ -85,12 +94,3 @@ export interface InstallCompleteEvent {
   error?: string;
 }
 
-export interface LauncherSettings {
-  defaultJavaPath?: string;
-  defaultMemory: number;
-  defaultJvmArgs: string[];
-  instancesDir: string;
-  downloadsDir: string;
-  theme: string;
-  autoUpdate: boolean;
-}

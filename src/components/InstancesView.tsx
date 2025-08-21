@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Search, Filter, Grid, List } from 'lucide-react';
+import { Plus, Search, Grid, List, Play, Settings, Folder } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MinecraftInstance } from '../types/minecraft';
 import InstanceCard from './InstanceCard';
@@ -10,6 +10,7 @@ interface InstancesViewProps {
   onPlayInstance: (instance: MinecraftInstance) => void;
   onEditInstance: (instance: MinecraftInstance) => void;
   onDeleteInstance: (instance: MinecraftInstance) => void;
+  onOpenFolder?: (instance: MinecraftInstance) => void;
 }
 
 const InstancesView: React.FC<InstancesViewProps> = ({
@@ -18,7 +19,18 @@ const InstancesView: React.FC<InstancesViewProps> = ({
   onPlayInstance,
   onEditInstance,
   onDeleteInstance,
+  onOpenFolder,
 }) => {
+  // Debug logging for instances prop changes
+  React.useEffect(() => {
+    const installingInstances = instances.filter(i => i.status === 'installing');
+    if (installingInstances.length > 0) {
+      console.log('InstancesView received installing instances:', 
+        installingInstances.map(i => ({ id: i.id, name: i.name, progress: i.installProgress, status: i.status }))
+      );
+    }
+  }, [instances]);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'lastPlayed' | 'version'>('lastPlayed');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -144,6 +156,7 @@ const InstancesView: React.FC<InstancesViewProps> = ({
                   onPlay={onPlayInstance}
                   onEdit={onEditInstance}
                   onDelete={onDeleteInstance}
+                  onOpenFolder={onOpenFolder}
                 />
               ) : (
                 <motion.div
@@ -170,14 +183,22 @@ const InstancesView: React.FC<InstancesViewProps> = ({
                       onClick={() => onPlayInstance(instance)}
                       className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-lg transition-colors"
                     >
-                      <Plus size={16} />
+                      <Play size={16} />
                     </button>
                     <button
                       onClick={() => onEditInstance(instance)}
                       className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg transition-colors"
                     >
-                      <Filter size={16} />
+                      <Settings size={16} />
                     </button>
+                    {onOpenFolder && (
+                      <button
+                        onClick={() => onOpenFolder(instance)}
+                        className="bg-orange-600 hover:bg-orange-700 text-white p-2 rounded-lg transition-colors"
+                      >
+                        <Folder size={16} />
+                      </button>
+                    )}
                   </div>
                 </motion.div>
               )

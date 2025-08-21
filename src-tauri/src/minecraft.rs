@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use tauri::command;
+use tauri::{command, Manager};
 use tokio::fs;
 use tokio::process::Command;
 use crate::launchers::{LauncherManager, ExternalInstance};
@@ -175,6 +175,216 @@ pub async fn launch_minecraft(
 }
 
 #[command]
+pub async fn get_bundled_java_path() -> Result<String, String> {
+    let launcher_dir = crate::storage::get_launcher_dir();
+    let java_dir = launcher_dir.join("java");
+    
+    #[cfg(target_os = "windows")]
+    let java_exe = java_dir.join("bin").join("java.exe");
+    
+    #[cfg(not(target_os = "windows"))]
+    let java_exe = java_dir.join("bin").join("java");
+    
+    if java_exe.exists() {
+        Ok(java_exe.to_string_lossy().to_string())
+    } else {
+        Err("Bundled Java not found".to_string())
+    }
+}
+
+#[command]
+pub async fn download_and_install_java(app_handle: tauri::AppHandle) -> Result<String, String> {
+    let launcher_dir = crate::storage::get_launcher_dir();
+    let java_dir = launcher_dir.join("java");
+    
+    // Create java directory
+    fs::create_dir_all(&java_dir).await
+        .map_err(|e| format!("Failed to create Java directory: {}", e))?;
+    
+    // For now, we'll use a placeholder - in production you'd download from Adoptium/Eclipse Temurin
+    // or bundle Java with the installer
+    #[cfg(target_os = "windows")]
+    {
+        // Windows Java 17 download URL (example)
+        let java_url = "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.8.1%2B1/OpenJDK17U-jdk_x64_windows_hotspot_17.0.8.1_1.zip";
+        download_and_extract_java(java_url, &java_dir, app_handle.clone()).await?;
+    }
+    
+    #[cfg(target_os = "macos")]
+    {
+        let java_url = "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.8.1%2B1/OpenJDK17U-jdk_x64_mac_hotspot_17.0.8.1_1.tar.gz";
+        download_and_extract_java(java_url, &java_dir, app_handle.clone()).await?;
+    }
+    
+    #[cfg(target_os = "linux")]
+    {
+        let java_url = "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.8.1%2B1/OpenJDK17U-jdk_x64_linux_hotspot_17.0.8.1_1.tar.gz";
+        download_and_extract_java(java_url, &java_dir, app_handle.clone()).await?;
+    }
+    
+    get_bundled_java_path().await
+}
+
+async fn download_and_extract_java(url: &str, java_dir: &PathBuf, app_handle: tauri::AppHandle) -> Result<(), String> {
+    use tauri::Emitter;
+    
+    // Emit start event
+    let _ = app_handle.emit("java_install_progress", JavaInstallEvent {
+        stage: "Starting download".to_string(),
+        progress: 0.0,
+    });
+    
+    // Download Java
+    let response = reqwest::get(url).await
+        .map_err(|e| format!("Failed to download Java: {}", e))?;
+    
+    let content_length = response.content_length().unwrap_or(0);
+    
+    let _ = app_handle.emit("java_install_progress", JavaInstallEvent {
+        stage: "Downloading Java Runtime".to_string(),
+        progress: 10.0,
+    });
+    
+    let bytes = response.bytes().await
+        .map_err(|e| format!("Failed to read Java download: {}", e))?;
+    
+    let _ = app_handle.emit("java_install_progress", JavaInstallEvent {
+        stage: "Download complete".to_string(),
+        progress: 50.0,
+    });
+    
+    // Save to temp file with proper extension
+    #[cfg(target_os = "windows")]
+    let temp_file = java_dir.join("java_download.zip");
+    
+    #[cfg(not(target_os = "windows"))]
+    let temp_file = java_dir.join("java_download.tar.gz");
+    
+    fs::write(&temp_file, &bytes).await
+        .map_err(|e| format!("Failed to save Java download: {}", e))?;
+    
+    let _ = app_handle.emit("java_install_progress", JavaInstallEvent {
+        stage: "Extracting Java Runtime".to_string(),
+        progress: 70.0,
+    });
+    
+    // Extract based on platform
+    #[cfg(target_os = "windows")]
+    {
+        extract_zip(&temp_file, java_dir).await?;
+    }
+    
+    #[cfg(not(target_os = "windows"))]
+    {
+        extract_tar_gz(&temp_file, java_dir).await?;
+    }
+    
+    let _ = app_handle.emit("java_install_progress", JavaInstallEvent {
+        stage: "Installation complete".to_string(),
+        progress: 100.0,
+    });
+    
+    // Clean up temp file
+    let _ = fs::remove_file(&temp_file).await;
+    
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+async fn extract_zip(zip_path: &PathBuf, extract_to: &PathBuf) -> Result<(), String> {
+    use std::process::Stdio;
+    use tokio::process::Command;
+    
+    // Create a temp extraction directory
+    let temp_extract = extract_to.join("temp_extract");
+    
+    // Use PowerShell to extract to temp directory first
+    let output = Command::new("powershell")
+        .arg("-Command")
+        .arg(format!(
+            "Expand-Archive -Path '{}' -DestinationPath '{}' -Force",
+            zip_path.display(),
+            temp_extract.display()
+        ))
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .output()
+        .await
+        .map_err(|e| format!("Failed to execute PowerShell: {}", e))?;
+    
+    if !output.status.success() {
+        let error = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to extract Java: {}", error));
+    }
+    
+    // Find the JDK directory inside temp_extract and move its contents to extract_to
+    if let Ok(entries) = std::fs::read_dir(&temp_extract) {
+        for entry in entries.flatten() {
+            if entry.file_type().map_or(false, |ft| ft.is_dir()) {
+                let jdk_dir = entry.path();
+                // Move contents of JDK directory to the target directory
+                move_directory_contents(&jdk_dir, extract_to).await?;
+                break;
+            }
+        }
+    }
+    
+    // Clean up temp directory
+    let _ = std::fs::remove_dir_all(&temp_extract);
+    
+    Ok(())
+}
+
+async fn move_directory_contents(source: &PathBuf, target: &PathBuf) -> Result<(), String> {
+    use tokio::process::Command;
+    
+    // Use robocopy to move contents
+    let output = Command::new("robocopy")
+        .arg(source)
+        .arg(target)
+        .arg("/E")      // Copy subdirectories including empty ones
+        .arg("/MOVE")   // Move files and directories
+        .arg("/NFL")    // No file list
+        .arg("/NDL")    // No directory list
+        .arg("/NJH")    // No job header
+        .arg("/NJS")    // No job summary
+        .output()
+        .await
+        .map_err(|e| format!("Failed to execute robocopy: {}", e))?;
+    
+    // Robocopy returns different exit codes, 0-7 are success
+    let exit_code = output.status.code().unwrap_or(8);
+    if exit_code > 7 {
+        let error = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to move Java contents: {}", error));
+    }
+    
+    Ok(())
+}
+
+#[cfg(not(target_os = "windows"))]
+async fn extract_tar_gz(tar_path: &PathBuf, extract_to: &PathBuf) -> Result<(), String> {
+    use tokio::process::Command;
+    
+    let output = Command::new("tar")
+        .arg("-xzf")
+        .arg(tar_path)
+        .arg("-C")
+        .arg(extract_to)
+        .arg("--strip-components=1")
+        .output()
+        .await
+        .map_err(|e| format!("Failed to execute tar: {}", e))?;
+    
+    if !output.status.success() {
+        let error = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to extract Java: {}", error));
+    }
+    
+    Ok(())
+}
+
+#[command]
 pub async fn get_java_installations() -> Result<Vec<String>, String> {
     let mut java_paths = Vec::new();
     
@@ -342,12 +552,21 @@ pub async fn detect_gdlauncher_instances() -> Result<Vec<ExternalInstance>, Stri
 #[command]
 pub async fn launch_instance(
     instance_id: String,
-    instance_path: String,
+    instancePath: String,
     version: String,
-    java_path: String,
+    javaPath: String,
     memory: u32,
-    jvm_args: Vec<String>,
+    jvmArgs: Vec<String>,
 ) -> Result<(), String> {
+    let instance_id = instance_id;
+    let instance_path = instancePath;
+    let java_path = javaPath;
+    let jvm_args = jvmArgs;
+    // Validate instance path is not empty
+    if instance_path.is_empty() {
+        return Err("Instance path cannot be empty".to_string());
+    }
+    
     // Check if this is an external launcher instance
     if instance_id.contains("-") {
         let launcher_type = instance_id.split("-").next().unwrap_or("");
@@ -359,30 +578,41 @@ pub async fn launch_instance(
         }
     }
     
-    // For our own instances, use the existing launch_minecraft function
-    let instance = MinecraftInstance {
-        id: instance_id,
-        name: "Instance".to_string(),
-        version,
-        modpack: None,
-        modpack_version: None,
-        game_dir: PathBuf::from(&instance_path),
-        java_path: Some(java_path),
-        jvm_args: Some(jvm_args),
-        last_played: None,
-        total_play_time: 0,
-        icon: None,
-        is_modded: false,
-        mods_count: 0,
-        is_external: None,
-        external_launcher: None,
-    };
+    // For our own instances, check if Minecraft is actually installed
+    let instance_path_buf = PathBuf::from(&instance_path);
     
-    launch_minecraft(instance, None, Some(memory), None, None).await
+    // Check if this instance has been properly set up with Minecraft
+    let versions_dir = instance_path_buf.join("versions").join(&version);
+    let version_jar = versions_dir.join(format!("{}.jar", version));
+    
+    if !version_jar.exists() {
+        return Err(format!(
+            "Minecraft {} is not installed for this instance. Please reinstall the instance to download Minecraft files.", 
+            version
+        ));
+    }
+    
+    // Check if libraries exist
+    let libraries_dir = instance_path_buf.join("libraries");
+    if !libraries_dir.exists() {
+        return Err(format!(
+            "Minecraft libraries are missing for this instance. Please reinstall the instance."
+        ));
+    }
+    
+    // For now, return a helpful error message instead of attempting to launch incomplete instances
+    Err(format!(
+        "Minecraft launching is not fully implemented yet. Instance '{}' is installed but the launcher needs to build the proper classpath and download all required libraries to launch Minecraft {}.",
+        instance_id, version
+    ))
 }
 
 #[command]
 pub async fn launch_external_instance(instance_id: String, instance_path: String) -> Result<(), String> {
+    // Validate instance path
+    if instance_path.is_empty() {
+        return Err("Instance path cannot be empty".to_string());
+    }
     let launcher_manager = LauncherManager::new();
     let launcher_type = instance_id.split("-").next().unwrap_or("");
     
@@ -470,11 +700,22 @@ async fn find_gdlauncher_executable() -> Result<String, String> {
 // New storage-based commands
 
 #[command]
-pub async fn load_instances() -> Result<Vec<InstanceMetadata>, String> {
+pub async fn load_instances() -> Result<Vec<MinecraftInstance>, String> {
     let storage = StorageManager::new().await
         .map_err(|e| format!("Failed to initialize storage: {}", e))?;
     
-    Ok(storage.get_all_instances().into_iter().cloned().collect())
+    let instances: Vec<MinecraftInstance> = storage.get_all_instances()
+        .into_iter()
+        .cloned()
+        .map(|metadata| metadata.into())
+        .collect();
+    
+    println!("Loading {} instances from storage", instances.len());
+    for instance in &instances {
+        println!("  - Instance: {} ({})", instance.name, instance.id);
+    }
+    
+    Ok(instances)
 }
 
 #[command]
@@ -488,6 +729,7 @@ pub async fn save_instance(instance: InstanceMetadata) -> Result<(), String> {
 
 #[command]
 pub async fn delete_instance(instance_id: String) -> Result<(), String> {
+    let instance_id = instance_id;
     let mut storage = StorageManager::new().await
         .map_err(|e| format!("Failed to initialize storage: {}", e))?;
     
@@ -528,10 +770,24 @@ pub async fn install_minecraft_version(
     version_id: String,
     instance_name: String,
     game_dir: String,
+    instance_id: Option<String>,
     app_handle: tauri::AppHandle,
 ) -> Result<String, String> {
-    let instance_id = uuid::Uuid::new_v4().to_string();
+    // Validate parameters
+    if version_id.is_empty() {
+        return Err("version_id cannot be empty".to_string());
+    }
+    if instance_name.is_empty() {
+        return Err("instance_name cannot be empty".to_string());
+    }
+    if game_dir.is_empty() {
+        return Err("game_dir cannot be empty".to_string());
+    }
+    
+    let instance_id = instance_id.unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
     let instance_dir = PathBuf::from(&game_dir).join(&instance_name);
+    
+    println!("Creating instance '{}' with ID: {}", instance_name, instance_id);
     
     // Create instance directory
     fs::create_dir_all(&instance_dir).await
@@ -544,16 +800,64 @@ pub async fn install_minecraft_version(
     let app_handle_clone = app_handle.clone();
     let instance_id_clone = instance_id.clone();
     
+    println!("Starting installer.install_version for: {}", version_id);
+    
+    // Small delay to ensure frontend is ready to receive events
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    
+    // Emit initial progress event
+    let event = InstallProgressEvent {
+        instance_id: instance_id.clone(),
+        stage: "Initializing installation".to_string(),
+        progress: 0.0,
+        current_file: None,
+        bytes_downloaded: 0,
+        total_bytes: 0,
+    };
+    
+    println!("Emitting initial install_progress event: {:?}", event);
+    
+    // Try both global emit and window-specific emit
+    let emit_result = app_handle.emit("install_progress", &event);
+    if let Err(e) = emit_result {
+        println!("Failed to emit initial progress event globally: {}", e);
+    }
+    
+    // Also try emitting to specific window
+    if let Some(window) = app_handle.get_webview_window("main") {
+        let window_emit_result = window.emit("install_progress", &event);
+        if let Err(e) = window_emit_result {
+            println!("Failed to emit initial progress event to main window: {}", e);
+        } else {
+            println!("Successfully emitted to main window");
+        }
+    } else {
+        println!("Main window not found");
+    }
+    
     installer.install_version(&version_id, move |progress| {
-        let _ = app_handle_clone.emit("install_progress", InstallProgressEvent {
+        println!("Progress update: stage={}, progress={:.2}%", progress.stage, progress.progress);
+        let event = InstallProgressEvent {
             instance_id: instance_id_clone.clone(),
             stage: progress.stage,
             progress: progress.progress,
             current_file: progress.current_file,
             bytes_downloaded: progress.bytes_downloaded,
             total_bytes: progress.total_bytes,
-        });
-    }).await.map_err(|e| format!("Installation failed: {}", e))?;
+        };
+        
+        // Emit to both global and window
+        let _ = app_handle_clone.emit("install_progress", &event);
+        if let Some(window) = app_handle_clone.get_webview_window("main") {
+            let _ = window.emit("install_progress", &event);
+        }
+    }).await.map_err(|e| {
+        let error_msg = format!("Installation failed: {}", e);
+        println!("Installation error: {}", error_msg);
+        error_msg
+    })?;
+    
+    println!("Installation completed successfully");
 
     // Create instance metadata
     let instance = InstanceMetadata {
@@ -584,11 +888,17 @@ pub async fn install_minecraft_version(
         .map_err(|e| format!("Failed to save instance: {}", e))?;
 
     // Emit completion event
-    let _ = app_handle.emit("install_complete", InstallCompleteEvent {
+    let completion_event = InstallCompleteEvent {
         instance_id: instance_id.clone(),
         success: true,
         error: None,
-    });
+    };
+    
+    println!("Emitting install_complete event: {:?}", completion_event);
+    let _ = app_handle.emit("install_complete", &completion_event);
+    if let Some(window) = app_handle.get_webview_window("main") {
+        let _ = window.emit("install_complete", &completion_event);
+    }
 
     Ok(instance_id)
 }
@@ -636,4 +946,10 @@ pub struct InstallCompleteEvent {
     pub instance_id: String,
     pub success: bool,
     pub error: Option<String>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct JavaInstallEvent {
+    pub stage: String,
+    pub progress: f64,
 }

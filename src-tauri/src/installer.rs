@@ -227,21 +227,33 @@ impl MinecraftInstaller {
     pub async fn get_version_manifest(&self) -> Result<VersionManifest> {
         println!("[DEBUG] get_version_manifest called");
         let url = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
-        let response = self.client.get(url).send().await
+        
+        let response = tokio::time::timeout(
+            std::time::Duration::from_secs(30),
+            self.client.get(url).send()
+        ).await
+            .context("Request timed out after 30 seconds")?
             .context("Failed to fetch version manifest")?;
 
+        println!("[DEBUG] Got response, parsing JSON...");
         let manifest: VersionManifest = response.json().await
             .context("Failed to parse version manifest")?;
 
-        println!("[DEBUG] Successfully parsed VersionManifest");
+        println!("[DEBUG] Successfully parsed VersionManifest with {} versions", manifest.versions.len());
         Ok(manifest)
     }
 
     pub async fn get_version_details(&self, version_url: &str) -> Result<VersionDetails> {
         println!("[DEBUG] get_version_details called with url: {}", version_url);
-        let response = self.client.get(version_url).send().await
+        
+        let response = tokio::time::timeout(
+            std::time::Duration::from_secs(30),
+            self.client.get(version_url).send()
+        ).await
+            .context("Request timed out after 30 seconds")?
             .context("Failed to fetch version details")?;
 
+        println!("[DEBUG] Got version details response, reading text...");
         let text = response.text().await
             .context("Failed to read version details response text")?;
 

@@ -129,6 +129,11 @@ impl StorageManager {
     }
 
     pub async fn add_instance(&mut self, instance: InstanceMetadata) -> Result<()> {
+        // Validate game directory path
+        if instance.game_dir.as_os_str().is_empty() {
+            return Err(anyhow::anyhow!("Instance game directory cannot be empty"));
+        }
+        
         // Ensure instance directory exists
         fs::create_dir_all(&instance.game_dir).await
             .context("Failed to create instance directory")?;
@@ -158,6 +163,11 @@ impl StorageManager {
     }
 
     pub async fn update_instance(&mut self, instance: InstanceMetadata) -> Result<()> {
+        // Validate game directory path
+        if instance.game_dir.as_os_str().is_empty() {
+            return Err(anyhow::anyhow!("Instance game directory cannot be empty"));
+        }
+        
         if self.config.instances.contains_key(&instance.id) {
             self.config.instances.insert(instance.id.clone(), instance);
             self.save().await
@@ -171,7 +181,16 @@ impl StorageManager {
     }
 
     pub fn get_all_instances(&self) -> Vec<&InstanceMetadata> {
-        self.config.instances.values().collect()
+        self.config.instances.values()
+            .filter(|instance| {
+                if instance.game_dir.as_os_str().is_empty() {
+                    eprintln!("Warning: Found instance '{}' with empty game_dir, excluding from list", instance.name);
+                    false
+                } else {
+                    true
+                }
+            })
+            .collect()
     }
 
     pub fn get_settings(&self) -> &LauncherSettings {

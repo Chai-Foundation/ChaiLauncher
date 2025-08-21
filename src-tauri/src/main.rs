@@ -19,6 +19,8 @@ fn main() {
             minecraft::get_minecraft_versions,
             minecraft::create_instance,
             minecraft::launch_minecraft,
+            minecraft::get_bundled_java_path,
+            minecraft::download_and_install_java,
             minecraft::get_java_installations,
             minecraft::validate_java_installation,
             minecraft::get_system_memory,
@@ -38,7 +40,9 @@ fn main() {
             minecraft::restore_instance,
             minecraft::refresh_instance_sizes,
             modpack::search_modpacks,
-            modpack::install_modpack
+            modpack::install_modpack,
+            commands::open_folder,
+            commands::open_instance_folder
         ])
         .setup(|app| {
             #[cfg(debug_assertions)]

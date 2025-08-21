@@ -74,8 +74,20 @@ impl LauncherManager {
         for detector in &self.detectors {
             if detector.is_installed().await {
                 match detector.detect_instances().await {
-                    Ok(mut instances) => {
-                        all_instances.append(&mut instances);
+                    Ok(instances) => {
+                        // Filter out instances with invalid paths
+                        let valid_instances: Vec<ExternalInstance> = instances.into_iter()
+                            .filter(|instance| {
+                                if instance.path.as_os_str().is_empty() {
+                                    eprintln!("Warning: Found {} instance '{}' with empty path, excluding from list", 
+                                        detector.name(), instance.name);
+                                    false
+                                } else {
+                                    true
+                                }
+                            })
+                            .collect();
+                        all_instances.extend(valid_instances);
                     }
                     Err(e) => {
                         eprintln!("Failed to detect instances from {}: {}", detector.name(), e);

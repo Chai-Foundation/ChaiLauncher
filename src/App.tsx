@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import LauncherSidebar from './components/LauncherSidebar';
 import HomeView from './components/HomeView';
 import InstancesView from './components/InstancesView';
 import SettingsView from './components/SettingsView';
 import AccountsView from './components/AccountsView';
 import CreateInstanceModal from './components/CreateInstanceModal';
+import JavaInstallModal from './components/JavaInstallModal';
 import { MinecraftInstance, MinecraftVersion, ModpackInfo, LauncherSettings, NewsItem, InstallProgressEvent, InstallCompleteEvent } from './types/minecraft';
 import heroImage from './assets/hero.png';
 import './index.css';
@@ -12,35 +13,131 @@ import './index.css';
 function App() {
   const [activeView, setActiveView] = useState('home');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showJavaInstallModal, setShowJavaInstallModal] = useState(false);
+  const [pendingInstanceLaunch, setPendingInstanceLaunch] = useState<MinecraftInstance | null>(null);
   
   // Instance state
   const [instances, setInstances] = useState<MinecraftInstance[]>([]);
   const [launcherSettings, setLauncherSettings] = useState<LauncherSettings | null>(null);
-  const [installProgress, setInstallProgress] = useState<Map<string, InstallProgressEvent>>(new Map());
+  const [, setInstallProgress] = useState<Map<string, InstallProgressEvent>>(new Map());
+  
+  // Use ref to maintain current instances for event handlers
+  const instancesRef = useRef<MinecraftInstance[]>([]);
+  
+  // Update ref whenever instances change
+  useEffect(() => {
+    instancesRef.current = instances;
+  }, [instances]);
+
+  // Stable progress update handler with throttling
+  const handleProgressUpdate = useCallback((event: any) => {
+    const instanceId = event.instance_id || event.instanceId;
+    const newProgress = Math.round(event.progress);
+    
+    setInstances(prev => {
+      const updated = prev.map(inst => {
+        if (inst.id === instanceId) {
+          // Only update if progress changed by at least 1% to reduce flickering
+          const currentProgress = Math.round(inst.installProgress || 0);
+          if (Math.abs(newProgress - currentProgress) >= 1 || inst.status !== 'installing') {
+            const updatedInstance = { 
+              ...inst, 
+              installProgress: newProgress, 
+              status: 'installing' as const,
+            };
+            console.log(`Updating instance ${inst.name}: progress=${newProgress}%`);
+            return updatedInstance;
+          }
+        }
+        return inst;
+      });
+      return updated;
+    });
+  }, []);
+
+  // Stable completion handler
+  const handleInstallComplete = useCallback(async (event: any) => {
+    console.log('Install complete event received:', event);
+    const instanceId = event.instance_id || event.instanceId;
+    setInstallProgress(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(instanceId);
+      return newMap;
+    });
+    
+    if (event.success) {
+      setInstances(prev => 
+        prev.map(inst => 
+          inst.id === instanceId
+            ? { ...inst, status: 'ready', installProgress: 100 }
+            : inst
+        )
+      );
+    } else {
+      setInstances(prev => 
+        prev.map(inst => 
+          inst.id === instanceId
+            ? { ...inst, status: 'failed', errorMessage: event.error || 'Installation failed' }
+            : inst
+        )
+      );
+    }
+  }, []);
 
   // Detect all external launcher instances
   const detectExternalInstances = async (): Promise<MinecraftInstance[]> => {
     try {
       const { invoke } = await import('@tauri-apps/api/core');
       const externalInstances = await invoke('detect_all_external_instances');
-      return (externalInstances as any[]).map(instance => ({
-        id: instance.id,
-        name: instance.name,
-        version: instance.version || 'Unknown',
-        gameDir: instance.path,
-        lastPlayed: instance.last_played ? new Date(instance.last_played) : undefined,
-        totalPlayTime: instance.total_play_time || 0,
-        isModded: instance.is_modded || false,
-        modsCount: instance.mods_count || 0,
-        isExternal: true,
-        externalLauncher: instance.launcher_type as 'gdlauncher' | 'multimc' | 'prism' | 'modrinth',
-        modpack: instance.modpack,
-        modpackVersion: instance.modpack_version,
-        icon: instance.icon,
-      }));
+      return (externalInstances as any[]).map(instance => {
+        const gameDir = instance.path || instance.game_dir || '';
+        let status: 'ready' | 'invalid' = 'ready';
+        let errorMessage: string | undefined;
+        
+        // Validate instance
+        if (!gameDir) {
+          status = 'invalid';
+          errorMessage = 'Missing game directory path';
+        } else if (!instance.name) {
+          status = 'invalid';
+          errorMessage = 'Missing instance name';
+        } else if (!instance.version) {
+          status = 'invalid';
+          errorMessage = 'Missing Minecraft version';
+        }
+        
+        return {
+          id: instance.id,
+          name: instance.name || 'Unknown Instance',
+          version: instance.version || 'Unknown',
+          gameDir,
+          lastPlayed: instance.last_played ? new Date(instance.last_played) : undefined,
+          totalPlayTime: instance.total_play_time || 0,
+          isModded: instance.is_modded || false,
+          modsCount: instance.mods_count || 0,
+          isExternal: true,
+          externalLauncher: instance.launcher_type as 'gdlauncher' | 'multimc' | 'prism' | 'modrinth',
+          modpack: instance.modpack,
+          modpackVersion: instance.modpack_version,
+          icon: instance.icon,
+          status,
+          errorMessage,
+        };
+      });
     } catch (error) {
       console.error('Failed to detect external launcher instances:', error);
       return [];
+    }
+  };
+
+  // Ensure Java is available
+  const ensureJavaAvailable = async () => {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('get_bundled_java_path');
+      console.log('Bundled Java is available');
+    } catch (error) {
+      console.log('Bundled Java not found, will download when needed');
     }
   };
 
@@ -52,74 +149,130 @@ function App() {
         
         // Load stored instances
         const storedInstances = await invoke('load_instances') as MinecraftInstance[];
+        console.log('Loaded stored instances from backend:', storedInstances);
+        
+        // Validate stored instances have gameDir and add status
+        const validStoredInstances = storedInstances.filter(instance => {
+          const gameDir = (instance as any).gameDir || (instance as any).game_dir;
+          console.log('Validating stored instance:', {
+            id: instance.id,
+            name: instance.name,
+            gameDir: gameDir,
+            rawInstance: instance
+          });
+          
+          if (!gameDir) {
+            console.warn('Invalid stored instance found with missing gameDir:', instance.name || instance.id);
+            return false;
+          }
+          return true;
+        }).map(instance => {
+          // Convert snake_case to camelCase for frontend compatibility
+          const rawInstance = instance as any;
+          return {
+            id: rawInstance.id,
+            name: rawInstance.name,
+            version: rawInstance.version,
+            modpack: rawInstance.modpack,
+            modpackVersion: rawInstance.modpack_version,
+            gameDir: rawInstance.game_dir || rawInstance.gameDir,
+            javaPath: rawInstance.java_path,
+            jvmArgs: rawInstance.jvm_args,
+            lastPlayed: rawInstance.last_played ? new Date(rawInstance.last_played) : undefined,
+            totalPlayTime: rawInstance.total_play_time || 0,
+            icon: rawInstance.icon,
+            isModded: rawInstance.is_modded || false,
+            modsCount: rawInstance.mods_count || 0,
+            isExternal: rawInstance.is_external,
+            externalLauncher: rawInstance.external_launcher,
+            status: rawInstance.status || 'ready' as const
+          } as MinecraftInstance;
+        });
+        
+        console.log('Valid stored instances after filtering:', validStoredInstances);
         
         // Load external instances
         const externalInstances = await detectExternalInstances();
         
+        // Filter external instances to ensure gameDir exists
+        const validExternalInstances = externalInstances.filter(instance => {
+          if (!instance.gameDir) {
+            console.warn('Invalid external instance found with missing gameDir:', instance.name || instance.id);
+            return false;
+          }
+          return true;
+        });
+        
         // Combine both
-        setInstances([...storedInstances, ...externalInstances]);
+        const allInstances = [...validStoredInstances, ...validExternalInstances];
+        console.log('Final combined instances:', allInstances);
+        setInstances(allInstances);
         
         // Load launcher settings
-        const settings = await invoke('get_launcher_settings') as LauncherSettings;
-        setLauncherSettings(settings);
+        const backendSettings = await invoke('get_launcher_settings') as LauncherSettings;
+        setLauncherSettings(backendSettings);
+        setSettings(backendSettings);
         
       } catch (error) {
         console.error('Failed to load launcher data:', error);
         // Fallback to external instances only
         const externalInstances = await detectExternalInstances();
-        setInstances(externalInstances);
+        const validExternalInstances = externalInstances.filter(instance => {
+          if (!instance.gameDir) {
+            console.warn('Invalid external instance found with missing gameDir:', instance.name || instance.id);
+            return false;
+          }
+          return true;
+        });
+        setInstances(validExternalInstances);
       }
     };
 
     // Set up event listeners
     const setupEventListeners = async () => {
-      const { listen } = await import('@tauri-apps/api/event');
-      
-      // Listen for install progress
-      const unlistenProgress = await listen<InstallProgressEvent>('install_progress', (event) => {
-        setInstallProgress(prev => new Map(prev.set(event.payload.instanceId, event.payload)));
-      });
-      
-      // Listen for install completion
-      const unlistenComplete = await listen<InstallCompleteEvent>('install_complete', async (event) => {
-        setInstallProgress(prev => {
-          const newMap = new Map(prev);
-          newMap.delete(event.payload.instanceId);
-          return newMap;
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+        
+        // Listen for install progress
+        const unlistenProgress = await listen<InstallProgressEvent>('install_progress', (event) => {
+          handleProgressUpdate(event.payload);
         });
         
-        if (event.payload.success) {
-          // Reload instances
-          try {
-            const { invoke } = await import('@tauri-apps/api/core');
-            const storedInstances = await invoke('load_instances') as MinecraftInstance[];
-            const externalInstances = await detectExternalInstances();
-            setInstances([...storedInstances, ...externalInstances]);
-          } catch (error) {
-            console.error('Failed to reload instances:', error);
-          }
-        }
-      });
       
-      return () => {
-        unlistenProgress();
-        unlistenComplete();
-      };
+        // Listen for install completion
+        const unlistenComplete = await listen<InstallCompleteEvent>('install_complete', (event) => {
+          handleInstallComplete(event.payload);
+        });
+      
+        
+        return () => {
+          unlistenProgress();
+          unlistenComplete();
+        };
+      } catch (error) {
+        console.error('Failed to set up event listeners:', error);
+      }
     };
 
     loadData();
     setupEventListeners();
-  }, []);
+    ensureJavaAvailable();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [settings, setSettings] = useState<LauncherSettings>({
+    default_memory: 4096,
+    default_jvm_args: ['-XX:+UnlockExperimentalVMOptions', '-XX:+UseG1GC'],
+    instances_dir: '/minecraft/instances',
+    downloads_dir: '/minecraft/downloads',
+    theme: 'dark',
+    auto_update: true,
+    keepLauncherOpen: true,
+    showSnapshots: false,
     javaPath: '',
     maxMemory: 4096,
     minMemory: 1024,
     jvmArgs: ['-XX:+UnlockExperimentalVMOptions', '-XX:+UseG1GC'],
     gameDir: '/minecraft',
-    keepLauncherOpen: true,
-    showSnapshots: false,
-    theme: 'dark',
   });
 
   const mockVersions: MinecraftVersion[] = [
@@ -199,21 +352,62 @@ function App() {
     try {
       const { invoke } = await import('@tauri-apps/api/core');
       
-      // Use the new installation system
-      const instanceId = await invoke('install_minecraft_version', {
+      const params = {
         versionId: data.version,
         instanceName: data.name,
-        gameDir: launcherSettings?.instancesDir || '/minecraft',
-      }) as string;
+        gameDir: launcherSettings?.instances_dir || '/minecraft',
+      };
       
-      console.log('Started installation for instance:', instanceId);
+      // Generate instance ID upfront to avoid timing issues
+      const instanceId = `instance-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      // Create instance with real ID and installing status BEFORE starting installation
+      const newInstance: MinecraftInstance = {
+        id: instanceId,
+        name: data.name,
+        version: data.version,
+        gameDir: `${launcherSettings?.instances_dir || '/minecraft'}/${data.name}`,
+        totalPlayTime: 0,
+        isModded: !!data.modpack,
+        modsCount: 0,
+        status: 'installing',
+        installProgress: 0,
+        modpack: data.modpack,
+        modpackVersion: data.modpackVersion,
+      };
+      
+      // Add to instances BEFORE starting installation
+      setInstances(prev => [...prev, newInstance]);
+      
+      // Start the installation with predefined instance ID
+      await invoke('install_minecraft_version', {
+        ...params,
+        instanceId: instanceId
+      });
+      
       setShowCreateModal(false);
     } catch (error) {
       console.error('Failed to create instance:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      
+      // Mark any temp instances as failed
+      setInstances(prev => 
+        prev.map(inst => 
+          inst.status === 'installing' 
+            ? { ...inst, status: 'failed', errorMessage: error.toString() }
+            : inst
+        )
+      );
     }
   };
 
   const handlePlayInstance = async (instance: MinecraftInstance) => {
+    // Validate gameDir before launching
+    if (!instance.gameDir) {
+      console.error('Cannot launch instance: gameDir is undefined or empty for instance:', instance.name);
+      alert('Error: This instance has an invalid game directory and cannot be launched.');
+      return;
+    }
+    
     // Update last played time
     setInstances(prev => 
       prev.map(inst => 
@@ -224,20 +418,64 @@ function App() {
     );
     
     try {
-      // Launch Minecraft instance via Tauri
+      console.log('Preparing to launch instance at:', instance.gameDir);
       const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('launch_instance', { 
+      
+      // Get bundled Java path, download if needed
+      let javaPath: string;
+      try {
+        javaPath = await invoke('get_bundled_java_path') as string;
+        console.log('Using bundled Java:', javaPath);
+      } catch (javaError) {
+        console.log('Bundled Java not found, showing install modal...');
+        setPendingInstanceLaunch(instance);
+        setShowJavaInstallModal(true);
+        return;
+      }
+      
+      await invoke('launch_instance', {
         instanceId: instance.id,
         instancePath: instance.gameDir,
         version: instance.version,
-        javaPath: settings.javaPath || 'java',
-        memory: settings.maxMemory,
-        jvmArgs: settings.jvmArgs
+        javaPath,
+        memory: settings.maxMemory || 4096,
+        jvmArgs: settings.jvmArgs || []
       });
-      console.log('Launching instance:', instance.name);
+      console.log('Successfully launched instance:', instance.name);
     } catch (error) {
       console.error('Failed to launch instance:', error);
+      alert(`Failed to launch ${instance.name}: ${error}`);
     }
+  };
+
+  const handleJavaInstallComplete = async (javaPath: string) => {
+    setShowJavaInstallModal(false);
+    
+    if (pendingInstanceLaunch) {
+      // Launch the pending instance with the new Java path
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('launch_instance', {
+          instanceId: pendingInstanceLaunch.id,
+          instancePath: pendingInstanceLaunch.gameDir,
+          version: pendingInstanceLaunch.version,
+          javaPath,
+          memory: settings.maxMemory || 4096,
+          jvmArgs: settings.jvmArgs || []
+        });
+        console.log('Successfully launched instance:', pendingInstanceLaunch.name);
+      } catch (error) {
+        console.error('Failed to launch instance after Java install:', error);
+        alert(`Failed to launch ${pendingInstanceLaunch.name}: ${error}`);
+      }
+      
+      setPendingInstanceLaunch(null);
+    }
+  };
+
+  const handleJavaInstallCancel = () => {
+    setShowJavaInstallModal(false);
+    setPendingInstanceLaunch(null);
   };
 
   const handleEditInstance = (instance: MinecraftInstance) => {
@@ -260,7 +498,50 @@ function App() {
     }
   };
 
+  const handleUpdateSettings = async (newSettings: LauncherSettings) => {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('update_launcher_settings', { settings: newSettings });
+      setSettings(newSettings);
+      setLauncherSettings(newSettings);
+    } catch (error) {
+      console.error('Failed to update settings:', error);
+    }
+  };
+
+  const handleOpenFolder = async (folderPath: string) => {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('open_folder', { path: folderPath });
+    } catch (error) {
+      console.error('Failed to open folder:', error);
+    }
+  };
+
+  const handleOpenInstanceFolder = async (instance: MinecraftInstance) => {
+    // Validate gameDir before opening
+    if (!instance.gameDir) {
+      console.error('Cannot open folder: gameDir is undefined or empty for instance:', instance.name);
+      alert('Error: This instance has an invalid game directory.');
+      return;
+    }
+    
+    if (instance.isExternal) {
+      await handleOpenFolder(instance.gameDir);
+    } else {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('open_instance_folder', { instanceId: instance.id });
+      } catch (error) {
+        console.error('Failed to open instance folder:', error);
+        // Fallback to opening the gameDir directly
+        await handleOpenFolder(instance.gameDir);
+      }
+    }
+  };
+
   const renderActiveView = () => {
+    console.log('Rendering view with instances:', instances);
     switch (activeView) {
       case 'home':
         return (
@@ -276,6 +557,7 @@ function App() {
             onPlayInstance={handlePlayInstance}
             onEditInstance={handleEditInstance}
             onDeleteInstance={handleDeleteInstance}
+            onOpenFolder={handleOpenInstanceFolder}
           />
         );
       case 'instances':
@@ -286,13 +568,15 @@ function App() {
             onPlayInstance={handlePlayInstance}
             onEditInstance={handleEditInstance}
             onDeleteInstance={handleDeleteInstance}
+            onOpenFolder={handleOpenInstanceFolder}
           />
         );
       case 'settings':
         return (
           <SettingsView
             settings={settings}
-            onUpdateSettings={setSettings}
+            onUpdateSettings={handleUpdateSettings}
+            onOpenFolder={handleOpenFolder}
           />
         );
       case 'accounts':
@@ -337,6 +621,12 @@ function App() {
           onCreateInstance={handleCreateInstance}
           minecraftVersions={mockVersions}
           popularModpacks={mockModpacks}
+        />
+        
+        <JavaInstallModal
+          isOpen={showJavaInstallModal}
+          onClose={handleJavaInstallCancel}
+          onInstallComplete={handleJavaInstallComplete}
         />
       </div>
     </div>

@@ -6,11 +6,12 @@ import { LauncherSettings } from '../types/minecraft';
 interface SettingsViewProps {
   settings: LauncherSettings;
   onUpdateSettings: (settings: LauncherSettings) => void;
+  onOpenFolder?: (path: string) => void;
 }
 
 type SettingsTab = 'general' | 'java' | 'appearance' | 'advanced';
 
-const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings }) => {
+const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings, onOpenFolder }) => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const [localSettings, setLocalSettings] = useState<LauncherSettings>(settings);
   const [hasChanges, setHasChanges] = useState(false);
@@ -99,21 +100,47 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings 
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Game Directory
+                    Instances Directory
                   </label>
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      value={localSettings.gameDir}
-                      onChange={(e) => handleSettingChange('gameDir', e.target.value)}
+                      value={localSettings.instances_dir}
+                      onChange={(e) => handleSettingChange('instances_dir', e.target.value)}
                       className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    <button className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg transition-colors">
+                    <button 
+                      onClick={() => onOpenFolder && onOpenFolder(localSettings.instances_dir)}
+                      className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg transition-colors"
+                    >
                       <Folder size={18} />
                     </button>
                   </div>
                   <p className="text-sm text-gray-400 mt-1">
                     Directory where Minecraft instances will be stored
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Downloads Directory
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={localSettings.downloads_dir}
+                      onChange={(e) => handleSettingChange('downloads_dir', e.target.value)}
+                      className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button 
+                      onClick={() => onOpenFolder && onOpenFolder(localSettings.downloads_dir)}
+                      className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg transition-colors"
+                    >
+                      <Folder size={18} />
+                    </button>
+                  </div>
+                  <p className="text-sm text-gray-400 mt-1">
+                    Directory where downloads will be stored
                   </p>
                 </div>
 
@@ -150,6 +177,23 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings 
                     className="rounded border-gray-600 bg-gray-700"
                   />
                 </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="text-sm font-medium text-gray-300">
+                      Auto-update launcher
+                    </label>
+                    <p className="text-sm text-gray-400">
+                      Automatically check for and install updates
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={localSettings.auto_update}
+                    onChange={(e) => handleSettingChange('auto_update', e.target.checked)}
+                    className="rounded border-gray-600 bg-gray-700"
+                  />
+                </div>
               </motion.div>
             )}
 
@@ -168,8 +212,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings 
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      value={localSettings.javaPath}
-                      onChange={(e) => handleSettingChange('javaPath', e.target.value)}
+                      value={localSettings.default_java_path || ''}
+                      onChange={(e) => handleSettingChange('default_java_path', e.target.value || undefined)}
                       placeholder="Auto-detect"
                       className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
@@ -179,48 +223,32 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings 
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Minimum Memory (MB)
-                    </label>
-                    <input
-                      type="number"
-                      value={localSettings.minMemory}
-                      onChange={(e) => handleSettingChange('minMemory', parseInt(e.target.value))}
-                      min="512"
-                      max="4096"
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Maximum Memory (MB)
-                    </label>
-                    <input
-                      type="number"
-                      value={localSettings.maxMemory}
-                      onChange={(e) => handleSettingChange('maxMemory', parseInt(e.target.value))}
-                      min="1024"
-                      max="16384"
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Default Memory (MB)
+                  </label>
+                  <input
+                    type="number"
+                    value={localSettings.default_memory}
+                    onChange={(e) => handleSettingChange('default_memory', parseInt(e.target.value))}
+                    min="1024"
+                    max="16384"
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    JVM Arguments
+                    Default JVM Arguments
                   </label>
                   <textarea
-                    value={localSettings.jvmArgs.join(' ')}
-                    onChange={(e) => handleSettingChange('jvmArgs', e.target.value.split(' ').filter(arg => arg.trim()))}
+                    value={localSettings.default_jvm_args.join(' ')}
+                    onChange={(e) => handleSettingChange('default_jvm_args', e.target.value.split(' ').filter(arg => arg.trim()))}
                     placeholder="-XX:+UnlockExperimentalVMOptions -XX:+UseG1GC"
                     className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 h-24 resize-none"
                   />
                   <p className="text-sm text-gray-400 mt-1">
-                    Advanced JVM arguments for performance tuning
+                    Default JVM arguments for new instances
                   </p>
                 </div>
               </motion.div>

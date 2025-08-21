@@ -11,6 +11,7 @@ interface HomeViewProps {
   onPlayInstance: (instance: MinecraftInstance) => void;
   onEditInstance: (instance: MinecraftInstance) => void;
   onDeleteInstance: (instance: MinecraftInstance) => void;
+  onOpenFolder?: (instance: MinecraftInstance) => void;
 }
 
 const HomeView: React.FC<HomeViewProps> = ({
@@ -20,6 +21,7 @@ const HomeView: React.FC<HomeViewProps> = ({
   onPlayInstance,
   onEditInstance,
   onDeleteInstance,
+  onOpenFolder,
 }) => {
   return (
     <div className="flex-1 p-6 space-y-6">
@@ -89,6 +91,7 @@ const HomeView: React.FC<HomeViewProps> = ({
                 onPlay={onPlayInstance}
                 onEdit={onEditInstance}
                 onDelete={onDeleteInstance}
+                onOpenFolder={onOpenFolder}
               />
             ))}
           </div>
