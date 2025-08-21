@@ -8,7 +8,7 @@ import CreateInstanceModal from './components/CreateInstanceModal';
 import JavaInstallModal from './components/JavaInstallModal';
 import { MinecraftInstance, MinecraftVersion, ModpackInfo, LauncherSettings, NewsItem, InstallProgressEvent, InstallCompleteEvent } from './types/minecraft';
 import heroImage from './assets/hero.png';
-import React, { CSSProperties } from 'react';
+import type { CSSProperties } from 'react';
 import './index.css';
 
 function App() {
@@ -359,8 +359,8 @@ function App() {
         gameDir: launcherSettings?.instances_dir || '/minecraft',
       };
       
-      // Generate instance ID upfront to avoid timing issues
-      const instanceId = `instance-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  // Generate instance ID upfront to avoid timing issues
+  const instanceId = `instance-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
       // Create instance with real ID and installing status BEFORE starting installation
       const newInstance: MinecraftInstance = {
         id: instanceId,
@@ -638,9 +638,10 @@ function App() {
                 className="w-6 h-6 flex items-center justify-center hover:bg-stone-800 rounded"
                 title="Minimize"
                 onClick={async (e) => {
-                e.stopPropagation();
-                const { appWindow } = await import('@tauri-apps/api/window');
-                appWindow.minimize();
+                  e.stopPropagation();
+                  const { getCurrentWindow } = await import('@tauri-apps/api/window');
+                  const win = getCurrentWindow();
+                  win.minimize();
                 }}
               >
                 <svg width="14" height="14" viewBox="0 0 14 14">
@@ -651,14 +652,15 @@ function App() {
                 className="w-6 h-6 flex items-center justify-center hover:bg-stone-800 rounded"
                 title="Maximize"
                 onClick={async (e) => {
-                e.stopPropagation();
-                const { appWindow } = await import('@tauri-apps/api/window');
-                const isMaximized = await appWindow.isMaximized();
-                if (isMaximized) {
-                  appWindow.unmaximize();
-                } else {
-                  appWindow.maximize();
-                }
+                  e.stopPropagation();
+                  const { getCurrentWindow } = await import('@tauri-apps/api/window');
+                  const win = getCurrentWindow();
+                  const isMaximized = await win.isMaximized();
+                  if (isMaximized) {
+                    win.unmaximize();
+                  } else {
+                    win.maximize();
+                  }
                 }}
               >
                 <svg width="14" height="14" viewBox="0 0 14 14">
@@ -669,9 +671,10 @@ function App() {
                 className="w-6 h-6 flex items-center justify-center hover:bg-red-700 rounded"
                 title="Close"
                 onClick={async (e) => {
-                e.stopPropagation();
-                const { appWindow } = await import('@tauri-apps/api/window');
-                appWindow.close();
+                  e.stopPropagation();
+                  const { getCurrentWindow } = await import('@tauri-apps/api/window');
+                  const win = getCurrentWindow();
+                  win.close();
                 }}
               >
                 <svg width="14" height="14" viewBox="0 0 14 14">
