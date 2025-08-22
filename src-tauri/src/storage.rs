@@ -335,28 +335,7 @@ async fn restore_directory(source: &PathBuf, destination: &PathBuf) -> Result<()
     backup_directory(source, destination).await
 }
 
-// Convert between storage types and API types
-impl From<InstanceMetadata> for MinecraftInstance {
-    fn from(metadata: InstanceMetadata) -> Self {
-        Self {
-            id: metadata.id,
-            name: metadata.name,
-            version: metadata.version,
-            modpack: metadata.modpack,
-            modpack_version: metadata.modpack_version,
-            game_dir: metadata.game_dir,
-            java_path: metadata.java_path,
-            jvm_args: metadata.jvm_args,
-            last_played: metadata.last_played,
-            total_play_time: metadata.total_play_time,
-            icon: metadata.icon,
-            is_modded: metadata.is_modded,
-            mods_count: metadata.mods_count,
-            is_external: Some(false),
-            external_launcher: None,
-        }
-    }
-}
+// Conversion is now handled in minecraft::commands module
 
 impl From<MinecraftInstance> for InstanceMetadata {
     fn from(instance: MinecraftInstance) -> Self {

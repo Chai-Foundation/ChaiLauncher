@@ -21,6 +21,8 @@ function App() {
   const [instances, setInstances] = useState<MinecraftInstance[]>([]);
   const [launcherSettings, setLauncherSettings] = useState<LauncherSettings | null>(null);
   const [, setInstallProgress] = useState<Map<string, InstallProgressEvent>>(new Map());
+  const [minecraftVersions, setMinecraftVersions] = useState<MinecraftVersion[]>([]);
+  const [versionsLoading, setVersionsLoading] = useState(true);
   
   // Use ref to maintain current instances for event handlers
   const instancesRef = useRef<MinecraftInstance[]>([]);
@@ -141,6 +143,29 @@ function App() {
       console.log('Bundled Java not found, will download when needed');
     }
   };
+
+  // Load Minecraft versions
+  useEffect(() => {
+    const loadVersions = async () => {
+      try {
+        setVersionsLoading(true);
+        const { invoke } = await import('@tauri-apps/api/core');
+        const versionManifest = await invoke('get_minecraft_versions') as { versions: MinecraftVersion[] };
+        setMinecraftVersions(versionManifest.versions);
+      } catch (error) {
+        console.error('Failed to load Minecraft versions:', error);
+        // Fallback to a minimal set if API fails
+        setMinecraftVersions([
+          { id: '1.20.4', type: 'release', releaseTime: '2023-12-07T12:00:00Z', url: '' },
+          { id: '1.20.3', type: 'release', releaseTime: '2023-12-05T12:00:00Z', url: '' },
+        ]);
+      } finally {
+        setVersionsLoading(false);
+      }
+    };
+
+    loadVersions();
+  }, []);
 
   // Load instances and settings on startup
   useEffect(() => {
@@ -276,12 +301,6 @@ function App() {
     gameDir: '/minecraft',
   });
 
-  const mockVersions: MinecraftVersion[] = [
-    { id: '1.20.4', type: 'release', releaseTime: '2023-12-07T12:00:00Z', url: '' },
-    { id: '1.20.3', type: 'release', releaseTime: '2023-12-05T12:00:00Z', url: '' },
-    { id: '1.20.2', type: 'release', releaseTime: '2023-09-21T12:00:00Z', url: '' },
-    { id: '24w06a', type: 'snapshot', releaseTime: '2024-02-07T12:00:00Z', url: '' },
-  ];
 
   const mockModpacks: ModpackInfo[] = [
     {
@@ -434,13 +453,21 @@ function App() {
       // Get bundled Java path, download if needed
       let javaPath: string;
       try {
-        javaPath = await invoke('get_bundled_java_path') as string;
-        console.log('Using bundled Java:', javaPath);
+        javaPath = await invoke('get_java_for_minecraft_version', { 
+          minecraftVersion: instance.version 
+        }) as string;
+        console.log('Using appropriate Java version for', instance.version + ':', javaPath);
       } catch (javaError) {
-        console.log('Bundled Java not found, showing install modal...');
-        setPendingInstanceLaunch(instance);
-        setShowJavaInstallModal(true);
-        return;
+        console.log('Specific Java version not found, trying default...');
+        try {
+          javaPath = await invoke('get_bundled_java_path') as string;
+          console.log('Using default bundled Java:', javaPath);
+        } catch (defaultError) {
+          console.log('No Java found, showing install modal...');
+          setPendingInstanceLaunch(instance);
+          setShowJavaInstallModal(true);
+          return;
+        }
       }
       
       await invoke('launch_instance', {
@@ -689,7 +716,7 @@ function App() {
             isOpen={showCreateModal}
             onClose={() => setShowCreateModal(false)}
             onCreateInstance={handleCreateInstance}
-            minecraftVersions={mockVersions}
+            minecraftVersions={versionsLoading ? [] : minecraftVersions}
             popularModpacks={mockModpacks}
           />
     

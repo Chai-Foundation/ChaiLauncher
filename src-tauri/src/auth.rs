@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tauri::command;
-use anyhow::{Result, Context};
+use anyhow::Result;
 use oauth2::{
-    AuthUrl, ClientId, ClientSecret, CsrfToken, PkceCodeChallenge, RedirectUrl, Scope,
-    TokenUrl, AuthorizationCode, PkceCodeVerifier,
+    AuthUrl, ClientId, CsrfToken, PkceCodeChallenge, RedirectUrl, Scope,
+    TokenUrl,
 };
 use oauth2::basic::BasicClient;
 use std::sync::{Arc, Mutex};
@@ -163,11 +163,10 @@ lazy_static! {
 #[command]
 pub async fn start_microsoft_oauth() -> Result<String, String> {
     let client = BasicClient::new(
-        ClientId::new(CLIENT_ID.to_string()),
-        None, // No client secret for PKCE flow
-        AuthUrl::new(MICROSOFT_AUTH_URL.to_string()).unwrap(),
-        Some(TokenUrl::new(MICROSOFT_TOKEN_URL.to_string()).unwrap()),
+        ClientId::new(CLIENT_ID.to_string())
     )
+    .set_auth_uri(AuthUrl::new(MICROSOFT_AUTH_URL.to_string()).unwrap())
+    .set_token_uri(TokenUrl::new(MICROSOFT_TOKEN_URL.to_string()).unwrap())
     .set_redirect_uri(RedirectUrl::new(REDIRECT_URI.to_string()).unwrap());
 
     // Generate PKCE challenge
@@ -175,7 +174,7 @@ pub async fn start_microsoft_oauth() -> Result<String, String> {
 
     // Generate CSRF token
     let (auth_url, csrf_token) = client
-        .authorize_url(CsrfToken::new_random)
+        .authorize_url(|| CsrfToken::new_random())
         .add_scope(Scope::new("XboxLive.signin".to_string()))
         .add_scope(Scope::new("offline_access".to_string()))
         .set_pkce_challenge(pkce_challenge)
@@ -200,11 +199,10 @@ pub async fn start_microsoft_oauth() -> Result<String, String> {
 #[command]
 pub async fn start_oauth_with_server() -> Result<MinecraftAccount, String> {
     let client = BasicClient::new(
-        ClientId::new(CLIENT_ID.to_string()),
-        None, // No client secret for PKCE flow
-        AuthUrl::new(MICROSOFT_AUTH_URL.to_string()).unwrap(),
-        Some(TokenUrl::new(MICROSOFT_TOKEN_URL.to_string()).unwrap()),
+        ClientId::new(CLIENT_ID.to_string())
     )
+    .set_auth_uri(AuthUrl::new(MICROSOFT_AUTH_URL.to_string()).unwrap())
+    .set_token_uri(TokenUrl::new(MICROSOFT_TOKEN_URL.to_string()).unwrap())
     .set_redirect_uri(RedirectUrl::new(REDIRECT_URI.to_string()).unwrap());
 
     // Generate PKCE challenge
@@ -212,7 +210,7 @@ pub async fn start_oauth_with_server() -> Result<MinecraftAccount, String> {
 
     // Generate CSRF token
     let (auth_url, csrf_token) = client
-        .authorize_url(CsrfToken::new_random)
+        .authorize_url(|| CsrfToken::new_random())
         .add_scope(Scope::new("XboxLive.signin".to_string()))
         .add_scope(Scope::new("offline_access".to_string()))
         .set_pkce_challenge(pkce_challenge)
