@@ -16,6 +16,7 @@ interface MinecraftAccount {
   lastUsed?: Date;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface OAuthSession {
   csrf_token: string;
   pkce_verifier: string;
@@ -158,6 +159,7 @@ const AccountsView: React.FC<AccountsViewProps> = ({
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const getAccountTypeLabel = (type: string) => {
     switch (type) {
       case 'microsoft':

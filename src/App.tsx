@@ -326,6 +326,7 @@ function App() {
     },
   ];
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const mockAccounts = [
     {
       id: '1',
