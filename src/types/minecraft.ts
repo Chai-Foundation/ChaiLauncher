@@ -57,6 +57,7 @@ export interface LauncherSettings {
   minMemory?: number;
   jvmArgs?: string[];
   gameDir?: string;
+  auth_token?: string;
 }
 
 export interface NewsItem {

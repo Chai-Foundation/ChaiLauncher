@@ -42,6 +42,7 @@ pub struct LauncherSettings {
     pub downloads_dir: PathBuf,
     pub theme: String,
     pub auto_update: bool,
+    pub auth_token: Option<String>,
 }
 
 impl Default for LauncherSettings {
@@ -62,6 +63,7 @@ impl Default for LauncherSettings {
             downloads_dir: launcher_dir.join("downloads"),
             theme: "dark".to_string(),
             auto_update: true,
+            auth_token: None,
         }
     }
 }

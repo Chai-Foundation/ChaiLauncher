@@ -591,9 +591,6 @@ function App() {
       case 'accounts':
         return (
           <AccountsView
-            accounts={mockAccounts}
-            onAddAccount={(type) => console.log('Adding account:', type)}
-            onRemoveAccount={(id) => console.log('Removing account:', id)}
             onSetActiveAccount={(id) => console.log('Setting active account:', id)}
           />
         );

@@ -8,6 +8,7 @@ mod launchers;
 mod storage;
 mod installer;
 mod modpack;
+mod auth;
 
 use tauri::Manager;
 
@@ -42,7 +43,16 @@ fn main() {
             modpack::search_modpacks,
             modpack::install_modpack,
             commands::open_folder,
-            commands::open_instance_folder
+            commands::open_instance_folder,
+            commands::set_auth_token,
+            commands::get_auth_token,
+            commands::clear_auth_token,
+            auth::start_microsoft_oauth,
+            auth::start_oauth_with_server,
+            auth::complete_microsoft_oauth,
+            auth::get_stored_accounts,
+            auth::refresh_minecraft_token,
+            auth::remove_minecraft_account
         ])
         .setup(|app| {
             #[cfg(debug_assertions)]

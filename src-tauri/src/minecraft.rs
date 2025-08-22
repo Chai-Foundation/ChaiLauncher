@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use tauri::{command, Manager};
 use tokio::fs;
 use tokio::process::Command;
+use tokio::io::AsyncReadExt;
 use crate::launchers::{LauncherManager, ExternalInstance};
 use crate::storage::{StorageManager, InstanceMetadata};
 use crate::installer::MinecraftInstaller;
@@ -132,6 +133,24 @@ pub async fn launch_minecraft(
 ) -> Result<(), String> {
     let java_executable = java_path.unwrap_or_else(|| "java".to_string());
     
+    // Get auth token from settings or active account
+    let storage = crate::storage::StorageManager::new().await
+        .map_err(|e| format!("Failed to initialize storage: {}", e))?;
+    
+    let auth_token = if let Some(manual_token) = storage.get_settings().auth_token.clone() {
+        // Use manual token if set
+        Some(manual_token)
+    } else {
+        // Try to get token from active Microsoft account
+        match crate::auth::get_active_account_token().await {
+            Ok(token) => token,
+            Err(e) => {
+                println!("Warning: No auth token available: {}", e);
+                None
+            }
+        }
+    };
+    
     let mut args = Vec::new();
     
     // Memory arguments
@@ -145,6 +164,11 @@ pub async fn launch_minecraft(
     // JVM arguments
     if let Some(jvm_args) = &instance.jvm_args {
         args.extend(jvm_args.clone());
+    }
+    
+    // Add auth token as JVM argument if available
+    if let Some(token) = auth_token {
+        args.push(format!("-Dauth.token={}", token));
     }
     
     // Additional arguments
@@ -604,6 +628,24 @@ pub async fn launch_instance(
         ));
     }
     
+    // Get auth token from settings or active account
+    let storage = crate::storage::StorageManager::new().await
+        .map_err(|e| format!("Failed to initialize storage: {}", e))?;
+    
+    let auth_token = if let Some(manual_token) = storage.get_settings().auth_token.clone() {
+        // Use manual token if set
+        Some(manual_token)
+    } else {
+        // Try to get token from active Microsoft account
+        match crate::auth::get_active_account_token().await {
+            Ok(token) => token,
+            Err(e) => {
+                println!("Warning: No auth token available: {}", e);
+                None
+            }
+        }
+    };
+    
     // Launch Minecraft
     let mut args = Vec::new();
 
@@ -613,6 +655,50 @@ pub async fn launch_instance(
 
     // JVM arguments
     args.extend(jvm_args.clone());
+    
+    // Add auth token as JVM argument if available
+    if let Some(ref token) = auth_token {
+        args.push(format!("-Dauth.token={}", token));
+        println!("Added auth token to JVM args");
+    } else {
+        println!("No auth token available for launch");
+    }
+    
+    // Add system properties to fix SLF4J and logging issues
+    args.push("-Dlog4j2.formatMsgNoLookups=true".to_string());
+    args.push("-Dorg.slf4j.simpleLogger.defaultLogLevel=warn".to_string());
+    
+    // Use proper path for natives directory with proper escaping
+    let natives_path = PathBuf::from(&instance_path).join("natives");
+    let natives_path_str = natives_path.to_string_lossy();
+    
+    // Additional Minecraft-specific system properties
+    args.push(format!("-Djava.library.path={}", natives_path_str));
+    args.push("-Dminecraft.launcher.brand=ChaiLauncher".to_string());
+    args.push("-Dminecraft.launcher.version=1.0.0".to_string());
+    
+    // Graphics and performance improvements
+    args.push("-Dfile.encoding=UTF-8".to_string());
+    args.push("-Dsun.stderr.encoding=UTF-8".to_string());
+    args.push("-Dsun.stdout.encoding=UTF-8".to_string());
+    
+    // JNA (Java Native Access) configuration
+    args.push(format!("-Djna.library.path={}", natives_path_str));
+    args.push("-Djna.nosys=true".to_string());
+    args.push("-Djna.noclasspath=false".to_string());
+    
+    // LWJGL configuration to use pre-extracted natives
+    args.push(format!("-Dorg.lwjgl.librarypath={}", natives_path_str));
+    args.push("-Dorg.lwjgl.system.SharedLibraryExtractDirectory=false".to_string());
+    args.push("-Dorg.lwjgl.system.SharedLibraryExtractPath=false".to_string());
+    
+    // More aggressive LWJGL configuration to force using system libraries
+    args.push("-Dorg.lwjgl.util.NoChecks=true".to_string());
+    args.push("-Dorg.lwjgl.system.SharedLibraryLoader.load=false".to_string());
+    
+    // Additional LWJGL debugging (remove after testing)
+    args.push("-Dorg.lwjgl.util.Debug=true".to_string());
+    args.push("-Dorg.lwjgl.util.DebugLoader=true".to_string());
 
     // Build classpath: version JAR + all library JARs
     let mut classpath_entries = Vec::new();
@@ -640,10 +726,35 @@ pub async fn launch_instance(
             }
         }
     }
-    // Add the version JAR
-    classpath_entries.push(version_jar.to_string_lossy().to_string());
+    
+    // Add the version JAR at the beginning (important for Minecraft)
+    classpath_entries.insert(0, version_jar.to_string_lossy().to_string());
+    
+    // Sort classpath to ensure JNA libraries are loaded early
+    let mut regular_entries = Vec::new();
+    let mut jna_entries = Vec::new();
+    
+    for entry in classpath_entries {
+        if entry.contains("jna") {
+            jna_entries.push(entry);
+        } else {
+            regular_entries.push(entry);
+        }
+    }
+    
+    // Put JNA libraries first, then everything else
+    let mut final_classpath = jna_entries;
+    final_classpath.extend(regular_entries);
+    
     // Join with semicolon for Windows
-    let classpath = classpath_entries.join(";");
+    let classpath = final_classpath.join(";");
+    
+    println!("JNA libraries in classpath:");
+    for entry in &final_classpath {
+        if entry.contains("jna") {
+            println!("  {}", entry);
+        }
+    }
     // Minecraft launch arguments
     args.extend([
         "-cp".to_string(),
@@ -653,17 +764,283 @@ pub async fn launch_instance(
         version.clone(),
         "--gameDir".to_string(),
         instance_path.clone(),
+        "--assetsDir".to_string(),
+        PathBuf::from(&instance_path).join("assets").to_string_lossy().to_string(),
+        "--assetIndex".to_string(),
+        version.clone(),
     ]);
+    
+    // Add authentication arguments if we have an active account
+    if let Some(_token) = &auth_token {
+        // Try to get account details for username/UUID
+        match crate::auth::get_stored_accounts().await {
+            Ok(accounts) if !accounts.is_empty() => {
+                let account = &accounts[0]; // Use first account
+                args.extend([
+                    "--username".to_string(),
+                    account.username.clone(),
+                    "--uuid".to_string(),
+                    account.uuid.clone(),
+                    "--accessToken".to_string(),
+                    account.access_token.clone(),
+                    "--userType".to_string(),
+                    "msa".to_string(),
+                ]);
+                println!("Added authentication for user: {}", account.username);
+            }
+            _ => {
+                // Fallback to offline mode
+                args.extend([
+                    "--username".to_string(),
+                    "Player".to_string(),
+                    "--uuid".to_string(),
+                    "00000000-0000-0000-0000-000000000000".to_string(),
+                    "--accessToken".to_string(),
+                    "0".to_string(),
+                    "--userType".to_string(),
+                    "legacy".to_string(),
+                ]);
+                println!("Using offline mode authentication");
+            }
+        }
+    } else {
+        // Offline mode
+        args.extend([
+            "--username".to_string(),
+            "Player".to_string(),
+            "--uuid".to_string(),
+            "00000000-0000-0000-0000-000000000000".to_string(),
+            "--accessToken".to_string(),
+            "0".to_string(),
+            "--userType".to_string(),
+            "legacy".to_string(),
+        ]);
+        println!("Using offline mode authentication (no token)");
+    }
 
     println!("Launching Minecraft with command: {} {}", java_path, args.join(" "));
+    println!("Working directory: {}", instance_path);
+    println!("Classpath entries: {}", final_classpath.len());
+    
+    // Check critical directories
+    let assets_dir = PathBuf::from(&instance_path).join("assets");
+    let natives_dir = &natives_path;
+    println!("Assets directory exists: {} ({})", assets_dir.exists(), assets_dir.display());
+    println!("Natives directory exists: {} ({})", natives_dir.exists(), natives_dir.display());
+    
+    if !assets_dir.exists() {
+        println!("WARNING: Assets directory missing - this will likely cause Minecraft to fail!");
+    }
+    if !natives_dir.exists() {
+        println!("WARNING: Natives directory missing - this will likely cause graphics issues!");
+        println!("Attempting to extract native libraries...");
+        
+        // Create natives directory
+        if let Err(e) = std::fs::create_dir_all(natives_dir) {
+            println!("Failed to create natives directory: {}", e);
+        } else {
+            // Extract natives from JAR files
+            extract_native_libraries(&instance_path, natives_dir).await?;
+        }
+    }
 
-    let _child = Command::new(java_path)
+    let mut child = Command::new(&java_path)
         .args(&args)
         .current_dir(&instance_path)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
         .spawn()
         .map_err(|e| format!("Failed to launch Minecraft: {}", e))?;
 
+    // Log process ID for debugging
+    println!("Minecraft process started with PID: {}", child.id().unwrap_or(0));
+
+    // Give the process a moment to start
+    tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
+    
+    // Check if process started successfully
+    match child.try_wait() {
+        Ok(Some(status)) => {
+            // Process already exited
+            let stdout = child.stdout.take();
+            let stderr = child.stderr.take();
+            
+            println!("Process exited with status: {:?}", status);
+            
+            if let Some(mut stdout) = stdout {
+                let mut output = String::new();
+                let _ = stdout.read_to_string(&mut output).await;
+                println!("Minecraft stdout: {}", output);
+            }
+            
+            if let Some(mut stderr) = stderr {
+                let mut error = String::new();
+                let _ = stderr.read_to_string(&mut error).await;
+                println!("Minecraft stderr: {}", error);
+            }
+            
+            return Err(format!("Minecraft process exited with status: {:?}. Check logs above for details.", status));
+        }
+        Ok(None) => {
+            // Process is still running
+            println!("Minecraft process is still running after 2 seconds - launch appears successful");
+            
+            // Let's monitor it for a bit longer to see what happens
+            for i in 1..=10 {
+                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                match child.try_wait() {
+                    Ok(Some(status)) => {
+                        println!("Process exited after {} seconds with status: {:?}", i + 2, status);
+                        
+                        // Try to read any output
+                        if let Some(mut stdout) = child.stdout.take() {
+                            let mut output = String::new();
+                            let _ = stdout.read_to_string(&mut output).await;
+                            if !output.trim().is_empty() {
+                                println!("Minecraft stdout (after exit): {}", output);
+                            }
+                        }
+                        
+                        if let Some(mut stderr) = child.stderr.take() {
+                            let mut error = String::new();
+                            let _ = stderr.read_to_string(&mut error).await;
+                            if !error.trim().is_empty() {
+                                println!("Minecraft stderr (after exit): {}", error);
+                            }
+                        }
+                        
+                        return Err(format!("Minecraft exited after {} seconds with status: {:?}", i + 2, status));
+                    }
+                    Ok(None) => {
+                        if i == 5 {
+                            println!("Process still running after {} seconds...", i + 2);
+                        }
+                        if i == 10 {
+                            println!("Process has been running for {} seconds. Minecraft should be visible now.", i + 2);
+                            println!("If you don't see Minecraft window, check:");
+                            println!("1. Task Manager for java.exe process");
+                            println!("2. Assets directory: {}", assets_dir.display());
+                            println!("3. Natives directory: {}", natives_dir.display());
+                        }
+                    }
+                    Err(e) => {
+                        println!("Error checking process after {} seconds: {}", i + 2, e);
+                        break;
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            return Err(format!("Failed to check process status: {}", e));
+        }
+    }
+
     Ok(())
+}
+
+async fn extract_native_libraries(instance_path: &str, natives_dir: &std::path::Path) -> Result<(), String> {
+    
+    let libraries_dir = std::path::Path::new(instance_path).join("libraries");
+    println!("Extracting native libraries from: {}", libraries_dir.display());
+    
+    let mut extracted_count = 0;
+    
+    // Find all native JAR files (containing -natives- in filename)
+    if let Ok(entries) = std::fs::read_dir(&libraries_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                // Recursively search in subdirectories
+                extract_natives_from_directory(&path, natives_dir, &mut extracted_count)?;
+            }
+        }
+    }
+    
+    println!("Extracted {} native library files", extracted_count);
+    
+    if extracted_count == 0 {
+        return Err("No native libraries found to extract".to_string());
+    }
+    
+    Ok(())
+}
+
+fn extract_natives_from_directory(
+    dir: &std::path::Path, 
+    natives_dir: &std::path::Path, 
+    extracted_count: &mut i32
+) -> Result<(), String> {
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                // Recurse into subdirectories
+                extract_natives_from_directory(&path, natives_dir, extracted_count)?;
+            } else if let Some(filename) = path.file_name() {
+                let filename_str = filename.to_string_lossy();
+                
+                // Check if this is a natives JAR file
+                if filename_str.ends_with(".jar") && 
+                   (filename_str.contains("-natives-windows") || 
+                    filename_str.contains("-natives-")) {
+                    
+                    println!("Extracting natives from: {}", filename_str);
+                    
+                    // Extract DLL files from this JAR
+                    match extract_dll_from_jar(&path, natives_dir) {
+                        Ok(count) => {
+                            *extracted_count += count;
+                        }
+                        Err(e) => {
+                            println!("Warning: Failed to extract from {}: {}", filename_str, e);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn extract_dll_from_jar(jar_path: &std::path::Path, natives_dir: &std::path::Path) -> Result<i32, String> {
+    
+    let file = std::fs::File::open(jar_path)
+        .map_err(|e| format!("Failed to open JAR: {}", e))?;
+    
+    let mut archive = zip::ZipArchive::new(file)
+        .map_err(|e| format!("Failed to read ZIP: {}", e))?;
+    
+    let mut extracted_count = 0;
+    
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i)
+            .map_err(|e| format!("Failed to read ZIP entry: {}", e))?;
+        
+        let file_name = file.name();
+        
+        // Extract DLL, SO, and DYLIB files
+        if file_name.ends_with(".dll") || 
+           file_name.ends_with(".so") || 
+           file_name.ends_with(".dylib") {
+            
+            // Get just the filename without path
+            if let Some(filename) = std::path::Path::new(file_name).file_name() {
+                let output_path = natives_dir.join(filename);
+                
+                println!("  Extracting: {} -> {}", file_name, output_path.display());
+                
+                let mut output_file = std::fs::File::create(&output_path)
+                    .map_err(|e| format!("Failed to create output file: {}", e))?;
+                
+                std::io::copy(&mut file, &mut output_file)
+                    .map_err(|e| format!("Failed to copy file: {}", e))?;
+                
+                extracted_count += 1;
+            }
+        }
+    }
+    
+    Ok(extracted_count)
 }
 
 #[command]
