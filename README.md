@@ -1,24 +1,25 @@
-<div align="center" style="display: flex; align-items: center; gap: 32px;">
-   <img src="./branding/transparent-text.svg" alt="ChaiLauncher Logo" width="300" height="300">
-   <div align="left">
-      <h3>Modern Minecraft Launcher</h3>
-      <p><em>Inspired by GDLauncher, built with modern technologies</em></p>
-      <p>
-         <a href="https://github.com/shield/ChaiLauncher">
-            <img src="https://img.shields.io/badge/version-0.2.0-blue.svg" alt="Version">
-         </a>
-         <a href="LICENSE">
-            <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
-         </a>
-         <a href="https://tauri.app/">
-            <img src="https://img.shields.io/badge/Tauri-2.8.2-orange.svg" alt="Tauri">
-         </a>
-         <a href="https://reactjs.org/">
-            <img src="https://img.shields.io/badge/React-18.2.0-61dafb.svg" alt="React">
-         </a>
-      </p>
-   </div>
-</div>
+<p align="center">
+  <img src="./branding/transparent-text.svg" alt="ChaiLauncher Logo" width="300" height="300">
+</p>
+
+# Modern Minecraft Launcher
+
+*Inspired by GDLauncher, built with modern technologies*
+
+<p align="">
+  <a href="https://github.com/shield/ChaiLauncher">
+    <img src="https://img.shields.io/badge/version-0.2.0-blue.svg" alt="Version">
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
+  </a>
+  <a href="https://tauri.app/">
+    <img src="https://img.shields.io/badge/Tauri-2.8.2-orange.svg" alt="Tauri">
+  </a>
+  <a href="https://reactjs.org/">
+    <img src="https://img.shields.io/badge/React-18.2.0-61dafb.svg" alt="React">
+  </a>
+</p>
 
 ## ✨ Features
 
