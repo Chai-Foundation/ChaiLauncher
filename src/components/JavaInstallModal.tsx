@@ -11,9 +11,10 @@ interface JavaInstallModalProps {
   isOpen: boolean;
   onClose: () => void;
   onInstallComplete: (javaPath: string) => void;
+  requiredJavaVersion?: number;
 }
 
-const JavaInstallModal: React.FC<JavaInstallModalProps> = ({ isOpen, onClose, onInstallComplete }) => {
+const JavaInstallModal: React.FC<JavaInstallModalProps> = ({ isOpen, onClose, onInstallComplete, requiredJavaVersion = 17 }) => {
   const [installProgress, setInstallProgress] = useState<JavaInstallEvent>({
     stage: 'Preparing...',
     progress: 0
@@ -65,7 +66,9 @@ const JavaInstallModal: React.FC<JavaInstallModalProps> = ({ isOpen, onClose, on
     
     try {
       const { invoke } = await import('@tauri-apps/api/core');
-      const javaPath = await invoke('download_and_install_java') as string;
+      const javaPath = await invoke('download_and_install_java_version', {
+        majorVersion: requiredJavaVersion
+      }) as string;
       console.log('Java installation complete:', javaPath);
       onInstallComplete(javaPath);
     } catch (error: unknown) {
@@ -111,7 +114,7 @@ const JavaInstallModal: React.FC<JavaInstallModalProps> = ({ isOpen, onClose, on
                 <p className="text-stone-300 text-sm">
                   {isComplete 
                     ? 'Java has been successfully installed and is ready to use.'
-                    : 'ChaiLauncher needs to download and install Java 17 to run Minecraft instances.'
+                    : `ChaiLauncher needs to download and install Java ${requiredJavaVersion} to run Minecraft instances.`
                   }
                 </p>
               </div>

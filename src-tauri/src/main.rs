@@ -38,6 +38,7 @@ fn main() {
             minecraft::commands::launch_instance,
             minecraft::commands::launch_external_instance,
             minecraft::commands::load_instances,
+            minecraft::commands::import_orphaned_instances,
             minecraft::commands::save_instance,
             minecraft::commands::delete_instance,
             minecraft::commands::update_instance,

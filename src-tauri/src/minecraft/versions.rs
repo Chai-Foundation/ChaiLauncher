@@ -1,20 +1,52 @@
 use std::path::PathBuf;
 use serde_json::Value;
 
+/// Find Java executable in extracted directory (handles nested JDK directories)
+fn find_java_executable(java_dir: &PathBuf) -> Result<PathBuf, String> {
+    use std::fs;
+    
+    #[cfg(target_os = "windows")]
+    let java_exe_name = "java.exe";
+    #[cfg(not(target_os = "windows"))]
+    let java_exe_name = "java";
+    
+    // First try direct path (java_dir/bin/java.exe)
+    let direct_path = java_dir.join("bin").join(java_exe_name);
+    if direct_path.exists() {
+        return Ok(direct_path);
+    }
+    
+    // Search for nested JDK directories (like jdk-17.0.16+8, jdk8u462-b08)
+    let entries = fs::read_dir(java_dir)
+        .map_err(|e| format!("Failed to read Java directory: {}", e))?;
+        
+    for entry in entries {
+        let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+        let path = entry.path();
+        
+        if path.is_dir() {
+            let potential_java = path.join("bin").join(java_exe_name);
+            if potential_java.exists() {
+                return Ok(potential_java);
+            }
+        }
+    }
+    
+    Err(format!("Java executable not found in {}", java_dir.display()))
+}
+
 /// Get Java path for a specific Java version
 pub async fn get_java_for_version(major_version: u32) -> Result<String, String> {
     // First try bundled Java installations
     let launcher_dir = crate::storage::get_launcher_dir();
     let java_dir = launcher_dir.join("java").join(format!("java{}", major_version));
     
-    #[cfg(target_os = "windows")]
-    let java_exe = java_dir.join("bin").join("java.exe");
-    
-    #[cfg(not(target_os = "windows"))]
-    let java_exe = java_dir.join("bin").join("java");
-    
-    if java_exe.exists() {
-        return Ok(java_exe.to_string_lossy().to_string());
+    // Use find_java_executable to handle nested directories like jdk8u462-b08
+    if java_dir.exists() {
+        match find_java_executable(&java_dir) {
+            Ok(java_exe) => return Ok(java_exe.to_string_lossy().to_string()),
+            Err(_) => {} // Continue to system Java search
+        }
     }
     
     // Try system Java installation

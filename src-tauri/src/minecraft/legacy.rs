@@ -230,7 +230,7 @@ impl MinecraftLauncher for LegacyLauncher {
     }
     
     fn build_jvm_arguments(&self, _instance: &MinecraftInstance, memory: u32) -> Vec<String> {
-        let mut args = vec![
+        let args = vec![
             format!("-Xmx{}M", memory),
             format!("-Xms{}M", memory),
             "-XX:+UnlockExperimentalVMOptions".to_string(),
@@ -242,23 +242,8 @@ impl MinecraftLauncher for LegacyLauncher {
             "-Dfile.encoding=UTF-8".to_string(),
         ];
         
-        // Add Java 8 compatibility flags if running on newer Java
-        let java_version = std::process::Command::new("java")
-            .arg("-version")
-            .output()
-            .ok()
-            .and_then(|output| String::from_utf8(output.stderr).ok())
-            .unwrap_or_default();
-        
-        if !java_version.contains("1.8.") {
-            args.extend([
-                "--add-opens".to_string(), "java.base/java.net=ALL-UNNAMED".to_string(),
-                "--add-opens".to_string(), "java.base/java.lang=ALL-UNNAMED".to_string(),
-                "--add-opens".to_string(), "java.base/java.io=ALL-UNNAMED".to_string(),
-                "--add-opens".to_string(), "java.base/java.util=ALL-UNNAMED".to_string(),
-                "--add-opens".to_string(), "java.base/java.lang.reflect=ALL-UNNAMED".to_string(),
-            ]);
-        }
+        // Legacy versions (like MC 1.0) should use Java 8 which doesn't support --add-opens
+        // Don't add any Java 9+ specific arguments
         
         args
     }

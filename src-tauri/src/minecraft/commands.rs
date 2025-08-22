@@ -521,6 +521,97 @@ pub async fn load_instances() -> Result<Vec<MinecraftInstance>, String> {
     Ok(instances)
 }
 
+/// Scan instances directory and import orphaned instances
+#[command]
+pub async fn import_orphaned_instances() -> Result<Vec<String>, String> {
+    use std::fs;
+    
+    let mut storage = StorageManager::new().await
+        .map_err(|e| format!("Failed to initialize storage: {}", e))?;
+    
+    let instances_dir = storage.get_settings().instances_dir.clone();
+    let mut imported = Vec::new();
+    
+    // Read instances directory
+    let entries = fs::read_dir(&instances_dir)
+        .map_err(|e| format!("Failed to read instances directory: {}", e))?;
+        
+    for entry in entries {
+        let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+        let instance_path = entry.path();
+        
+        if instance_path.is_dir() {
+            let instance_name = instance_path.file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("unknown")
+                .to_string();
+                
+            // Check if this instance is already in config (try multiple possible IDs)
+            let instance_id = format!("imported-{}", instance_name);
+            let possible_ids = vec![
+                instance_id.clone(),
+                instance_name.clone(),
+            ];
+            
+            let already_exists = possible_ids.iter().any(|id| storage.get_instance(id).is_some()) ||
+                storage.get_all_instances().iter().any(|existing| existing.game_dir == instance_path);
+                
+            if already_exists {
+                continue; // Already imported
+            }
+            
+            // Look for version info to determine Minecraft version
+            let versions_dir = instance_path.join("versions");
+            if !versions_dir.exists() {
+                continue; // Not a valid Minecraft instance
+            }
+            
+            let mut minecraft_version = "unknown".to_string();
+            if let Ok(version_entries) = fs::read_dir(&versions_dir) {
+                for version_entry in version_entries {
+                    if let Ok(version_entry) = version_entry {
+                        let version_name = version_entry.file_name();
+                        if let Some(version_str) = version_name.to_str() {
+                            minecraft_version = version_str.to_string();
+                            break; // Use first version found
+                        }
+                    }
+                }
+            }
+            
+            // Create instance metadata
+            let metadata = InstanceMetadata {
+                id: instance_id.clone(),
+                name: instance_name.clone(),
+                version: minecraft_version,
+                modpack: None,
+                modpack_version: None,
+                game_dir: instance_path,
+                java_path: None,
+                jvm_args: None,
+                last_played: None,
+                total_play_time: 0,
+                icon: None,
+                is_modded: false,
+                mods_count: 0,
+                created_at: chrono::Utc::now().to_rfc3339(),
+                size_mb: None,
+                description: Some(format!("Imported from existing instance directory")),
+                tags: vec!["imported".to_string()],
+            };
+            
+            // Add to storage
+            storage.add_instance(metadata).await
+                .map_err(|e| format!("Failed to save imported instance: {}", e))?;
+                
+            imported.push(instance_name.clone());
+            println!("✅ Imported orphaned instance: {}", instance_name);
+        }
+    }
+    
+    Ok(imported)
+}
+
 /// Save instance to storage
 #[command]
 pub async fn save_instance(instance: InstanceMetadata) -> Result<(), String> {

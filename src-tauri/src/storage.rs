@@ -113,8 +113,10 @@ impl StorageManager {
     async fn load_config(path: &PathBuf) -> Result<LauncherConfig> {
         let content = fs::read_to_string(path).await
             .context("Failed to read config file")?;
+        
         let config: LauncherConfig = serde_json::from_str(&content)
             .context("Failed to parse config file")?;
+            
         Ok(config)
     }
 

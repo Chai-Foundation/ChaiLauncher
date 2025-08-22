@@ -16,6 +16,7 @@ function App() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJavaInstallModal, setShowJavaInstallModal] = useState(false);
   const [pendingInstanceLaunch, setPendingInstanceLaunch] = useState<MinecraftInstance | null>(null);
+  const [requiredJavaVersion, setRequiredJavaVersion] = useState<number>(17);
   
   // Instance state
   const [instances, setInstances] = useState<MinecraftInstance[]>([]);
@@ -285,6 +286,65 @@ function App() {
     ensureJavaAvailable();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Automatic orphaned instance scanning
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+
+    const importOrphanedInstances = async () => {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const imported = await invoke('import_orphaned_instances') as string[];
+        
+        if (imported.length > 0) {
+          console.log('🔄 Auto-imported orphaned instances:', imported);
+          
+          // Reload instances to show the newly imported ones
+          const updatedInstances = await invoke('load_instances') as MinecraftInstance[];
+          const validInstances = updatedInstances.filter(instance => {
+            const gameDir = (instance as any).gameDir || (instance as any).game_dir;
+            return !!gameDir;
+          }).map(instance => {
+            const rawInstance = instance as any;
+            return {
+              id: rawInstance.id,
+              name: rawInstance.name,
+              version: rawInstance.version,
+              modpack: rawInstance.modpack,
+              modpackVersion: rawInstance.modpack_version,
+              gameDir: rawInstance.game_dir || rawInstance.gameDir,
+              javaPath: rawInstance.java_path,
+              jvmArgs: rawInstance.jvm_args,
+              lastPlayed: rawInstance.last_played ? new Date(rawInstance.last_played) : undefined,
+              totalPlayTime: rawInstance.total_play_time || 0,
+              icon: rawInstance.icon,
+              isModded: rawInstance.is_modded || false,
+              modsCount: rawInstance.mods_count || 0,
+              status: 'ready' as const,
+              installProgress: 0
+            } as MinecraftInstance;
+          });
+          
+          setInstances(validInstances);
+        }
+      } catch (error) {
+        console.log('Orphaned instance scan failed (normal if no orphans):', error);
+      }
+    };
+
+    // Run immediately on mount
+    importOrphanedInstances();
+
+    // Set up interval to run every 15 seconds
+    // intervalId = setInterval(importOrphanedInstances, 15000);
+
+    // Cleanup interval on unmount
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, []);
+
   const [settings, setSettings] = useState<LauncherSettings>({
     default_memory: 4096,
     default_jvm_args: ['-XX:+UnlockExperimentalVMOptions', '-XX:+UseG1GC'],
@@ -463,7 +523,17 @@ function App() {
           javaPath = await invoke('get_bundled_java_path') as string;
           console.log('Using default bundled Java:', javaPath);
         } catch (defaultError) {
-          console.log('No Java found, showing install modal...');
+          console.log('No Java found, determining required Java version...');
+          try {
+            const requiredVersion = await invoke('get_required_java_version', {
+              minecraftVersion: instance.version
+            }) as number;
+            console.log(`MC ${instance.version} requires Java ${requiredVersion}`);
+            setRequiredJavaVersion(requiredVersion);
+          } catch (versionError) {
+            console.warn('Could not determine Java version, defaulting to 17');
+            setRequiredJavaVersion(17);
+          }
           setPendingInstanceLaunch(instance);
           setShowJavaInstallModal(true);
           return;
@@ -724,6 +794,7 @@ function App() {
             isOpen={showJavaInstallModal}
             onClose={handleJavaInstallCancel}
             onInstallComplete={handleJavaInstallComplete}
+            requiredJavaVersion={requiredJavaVersion}
           />
         </div>
       </div>
