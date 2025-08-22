@@ -273,22 +273,32 @@ pub async fn download_and_install_java_version(major_version: u32, app_handle: t
     download_file_with_progress(&download_url, &temp_file, &app_handle).await
         .map_err(|e| format!("Failed to download Java {}: {}", major_version, e))?;
     
+    // Emit extraction progress
+    let _ = app_handle.emit("java_install_progress", serde_json::json!({
+        "stage": "Extracting Java...",
+        "progress": 85
+    }));
+    
     println!("📦 Extracting Java {}...", major_version);
     
     // Extract Java
-    extract_java_archive(&temp_file, &java_dir).await
+    extract_java_archive(&temp_file, &java_dir, &app_handle).await
         .map_err(|e| format!("Failed to extract Java {}: {}", major_version, e))?;
     
     // Clean up temp file
     let _ = fs::remove_file(&temp_file);
     
-    // Verify installation
-    if java_exe.exists() {
-        println!("✅ Java {} installation completed successfully!", major_version);
-        Ok(java_exe.to_string_lossy().to_string())
-    } else {
-        Err(format!("Java {} installation completed but executable not found", major_version))
-    }
+    // Find the actual Java executable in extracted directories
+    let actual_java_exe = find_java_executable(&java_dir)?;
+    
+    // Emit completion
+    let _ = app_handle.emit("java_install_progress", serde_json::json!({
+        "stage": "Installation complete!",
+        "progress": 100
+    }));
+    
+    println!("✅ Java {} installation completed successfully at: {}", major_version, actual_java_exe.display());
+    Ok(actual_java_exe.to_string_lossy().to_string())
 }
 
 /// Get Java installations
@@ -569,16 +579,20 @@ pub async fn install_minecraft_version(
     version_id: String,
     instance_name: String,
     game_dir: String,
+    instance_id: String,
     app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
     let game_path = PathBuf::from(game_dir);
     let instance_dir = game_path.join(&instance_name);
     
     println!("🚀 Installing Minecraft {} for instance '{}'", version_id, instance_name);
-    let _ = app_handle.emit("installation_progress", serde_json::json!({
+    let _ = app_handle.emit("install_progress", serde_json::json!({
+        "instanceId": instance_id,
         "stage": "starting",
-        "message": format!("Starting installation of Minecraft {}", version_id),
-        "progress": 0
+        "progress": 0,
+        "currentFile": "",
+        "bytesDownloaded": 0,
+        "totalBytes": 0
     }));
     
     // Create instance directory structure
@@ -590,10 +604,13 @@ pub async fn install_minecraft_version(
         .map_err(|e| format!("Failed to create version directory: {}", e))?;
     
     // Get version manifest from Mojang
-    let _ = app_handle.emit("installation_progress", serde_json::json!({
-        "stage": "manifest",
-        "message": "Fetching version manifest",
-        "progress": 10
+    let _ = app_handle.emit("install_progress", serde_json::json!({
+        "instanceId": instance_id,
+        "stage": "manifest", 
+        "progress": 10,
+        "currentFile": "version_manifest_v2.json",
+        "bytesDownloaded": 0,
+        "totalBytes": 0
     }));
     
     let manifest_url = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
@@ -609,10 +626,13 @@ pub async fn install_minecraft_version(
         .ok_or_else(|| format!("Version {} not found", version_id))?;
     
     println!("📥 Downloading version JSON for {}", version_id);
-    let _ = app_handle.emit("installation_progress", serde_json::json!({
+    let _ = app_handle.emit("install_progress", serde_json::json!({
+        "instanceId": instance_id,
         "stage": "version_json",
-        "message": format!("Downloading version JSON for {}", version_id),
-        "progress": 20
+        "progress": 20,
+        "currentFile": format!("{}.json", version_id),
+        "bytesDownloaded": 0,
+        "totalBytes": 0
     }));
     
     // Download version JSON
@@ -636,10 +656,13 @@ pub async fn install_minecraft_version(
         if let Some(client) = downloads.get("client") {
             if let Some(client_url) = client.get("url").and_then(|v| v.as_str()) {
                 println!("📥 Downloading client JAR for {}", version_id);
-                let _ = app_handle.emit("installation_progress", serde_json::json!({
+                let _ = app_handle.emit("install_progress", serde_json::json!({
+                    "instanceId": instance_id,
                     "stage": "client_jar",
-                    "message": format!("Downloading client JAR for {}", version_id),
-                    "progress": 30
+                    "progress": 30,
+                    "currentFile": format!("{}.jar", version_id),
+                    "bytesDownloaded": 0,
+                    "totalBytes": 0
                 }));
                 
                 let jar_response = reqwest::get(client_url).await
@@ -662,10 +685,13 @@ pub async fn install_minecraft_version(
             .map_err(|e| format!("Failed to create libraries directory: {}", e))?;
         
         println!("📦 Downloading {} libraries for {}", libraries.len(), version_id);
-        let _ = app_handle.emit("installation_progress", serde_json::json!({
+        let _ = app_handle.emit("install_progress", serde_json::json!({
+            "instanceId": instance_id,
             "stage": "libraries",
-            "message": format!("Downloading {} libraries", libraries.len()),
-            "progress": 40
+            "progress": 40,
+            "currentFile": "libraries",
+            "bytesDownloaded": 0,
+            "totalBytes": libraries.len() as u64
         }));
         
         for (i, library) in libraries.iter().enumerate() {
@@ -727,12 +753,13 @@ pub async fn install_minecraft_version(
             
             // Send live progress for every library
             let progress = 40 + ((i + 1) as f64 / libraries.len() as f64 * 30.0) as u32;
-            let _ = app_handle.emit("installation_progress", serde_json::json!({
+            let _ = app_handle.emit("install_progress", serde_json::json!({
+                "instanceId": instance_id,
                 "stage": "libraries",
-                "message": format!("Downloaded {}/{} libraries", i + 1, libraries.len()),
                 "progress": progress,
-                "current": i + 1,
-                "total": libraries.len()
+                "currentFile": format!("library_{}", i + 1),
+                "bytesDownloaded": (i + 1) as u64,
+                "totalBytes": libraries.len() as u64
             }));
             
             if (i + 1) % 10 == 0 {
@@ -742,18 +769,21 @@ pub async fn install_minecraft_version(
     }
     
     // Download assets
-    let _ = app_handle.emit("installation_progress", serde_json::json!({
+    let _ = app_handle.emit("install_progress", serde_json::json!({
+        "instanceId": instance_id,
         "stage": "assets",
-        "message": "Downloading game assets",
-        "progress": 75
+        "progress": 75,
+        "currentFile": "assets",
+        "bytesDownloaded": 0,
+        "totalBytes": 0
     }));
     
-    download_minecraft_assets_with_progress(version_id.clone(), instance_dir.to_string_lossy().to_string(), &app_handle).await?;
+    download_minecraft_assets_with_progress(version_id.clone(), instance_dir.to_string_lossy().to_string(), &instance_id, &app_handle).await?;
     
-    let _ = app_handle.emit("installation_progress", serde_json::json!({
-        "stage": "complete",
-        "message": format!("Minecraft {} installation completed", version_id),
-        "progress": 100
+    let _ = app_handle.emit("install_complete", serde_json::json!({
+        "instanceId": instance_id,
+        "success": true,
+        "version": version_id
     }));
     
     println!("✅ Minecraft {} installation completed for '{}'", version_id, instance_name);
@@ -953,6 +983,94 @@ async fn get_auth_info() -> Result<AuthInfo, String> {
     Ok(AuthInfo::default())
 }
 
+/// Download Minecraft assets with progress tracking
+async fn download_minecraft_assets_with_progress(version: String, game_dir: String, instance_id: &str, app_handle: &tauri::AppHandle) -> Result<(), String> {
+    let game_path = PathBuf::from(game_dir);
+    let assets_dir = game_path.join("assets");
+    
+    // Create assets directory structure
+    fs::create_dir_all(&assets_dir).await
+        .map_err(|e| format!("Failed to create assets directory: {}", e))?;
+    
+    // Load version manifest to get asset index
+    if let Ok(Some(version_json)) = load_version_manifest(&game_path, &version).await {
+        if let Some(asset_index) = version_json.get("assetIndex") {
+            let index_id = asset_index.get("id").and_then(|v| v.as_str()).unwrap_or(&version);
+            let index_url = asset_index.get("url").and_then(|v| v.as_str());
+            
+            if let Some(url) = index_url {
+                println!("📥 Downloading asset index for {}", version);
+                
+                // Download asset index
+                let indexes_dir = assets_dir.join("indexes");
+                fs::create_dir_all(&indexes_dir).await
+                    .map_err(|e| format!("Failed to create indexes directory: {}", e))?;
+                
+                let index_file = indexes_dir.join(format!("{}.json", index_id));
+                let response = reqwest::get(url).await
+                    .map_err(|e| format!("Failed to download asset index: {}", e))?;
+                
+                let index_content = response.text().await
+                    .map_err(|e| format!("Failed to read asset index: {}", e))?;
+                
+                fs::write(&index_file, &index_content).await
+                    .map_err(|e| format!("Failed to write asset index: {}", e))?;
+                
+                // Parse and download assets with live progress
+                if let Ok(index_json) = serde_json::from_str::<serde_json::Value>(&index_content) {
+                    if let Some(objects) = index_json.get("objects").and_then(|v| v.as_object()) {
+                        let objects_dir = assets_dir.join("objects");
+                        fs::create_dir_all(&objects_dir).await
+                            .map_err(|e| format!("Failed to create objects directory: {}", e))?;
+                        
+                        let mut downloaded = 0;
+                        let total = objects.len();
+                        
+                        for (_name, asset_info) in objects.iter() {
+                            if let Some(hash) = asset_info.get("hash").and_then(|v| v.as_str()) {
+                                let hash_prefix = &hash[0..2];
+                                let object_dir = objects_dir.join(hash_prefix);
+                                let object_file = object_dir.join(hash);
+                                
+                                if !object_file.exists() {
+                                    fs::create_dir_all(&object_dir).await
+                                        .map_err(|e| format!("Failed to create object directory: {}", e))?;
+                                    
+                                    let asset_url = format!("https://resources.download.minecraft.net/{}/{}", hash_prefix, hash);
+                                    
+                                    if let Ok(response) = reqwest::get(&asset_url).await {
+                                        if let Ok(bytes) = response.bytes().await {
+                                            let _ = fs::write(&object_file, &bytes).await;
+                                        }
+                                    }
+                                }
+                            }
+                            downloaded += 1;
+                            
+                            // Send live asset progress every 50 assets to avoid flooding
+                            if downloaded % 50 == 0 || downloaded == total {
+                                let progress = 75 + ((downloaded as f64 / total as f64) * 20.0) as u32;
+                                let _ = app_handle.emit("install_progress", serde_json::json!({
+                                    "instanceId": instance_id,
+                                    "stage": "assets", 
+                                    "progress": progress,
+                                    "currentFile": format!("asset_{}", downloaded),
+                                    "bytesDownloaded": downloaded as u64,
+                                    "totalBytes": total as u64
+                                }));
+                            }
+                        }
+                        
+                        println!("✓ Downloaded {} assets for {}", total, version);
+                    }
+                }
+            }
+        }
+    }
+    
+    Ok(())
+}
+
 // Helper functions for Java installation
 
 /// Get download URL for Java version from Eclipse Temurin
@@ -1018,8 +1136,11 @@ async fn download_file_with_progress(
         downloaded += chunk.len() as u64;
         
         if total_size > 0 {
-            let progress = (downloaded as f64 / total_size as f64) * 100.0;
-            let _ = app_handle.emit("download_progress", progress);
+            let progress = (downloaded as f64 / total_size as f64) * 80.0; // Reserve 20% for extraction
+            let _ = app_handle.emit("java_install_progress", serde_json::json!({
+                "stage": "Downloading Java...",
+                "progress": progress as u32
+            }));
         }
     }
     
