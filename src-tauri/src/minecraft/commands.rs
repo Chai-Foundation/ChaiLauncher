@@ -324,6 +324,14 @@ pub async fn get_required_java_version(minecraft_version: String) -> Result<u32,
     Ok(crate::minecraft::versions::get_required_java_version(&minecraft_version))
 }
 
+/// Get Java path for a specific Minecraft version
+#[command]
+pub async fn get_java_for_minecraft_version(minecraft_version: String) -> Result<String, String> {
+    let required_java_version = crate::minecraft::versions::get_required_java_version(&minecraft_version);
+    println!("Minecraft {} requires Java {}", minecraft_version, required_java_version);
+    crate::minecraft::versions::get_java_for_version(required_java_version).await
+}
+
 /// Check if Java version is installed
 #[command]
 pub async fn is_java_version_installed(major_version: u32) -> Result<bool, String> {
@@ -1149,7 +1157,7 @@ async fn download_file_with_progress(
 }
 
 /// Extract Java archive (ZIP on Windows, tar.gz on Unix)
-async fn extract_java_archive(archive_path: &PathBuf, extract_dir: &PathBuf) -> Result<(), String> {
+async fn extract_java_archive(archive_path: &PathBuf, extract_dir: &PathBuf, app_handle: &tauri::AppHandle) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
         use zip::ZipArchive;
@@ -1162,7 +1170,8 @@ async fn extract_java_archive(archive_path: &PathBuf, extract_dir: &PathBuf) -> 
         let mut archive = ZipArchive::new(file)
             .map_err(|e| format!("Failed to read ZIP archive: {}", e))?;
         
-        for i in 0..archive.len() {
+        let total_files = archive.len();
+        for i in 0..total_files {
             let mut file = archive.by_index(i)
                 .map_err(|e| format!("Failed to extract file {}: {}", i, e))?;
             
@@ -1185,6 +1194,15 @@ async fn extract_java_archive(archive_path: &PathBuf, extract_dir: &PathBuf) -> 
                 
                 std::io::copy(&mut file, &mut outfile)
                     .map_err(|e| format!("Failed to copy file: {}", e))?;
+            }
+            
+            // Emit extraction progress (80% to 95%)
+            if i % 50 == 0 {
+                let extract_progress = 80 + ((i as f64 / total_files as f64) * 15.0) as u32;
+                let _ = app_handle.emit("java_install_progress", serde_json::json!({
+                    "stage": format!("Extracting... ({}/{})", i + 1, total_files),
+                    "progress": extract_progress
+                }));
             }
         }
     }
@@ -1212,6 +1230,40 @@ async fn extract_java_archive(archive_path: &PathBuf, extract_dir: &PathBuf) -> 
     println!("✓ Java extracted successfully");
     
     Ok(())
+}
+
+/// Find Java executable in extracted directory (handles nested JDK directories)
+fn find_java_executable(java_dir: &PathBuf) -> Result<PathBuf, String> {
+    use std::fs;
+    
+    #[cfg(target_os = "windows")]
+    let java_exe_name = "java.exe";
+    #[cfg(not(target_os = "windows"))]
+    let java_exe_name = "java";
+    
+    // First try direct path (java_dir/bin/java.exe)
+    let direct_path = java_dir.join("bin").join(java_exe_name);
+    if direct_path.exists() {
+        return Ok(direct_path);
+    }
+    
+    // Search for nested JDK directories (like jdk-17.0.16+8)
+    let entries = fs::read_dir(java_dir)
+        .map_err(|e| format!("Failed to read Java directory: {}", e))?;
+        
+    for entry in entries {
+        let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+        let path = entry.path();
+        
+        if path.is_dir() {
+            let potential_java = path.join("bin").join(java_exe_name);
+            if potential_java.exists() {
+                return Ok(potential_java);
+            }
+        }
+    }
+    
+    Err(format!("Java executable not found in {}", java_dir.display()))
 }
 
 /// Copy directory recursively for backup/restore

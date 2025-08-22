@@ -28,6 +28,7 @@ fn main() {
             minecraft::commands::download_and_install_both_java,
             minecraft::commands::get_java_installations,
             minecraft::commands::get_required_java_version,
+            minecraft::commands::get_java_for_minecraft_version,
             minecraft::commands::is_java_version_installed,
             minecraft::commands::validate_java_installation,
             minecraft::commands::get_system_memory,
