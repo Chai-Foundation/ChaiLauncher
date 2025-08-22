@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tauri::{command, Manager};
@@ -9,6 +10,7 @@ use crate::launchers::{LauncherManager, ExternalInstance};
 use crate::storage::{StorageManager, InstanceMetadata};
 use crate::installer::MinecraftInstaller;
 use tauri::Emitter;
+use walkdir::WalkDir;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MinecraftInstance {
@@ -123,6 +125,27 @@ pub async fn create_instance(
     Ok(instance)
 }
 
+#[derive(Debug, Deserialize)]
+struct Library {
+    downloads: Option<Value>,
+    name: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct AssetIndex {
+    id: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct VersionJson {
+    id: String,
+    mainClass: String,
+    assetIndex: AssetIndex,
+    libraries: Vec<Library>,
+    arguments: Value,
+}
+
+
 #[command]
 pub async fn launch_minecraft(
     instance: MinecraftInstance,
@@ -132,70 +155,124 @@ pub async fn launch_minecraft(
     additional_args: Option<Vec<String>>,
 ) -> Result<(), String> {
     let java_executable = java_path.unwrap_or_else(|| "java".to_string());
-    
-    // Get auth token from settings or active account
-    let storage = crate::storage::StorageManager::new().await
+
+    // Load auth token
+    let storage = crate::storage::StorageManager::new()
+        .await
         .map_err(|e| format!("Failed to initialize storage: {}", e))?;
-    
-    let auth_token = if let Some(manual_token) = storage.get_settings().auth_token.clone() {
-        // Use manual token if set
-        Some(manual_token)
+
+    let auth_token = if let Some(token) = storage.get_settings().auth_token.clone() {
+        Some(token)
     } else {
-        // Try to get token from active Microsoft account
-        match crate::auth::get_active_account_token().await {
-            Ok(token) => token,
-            Err(e) => {
-                println!("Warning: No auth token available: {}", e);
-                None
-            }
-        }
+        crate::auth::get_active_account_token().await.ok().flatten()
     };
-    
-    let mut args = Vec::new();
-    
-    // Memory arguments
-    if let Some(max_mem) = max_memory {
-        args.push(format!("-Xmx{}M", max_mem));
-    }
-    if let Some(min_mem) = min_memory {
-        args.push(format!("-Xms{}M", min_mem));
-    }
-    
+
+    // Load version JSON
+    let version_json_path = instance
+        .game_dir
+        .join(format!("versions/{0}/{0}.json", instance.version));
+
+    let version_json_str = fs::read_to_string(&version_json_path)
+        .await
+        .map_err(|e| format!("Failed to read version JSON: {}", e))?;
+
+    let version_json: VersionJson = serde_json::from_str(&version_json_str)
+        .map_err(|e| format!("Failed to parse version JSON: {}", e))?;
+
     // JVM arguments
-    if let Some(jvm_args) = &instance.jvm_args {
-        args.extend(jvm_args.clone());
-    }
-    
-    // Add auth token as JVM argument if available
-    if let Some(token) = auth_token {
-        args.push(format!("-Dauth.token={}", token));
-    }
-    
-    // Additional arguments
-    if let Some(additional) = additional_args {
-        args.extend(additional);
-    }
-    
-    // Basic Minecraft launch arguments (simplified)
-    args.extend([
-        "-cp".to_string(),
-        "minecraft.jar".to_string(), // This would be the full classpath in reality
-        "net.minecraft.client.main.Main".to_string(),
+    let mut args = vec![
+        format!("-Xmx{}M", max_memory.unwrap_or(4096)),
+        format!("-Xms{}M", min_memory.unwrap_or(2048)),
+    ];
+
+    // Add natives path
+    let natives_path = instance.game_dir.join("natives");
+    args.push(format!("-Djava.library.path={}", natives_path.display()));
+    args.push(format!("-Djna.library.path={}", natives_path.display()));
+    args.push(format!("-Dorg.lwjgl.librarypath={}", natives_path.display()));
+
+    // Build classpath
+    let classpath = build_classpath_from_json(&instance, &version_json)?;
+    args.push("-cp".to_string());
+    args.push(classpath);
+
+    // Add main class from JSON
+    args.push(version_json.mainClass.clone());
+
+    // Core arguments
+    args.extend(vec![
         "--version".to_string(),
         instance.version.clone(),
         "--gameDir".to_string(),
         instance.game_dir.to_string_lossy().to_string(),
+        "--assetsDir".to_string(),
+        instance.game_dir.join("assets").to_string_lossy().to_string(),
+        "--assetIndex".to_string(),
+        version_json.assetIndex.id.clone(),
+        "--username".to_string(),
+        "Player".to_string(),
+        "--uuid".to_string(),
+        auth_token.clone().unwrap_or_else(|| "12345678-90ab-cdef-1234-567890abcdef".to_string()),
+        "--accessToken".to_string(),
+        auth_token.clone().unwrap_or_else(|| "123456".to_string()),
+        "--userType".to_string(),
+        if auth_token.is_some() { "msa".to_string() } else { "legacy".to_string() },
     ]);
-    
-    println!("Launching Minecraft with command: {} {}", java_executable, args.join(" "));
-    
-    let _child = Command::new(java_executable)
+
+    // Append additional args if provided
+    if let Some(extra) = additional_args {
+        args.extend(extra);
+    }
+
+    println!(
+        "Launching Minecraft:\n{} {}",
+        java_executable,
+        args.join(" ")
+    );
+
+    Command::new(&java_executable)
         .args(&args)
         .current_dir(&instance.game_dir)
         .spawn()
         .map_err(|e| format!("Failed to launch Minecraft: {}", e))?;
-    
+
     Ok(())
+}
+
+/// Build classpath from libraries and version jar
+fn build_classpath_from_json(instance: &MinecraftInstance, version_json: &VersionJson) -> Result<String, String> {
+    let mut entries = Vec::new();
+
+    // Add library jars
+    let libraries_path = instance.game_dir.join("libraries");
+    for lib in &version_json.libraries {
+        let path = lib.name.replace(":", "/");
+        let parts: Vec<&str> = lib.name.split(':').collect();
+        if parts.len() == 3 {
+            let group = parts[0].replace(".", "/");
+            let artifact = parts[1];
+            let version = parts[2];
+            let jar_path = libraries_path
+                .join(&group)
+                .join(&artifact)
+                .join(&version)
+                .join(format!("{}-{}.jar", artifact, version));
+            if jar_path.exists() {
+                entries.push(jar_path.to_string_lossy().to_string());
+            } else {
+                println!("Warning: Missing library JAR: {}", jar_path.display());
+            }
+        }
+    }
+
+    // Add main version jar
+    let main_jar = instance
+        .game_dir
+        .join(format!("versions/{0}/{0}.jar", instance.version));
+    entries.push(main_jar.to_string_lossy().to_string());
+
+    let sep = if cfg!(target_os = "windows") { ";" } else { ":" };
+    Ok(entries.join(sep))
 }
 
 #[command]
@@ -262,7 +339,7 @@ async fn download_and_extract_java(url: &str, java_dir: &PathBuf, app_handle: ta
     let response = reqwest::get(url).await
         .map_err(|e| format!("Failed to download Java: {}", e))?;
     
-    let content_length = response.content_length().unwrap_or(0);
+    let _content_length = response.content_length().unwrap_or(0);
     
     let _ = app_handle.emit("java_install_progress", JavaInstallEvent {
         stage: "Downloading Java Runtime".to_string(),
@@ -669,7 +746,7 @@ pub async fn launch_instance(
     args.push("-Dorg.slf4j.simpleLogger.defaultLogLevel=warn".to_string());
     
     // Use proper path for natives directory with proper escaping
-    let natives_path = PathBuf::from(&instance_path).join("natives");
+    let natives_path = PathBuf::from(instance_path.clone()).join("natives");
     let natives_path_str = natives_path.to_string_lossy();
     
     // Additional Minecraft-specific system properties
@@ -683,12 +760,12 @@ pub async fn launch_instance(
     args.push("-Dsun.stdout.encoding=UTF-8".to_string());
     
     // JNA (Java Native Access) configuration
-    args.push(format!("-Djna.library.path={}", natives_path_str));
+    args.push(format!("-Djna.library.path={}", natives_path.to_string_lossy()));
     args.push("-Djna.nosys=true".to_string());
     args.push("-Djna.noclasspath=false".to_string());
     
     // LWJGL configuration to use pre-extracted natives
-    args.push(format!("-Dorg.lwjgl.librarypath={}", natives_path_str));
+    args.push(format!("-Dorg.lwjgl.librarypath={}", natives_path.to_string_lossy()));
     args.push("-Dorg.lwjgl.system.SharedLibraryExtractDirectory=false".to_string());
     args.push("-Dorg.lwjgl.system.SharedLibraryExtractPath=false".to_string());
     
@@ -765,7 +842,7 @@ pub async fn launch_instance(
         "--gameDir".to_string(),
         instance_path.clone(),
         "--assetsDir".to_string(),
-        PathBuf::from(&instance_path).join("assets").to_string_lossy().to_string(),
+        format!("{}\\assets", instance_path),
         "--assetIndex".to_string(),
         version.clone(),
     ]);
@@ -823,8 +900,8 @@ pub async fn launch_instance(
     println!("Classpath entries: {}", final_classpath.len());
     
     // Check critical directories
-    let assets_dir = PathBuf::from(&instance_path).join("assets");
-    let natives_dir = &natives_path;
+    let assets_dir = std::path::Path::new(&instance_path).join("assets");
+    let natives_dir = std::path::Path::new(&instance_path).join("natives");
     println!("Assets directory exists: {} ({})", assets_dir.exists(), assets_dir.display());
     println!("Natives directory exists: {} ({})", natives_dir.exists(), natives_dir.display());
     
@@ -836,11 +913,11 @@ pub async fn launch_instance(
         println!("Attempting to extract native libraries...");
         
         // Create natives directory
-        if let Err(e) = std::fs::create_dir_all(natives_dir) {
+        if let Err(e) = std::fs::create_dir_all(&natives_dir) {
             println!("Failed to create natives directory: {}", e);
         } else {
             // Extract natives from JAR files
-            extract_native_libraries(&instance_path, natives_dir).await?;
+            extract_native_libraries(&instance_path, &natives_dir).await?;
         }
     }
 
@@ -919,8 +996,8 @@ pub async fn launch_instance(
                             println!("Process has been running for {} seconds. Minecraft should be visible now.", i + 2);
                             println!("If you don't see Minecraft window, check:");
                             println!("1. Task Manager for java.exe process");
-                            println!("2. Assets directory: {}", assets_dir.display());
-                            println!("3. Natives directory: {}", natives_dir.display());
+                            println!("2. Assets directory: {}\\assets", instance_path);
+                            println!("3. Natives directory: {}\\natives", instance_path);
                         }
                     }
                     Err(e) => {
