@@ -20,8 +20,8 @@ impl Instance {
     ) -> Result<MinecraftInstance, String> {
         println!("🏗️  Creating instance '{}' with Minecraft {}", name, version);
 
-        // Validate using MCVM
-        MCVMCore::create_launch_instance(
+        // Create MCVM instance for validation
+        let _mcvm_instance = MCVMCore::create_launch_instance(
             &name,
             &version,
             game_dir.clone(),
@@ -85,8 +85,8 @@ impl Instance {
             return Err(format!("Game directory does not exist: {}", instance.game_dir.display()));
         }
 
-        // Validate using MCVM
-        MCVMCore::create_launch_instance(
+        // Create MCVM instance for validation
+        let _mcvm_instance = MCVMCore::create_launch_instance(
             &instance.id,
             &instance.version,
             instance.game_dir.clone(),

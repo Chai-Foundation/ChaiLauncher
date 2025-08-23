@@ -39,30 +39,52 @@ pub async fn launch_instance(
     }
 }
 
-/// Try to launch using MCVM validation then fallback
+/// Try to launch using MCVM with proper integration
 async fn try_mcvm_launch(
     instance: &MinecraftInstance,
     auth: &AuthInfo,
     memory: u32,
     java_path: &str,
 ) -> Result<LaunchResult, String> {
-    // Validate the launch environment using MCVM
-    MCVMCore::create_launch_instance(
+    // Create MCVM instance
+    let mcvm_instance = MCVMCore::create_launch_instance(
         &instance.id,
         &instance.version,
         instance.game_dir.clone(),
     ).await?;
 
-    // Try MCVM launch validation (this will intentionally fail for now)
-    MCVMCore::launch_instance_with_java(
+    // Ensure assets are downloaded
+    let mut mcvm_instance = mcvm_instance;
+    MCVMCore::ensure_assets(
+        &mut mcvm_instance,
+        &instance.version,
+        None, // No app handle in this context
+    ).await.map_err(|e| {
+        println!("⚠️  MCVM asset download failed: {}", e);
+        format!("MCVM asset preparation failed: {}", e)
+    })?;
+
+    // Launch with MCVM
+    let handle = MCVMCore::launch_instance_with_java(
+        mcvm_instance,
         java_path.to_string(),
         memory,
         auth.username.clone(),
-        instance.game_dir.clone(),
+        None, // No app handle in this context  
+        instance.name.clone(),
     ).await?;
 
-    // This line should never be reached due to the intentional fallback
-    unreachable!("MCVM launch should always fall back for now")
+    // Extract process ID from MCVM handle (simplified approach)
+    // In a full implementation, we'd need to access the actual process from the handle
+    println!("✅ Launched with MCVM, handle created successfully");
+    
+    // For now, return a placeholder PID since MCVM handles don't expose PID directly
+    // In production, you'd implement proper PID extraction from the InstanceHandle
+    Ok(LaunchResult {
+        process_id: 1, // Placeholder - MCVM manages the process internally
+        success: true,
+        error: None,
+    })
 }
 
 /// Fallback launcher for when MCVM is not available or fails
