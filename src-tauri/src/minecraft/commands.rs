@@ -442,7 +442,7 @@ pub async fn download_minecraft_assets(version: String, game_dir: String) -> Res
                         let mut downloaded = 0;
                         let total = objects.len();
                         
-                        for (name, asset_info) in objects.iter() {
+                        for (_name, asset_info) in objects.iter() {
                             if let Some(hash) = asset_info.get("hash").and_then(|v| v.as_str()) {
                                 let hash_prefix = &hash[0..2];
                                 let object_dir = objects_dir.join(hash_prefix);
@@ -1182,7 +1182,7 @@ fn get_java_download_url(major_version: u32) -> Result<String, String> {
         return Err("Unsupported architecture".to_string());
     };
     
-    let file_ext = if cfg!(target_os = "windows") {
+    let _file_ext = if cfg!(target_os = "windows") {
         "zip"
     } else {
         "tar.gz"

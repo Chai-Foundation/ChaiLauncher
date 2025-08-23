@@ -63,6 +63,14 @@ fn main() {
             auth::remove_minecraft_account
         ])
         .setup(|app| {
+            // Initialize MCVM integration
+            tauri::async_runtime::spawn(async {
+                if let Err(e) = minecraft::initialize_minecraft().await {
+                    eprintln!("⚠️  Failed to initialize MCVM: {}", e);
+                    eprintln!("   ChaiLauncher will continue with fallback systems");
+                }
+            });
+            
             #[cfg(debug_assertions)]
             {
                 let window = app.get_webview_window("main").unwrap();
