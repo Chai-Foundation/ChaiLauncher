@@ -124,16 +124,9 @@ pub async fn launch_instance(
 ) -> Result<(), String> {
     println!("🚀 Launching Minecraft {} using modular system", version);
     
-    // Debug: Check which launcher will be selected
-    match crate::minecraft::get_launcher_for_version(&version) {
-        Ok(launcher) => {
-            let java_version = launcher.required_java_version(&version);
-            println!("📋 Selected launcher requires Java {}", java_version);
-        }
-        Err(e) => {
-            println!("❌ No launcher found: {}", e);
-        }
-    }
+    // Debug: Check Java requirements for version
+    let java_version = crate::minecraft::versions::get_required_java_version(&version);
+    println!("📋 Minecraft {} requires Java {}", version, java_version);
     
     // Create instance from parameters
     let instance = MinecraftInstance {
@@ -242,7 +235,6 @@ pub async fn download_and_install_both_java(app_handle: tauri::AppHandle) -> Res
 #[command]
 pub async fn download_and_install_java_version(major_version: u32, app_handle: tauri::AppHandle) -> Result<String, String> {
     use std::fs;
-    use std::path::Path;
     
     println!("🚀 Starting Java {} installation...", major_version);
     
@@ -1253,7 +1245,6 @@ async fn extract_java_archive(archive_path: &PathBuf, extract_dir: &PathBuf, app
     {
         use zip::ZipArchive;
         use std::fs::File;
-        use std::io::Read;
         
         let file = File::open(archive_path)
             .map_err(|e| format!("Failed to open archive: {}", e))?;
@@ -1261,41 +1252,48 @@ async fn extract_java_archive(archive_path: &PathBuf, extract_dir: &PathBuf, app
         let mut archive = ZipArchive::new(file)
             .map_err(|e| format!("Failed to read ZIP archive: {}", e))?;
         
+        // Extract all files in a blocking manner to avoid async/lifetime issues
         let total_files = archive.len();
-        for i in 0..total_files {
-            let mut file = archive.by_index(i)
-                .map_err(|e| format!("Failed to extract file {}: {}", i, e))?;
-            
-            let outpath = match file.enclosed_name() {
-                Some(path) => extract_dir.join(path),
-                None => continue,
-            };
-            
-            if file.name().ends_with('/') {
-                fs::create_dir_all(&outpath).await
-                    .map_err(|e| format!("Failed to create directory: {}", e))?;
-            } else {
-                if let Some(p) = outpath.parent() {
-                    fs::create_dir_all(p).await
-                        .map_err(|e| format!("Failed to create parent directory: {}", e))?;
+        let extract_dir_clone = extract_dir.clone();
+        let app_handle_clone = app_handle.clone();
+        
+        // Use spawn_blocking to handle the ZIP extraction synchronously
+        tokio::task::spawn_blocking(move || {
+            for i in 0..total_files {
+                let mut file = archive.by_index(i)
+                    .map_err(|e| format!("Failed to extract file {}: {}", i, e))?;
+                
+                let outpath = match file.enclosed_name() {
+                    Some(path) => extract_dir_clone.join(path),
+                    None => continue,
+                };
+                
+                if file.name().ends_with('/') {
+                    std::fs::create_dir_all(&outpath)
+                        .map_err(|e| format!("Failed to create directory: {}", e))?;
+                } else {
+                    if let Some(p) = outpath.parent() {
+                        std::fs::create_dir_all(p)
+                            .map_err(|e| format!("Failed to create parent directory: {}", e))?;
+                    }
+                    
+                    let mut output_file = std::fs::File::create(&outpath)
+                        .map_err(|e| format!("Failed to create output file: {}", e))?;
+                    std::io::copy(&mut file, &mut output_file)
+                        .map_err(|e| format!("Failed to copy file: {}", e))?;
                 }
                 
-                let mut outfile = std::fs::File::create(&outpath)
-                    .map_err(|e| format!("Failed to create output file: {}", e))?;
-                
-                std::io::copy(&mut file, &mut outfile)
-                    .map_err(|e| format!("Failed to copy file: {}", e))?;
+                // Emit extraction progress (80% to 95%)
+                if i % 50 == 0 {
+                    let extract_progress = 80 + ((i as f64 / total_files as f64) * 15.0) as u32;
+                    let _ = app_handle_clone.emit("java_install_progress", serde_json::json!({
+                        "stage": format!("Extracting... ({}/{})", i + 1, total_files),
+                        "progress": extract_progress
+                    }));
+                }
             }
-            
-            // Emit extraction progress (80% to 95%)
-            if i % 50 == 0 {
-                let extract_progress = 80 + ((i as f64 / total_files as f64) * 15.0) as u32;
-                let _ = app_handle.emit("java_install_progress", serde_json::json!({
-                    "stage": format!("Extracting... ({}/{})", i + 1, total_files),
-                    "progress": extract_progress
-                }));
-            }
-        }
+            Ok::<(), String>(())
+        }).await.map_err(|e| format!("Extraction task failed: {}", e))??;
     }
     
     #[cfg(not(target_os = "windows"))]
