@@ -6,6 +6,7 @@
 use super::{MinecraftInstance, MCVMCore};
 use std::path::PathBuf;
 use uuid;
+use chrono;
 
 /// Instance management wrapper
 pub struct Instance;
@@ -56,16 +57,18 @@ impl Instance {
             version: chai_instance.version.clone(),
             game_dir: chai_instance.game_dir.clone(),
             java_path: chai_instance.java_path.clone(),
-            jvm_args: chai_instance.jvm_args.clone().unwrap_or_default(),
+            jvm_args: chai_instance.jvm_args.clone(),
             last_played: chai_instance.last_played.clone(),
             total_play_time: chai_instance.total_play_time,
             icon: chai_instance.icon.clone(),
             is_modded: chai_instance.is_modded,
             mods_count: chai_instance.mods_count,
-            is_external: chai_instance.is_external,
-            external_launcher: chai_instance.external_launcher.clone(),
             modpack: chai_instance.modpack.clone(),
             modpack_version: chai_instance.modpack_version.clone(),
+            created_at: chrono::Utc::now().to_rfc3339(),
+            size_mb: None, // Will be calculated later
+            description: None,
+            tags: vec![],
         };
         
         storage.add_instance(instance_metadata).await
@@ -107,14 +110,14 @@ impl Instance {
                     version: metadata.version.clone(),
                     game_dir: metadata.game_dir.clone(),
                     java_path: metadata.java_path.clone(),
-                    jvm_args: if metadata.jvm_args.is_empty() { None } else { Some(metadata.jvm_args.clone()) },
+                    jvm_args: metadata.jvm_args.clone(),
                     last_played: metadata.last_played.clone(),
                     total_play_time: metadata.total_play_time,
                     icon: metadata.icon.clone(),
                     is_modded: metadata.is_modded,
                     mods_count: metadata.mods_count,
-                    is_external: metadata.is_external,
-                    external_launcher: metadata.external_launcher.clone(),
+                    is_external: Some(false), // Default for MCVM-managed instances
+                    external_launcher: None,
                     modpack: metadata.modpack.clone(),
                     modpack_version: metadata.modpack_version.clone(),
                 };
@@ -140,14 +143,14 @@ impl Instance {
                 version: metadata.version.clone(),
                 game_dir: metadata.game_dir.clone(),
                 java_path: metadata.java_path.clone(),
-                jvm_args: if metadata.jvm_args.is_empty() { None } else { Some(metadata.jvm_args.clone()) },
+                jvm_args: metadata.jvm_args.clone(),
                 last_played: metadata.last_played.clone(),
                 total_play_time: metadata.total_play_time,
                 icon: metadata.icon.clone(),
                 is_modded: metadata.is_modded,
                 mods_count: metadata.mods_count,
-                is_external: metadata.is_external,
-                external_launcher: metadata.external_launcher.clone(),
+                is_external: Some(false),
+                external_launcher: None,
                 modpack: metadata.modpack.clone(),
                 modpack_version: metadata.modpack_version.clone(),
             };
@@ -162,8 +165,8 @@ impl Instance {
         let mut storage = crate::storage::StorageManager::new().await
             .map_err(|e| format!("Failed to initialize storage: {}", e))?;
         
-        storage.delete_instance(instance_id).await
-            .map_err(|e| format!("Failed to delete instance: {}", e))?;
+        storage.remove_instance(instance_id).await
+            .map_err(|e| format!("Failed to remove instance: {}", e))?;
 
         println!("✅ Instance '{}' deleted successfully", instance_id);
         Ok(())

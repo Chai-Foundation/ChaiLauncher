@@ -13,6 +13,7 @@
 //! ChaiLauncher manages its own Java installations, independent of system Java. MCVM integration does not affect this behavior.
 
 use std::path::PathBuf;
+use tauri::Emitter;
 
 /// Represents information about a Java installation managed by ChaiLauncher.
 ///
