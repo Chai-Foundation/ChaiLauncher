@@ -65,7 +65,7 @@ async fn try_mcvm_launch(
     })?;
 
     // Launch with MCVM
-    let handle = MCVMCore::launch_instance_with_java(
+    let _handle = MCVMCore::launch_instance_with_java(
         mcvm_instance,
         java_path.to_string(),
         memory,

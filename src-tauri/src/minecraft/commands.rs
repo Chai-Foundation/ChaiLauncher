@@ -1,7 +1,7 @@
 use super::*;
 use crate::storage::{StorageManager, InstanceMetadata};
 use crate::minecraft::versions::load_version_manifest;
-use tauri::{command, Emitter};
+use tauri::{command, Emitter, AppHandle};
 use std::process::Command;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -60,14 +60,15 @@ pub async fn create_instance(
     name: String,
     version: String,
     game_dir: String,
+    app_handle: AppHandle,
 ) -> Result<(), String> {
     let instance = InstanceMetadata {
         id: uuid::Uuid::new_v4().to_string(),
-        name,
-        version,
+        name: name.clone(),
+        version: version.clone(),
         modpack: None,
         modpack_version: None,
-        game_dir: std::path::PathBuf::from(game_dir),
+        game_dir: std::path::PathBuf::from(&game_dir),
         java_path: None,
         jvm_args: None,
         last_played: None,
@@ -81,7 +82,23 @@ pub async fn create_instance(
         tags: vec![],
     };
     
-    save_instance(instance).await
+    // Save the instance first
+    save_instance(instance.clone(), app_handle.clone()).await?;
+    
+    // Download assets for the new instance
+    println!("📦 Downloading assets for new instance '{}'...", name);
+    download_minecraft_assets_with_progress(
+        version,
+        game_dir,
+        &instance.id,
+        &app_handle,
+    ).await.map_err(|e| {
+        println!("⚠️  Asset download failed: {}", e);
+        format!("Instance created but asset download failed: {}", e)
+    })?;
+    
+    println!("✅ Instance '{}' created successfully with assets", name);
+    Ok(())
 }
 
 /// Launch Minecraft using the modular system
@@ -606,28 +623,36 @@ pub async fn import_orphaned_instances() -> Result<Vec<String>, String> {
 
 /// Save instance to storage
 #[command]
-pub async fn save_instance(instance: InstanceMetadata) -> Result<(), String> {
+pub async fn save_instance(instance: InstanceMetadata, app_handle: AppHandle) -> Result<(), String> {
     let mut storage = StorageManager::new().await
         .map_err(|e| format!("Failed to initialize storage: {}", e))?;
     
     storage.add_instance(instance).await
         .map_err(|e| format!("Failed to save instance: {}", e))?;
     
-    storage.save().await
-        .map_err(|e| format!("Failed to save storage: {}", e))
+    // No need to call save() again as add_instance() already calls it
+    
+    // Emit event to notify frontend that instances have been updated
+    let _ = app_handle.emit("instances_updated", ());
+    
+    Ok(())
 }
 
 /// Delete instance
 #[command]
-pub async fn delete_instance(instance_id: String) -> Result<(), String> {
+pub async fn delete_instance(instance_id: String, app_handle: AppHandle) -> Result<(), String> {
     let mut storage = StorageManager::new().await
         .map_err(|e| format!("Failed to initialize storage: {}", e))?;
     
     storage.remove_instance(&instance_id).await
         .map_err(|e| format!("Failed to remove instance: {}", e))?;
     
-    storage.save().await
-        .map_err(|e| format!("Failed to save storage: {}", e))
+    // No need to call save() again as remove_instance() already calls it
+    
+    // Emit event to notify frontend that instances have been updated
+    let _ = app_handle.emit("instances_updated", ());
+    
+    Ok(())
 }
 
 /// Update instance
@@ -871,6 +896,30 @@ pub async fn install_minecraft_version(
     
     download_minecraft_assets_with_progress(version_id.clone(), instance_dir.to_string_lossy().to_string(), &instance_id, &app_handle).await?;
     
+    // Save the instance to storage so it persists
+    let instance_metadata = InstanceMetadata {
+        id: instance_id.clone(),
+        name: instance_name.clone(),
+        version: version_id.clone(),
+        modpack: None,
+        modpack_version: None,
+        game_dir: instance_dir,
+        java_path: None,
+        jvm_args: None,
+        last_played: None,
+        total_play_time: 0,
+        icon: None,
+        is_modded: false,
+        mods_count: 0,
+        created_at: chrono::Utc::now().to_rfc3339(),
+        size_mb: None,
+        description: None,
+        tags: vec![],
+    };
+    
+    // Save to storage
+    save_instance(instance_metadata, app_handle.clone()).await?;
+    
     let _ = app_handle.emit("install_complete", serde_json::json!({
         "instanceId": instance_id,
         "success": true,
@@ -1075,22 +1124,35 @@ async fn get_auth_info() -> Result<AuthInfo, String> {
 }
 
 /// Download Minecraft assets with progress tracking
-async fn download_minecraft_assets_with_progress(version: String, game_dir: String, instance_id: &str, app_handle: &tauri::AppHandle) -> Result<(), String> {
-    let game_path = PathBuf::from(game_dir);
+pub async fn download_minecraft_assets_with_progress(version: String, game_dir: String, instance_id: &str, app_handle: &tauri::AppHandle) -> Result<(), String> {
+    println!("🚀 Starting asset download for {} in {}", version, game_dir);
+    
+    let game_path = PathBuf::from(&game_dir);
     let assets_dir = game_path.join("assets");
+    
+    println!("📂 Assets directory: {}", assets_dir.display());
     
     // Create assets directory structure
     fs::create_dir_all(&assets_dir).await
         .map_err(|e| format!("Failed to create assets directory: {}", e))?;
+        
+    println!("✅ Assets directory created successfully");
     
     // Load version manifest to get asset index
-    if let Ok(Some(version_json)) = load_version_manifest(&game_path, &version).await {
-        if let Some(asset_index) = version_json.get("assetIndex") {
-            let index_id = asset_index.get("id").and_then(|v| v.as_str()).unwrap_or(&version);
-            let index_url = asset_index.get("url").and_then(|v| v.as_str());
-            
-            if let Some(url) = index_url {
-                println!("📥 Downloading asset index for {}", version);
+    println!("🔍 Loading version manifest for {}", version);
+    match load_version_manifest(&game_path, &version).await {
+        Ok(Some(version_json)) => {
+            println!("✅ Version manifest loaded successfully");
+            if let Some(asset_index) = version_json.get("assetIndex") {
+                println!("🎯 Found assetIndex in manifest");
+                let index_id = asset_index.get("id").and_then(|v| v.as_str()).unwrap_or(&version);
+                let index_url = asset_index.get("url").and_then(|v| v.as_str());
+                
+                println!("📋 Asset index ID: {}", index_id);
+                println!("🌐 Asset index URL: {:?}", index_url);
+                
+                if let Some(url) = index_url {
+                    println!("📥 Downloading asset index for {}", version);
                 
                 // Download asset index
                 let indexes_dir = assets_dir.join("indexes");
@@ -1153,12 +1215,28 @@ async fn download_minecraft_assets_with_progress(version: String, game_dir: Stri
                         }
                         
                         println!("✓ Downloaded {} assets for {}", total, version);
+                    } else {
+                        println!("❌ No objects found in asset index");
                     }
+                } else {
+                    println!("❌ Failed to parse asset index JSON");
                 }
+            } else {
+                println!("❌ No asset index URL found");
             }
+        } else {
+            println!("❌ No assetIndex found in version manifest");
         }
+    },
+    Ok(None) => {
+        println!("❌ Version manifest not found for {}", version);
+    },
+    Err(e) => {
+        println!("❌ Failed to load version manifest: {:?}", e);
     }
+}
     
+    println!("🏁 Asset download completed for {}", version);
     Ok(())
 }
 

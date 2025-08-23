@@ -107,12 +107,39 @@ pub fn version_compare(a: &str, b: &str) -> i32 {
     0
 }
 
-/// Load version manifest (compatibility function)
+/// Load version manifest from the versions directory
 pub async fn load_version_manifest(
-    _game_dir: &std::path::Path,
-    _version: &str,
+    game_dir: &std::path::Path,
+    version: &str,
 ) -> Result<Option<serde_json::Value>, String> {
-    // For now, return None to indicate we should use MCVM's version management
-    // This can be enhanced later if needed
-    Ok(None)
+    use tokio::fs;
+    
+    // Look for version JSON in versions/{version}/{version}.json
+    let version_file = game_dir.join("versions").join(version).join(format!("{}.json", version));
+    
+    println!("🔍 Looking for version manifest at: {}", version_file.display());
+    
+    if !version_file.exists() {
+        println!("❌ Version manifest file does not exist");
+        return Ok(None);
+    }
+    
+    match fs::read_to_string(&version_file).await {
+        Ok(content) => {
+            match serde_json::from_str(&content) {
+                Ok(json) => {
+                    println!("✅ Version manifest loaded and parsed successfully");
+                    Ok(Some(json))
+                },
+                Err(e) => {
+                    println!("❌ Failed to parse version manifest JSON: {}", e);
+                    Err(format!("Failed to parse version manifest: {}", e))
+                }
+            }
+        },
+        Err(e) => {
+            println!("❌ Failed to read version manifest file: {}", e);
+            Err(format!("Failed to read version manifest: {}", e))
+        }
+    }
 }
