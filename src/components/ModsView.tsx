@@ -17,7 +17,8 @@ import {
   Calendar,
   Tag
 } from 'lucide-react';
-import { ModInfo, ModSearchFilters, MinecraftInstance } from '../types';
+import { ModInfo, ModSearchFilters } from '../types/mods';
+import { MinecraftInstance } from '../types/minecraft';
 
 interface ModsViewProps {
   selectedInstance?: MinecraftInstance | null;

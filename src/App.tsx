@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import LauncherSidebar from './components/LauncherSidebar';
 import HomeView from './components/HomeView';
 import InstancesView from './components/InstancesView';
-import ModsView from './components/ModsView';
 import ModpackBrowser from './components/ModpackBrowser';
 import SettingsView from './components/SettingsView';
 import AccountsView from './components/AccountsView';
@@ -709,12 +708,6 @@ function App() {
             onEditInstance={handleEditInstance}
             onDeleteInstance={handleDeleteInstance}
             onOpenFolder={handleOpenInstanceFolder}
-          />
-        );
-      case 'mods':
-        return (
-          <ModsView
-            selectedInstance={instances.find(instance => instance.id === 'selected') || instances[0] || null}
           />
         );
       case 'browse':
