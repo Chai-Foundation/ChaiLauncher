@@ -52,7 +52,7 @@ pub struct ModrinthFile {
     pub file_type: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ModrinthDependency {
     pub version_id: Option<String>,
     pub project_id: Option<String>,
