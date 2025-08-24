@@ -5,7 +5,6 @@ mod minecraft;
 mod types;
 mod commands;
 mod storage;
-mod installer;
 mod modpack;
 mod auth;
 
