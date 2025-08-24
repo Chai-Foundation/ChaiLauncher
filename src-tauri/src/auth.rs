@@ -31,7 +31,7 @@ const XBOX_XSTS_AUTH_URL: &str = "https://xsts.auth.xboxlive.com/xsts/authorize"
 // 6. After creation, note the "Application (client) ID"
 // 7. Go to "Authentication" tab, enable "Allow public client flows"
 // 8. Replace CLIENT_ID below with your Application (client) ID
-const CLIENT_ID: &str = "cbd5ce66-bb68-4a36-bb3a-6c489107e8e5"; // Replace with your Azure app client ID
+pub const CLIENT_ID: &str = "cbd5ce66-bb68-4a36-bb3a-6c489107e8e5"; // Replace with your Azure app client ID
 const REDIRECT_URI: &str = "http://localhost:7931/auth/callback";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

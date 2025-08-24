@@ -2450,7 +2450,6 @@ checksum = "2532096657941c2fea9c289d370a250971c689d4f143798ff67113ec042024a5"
 [[package]]
 name = "mcvm"
 version = "0.24.0"
-source = "git+https://github.com/tristanpoland/Chai-MCVM?rev=d9ac2d425b7794fb3ec08979e33a9698677789fa#d9ac2d425b7794fb3ec08979e33a9698677789fa"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2458,6 +2457,7 @@ dependencies = [
  "directories",
  "hex",
  "itertools",
+ "mcvm_auth",
  "mcvm_core",
  "mcvm_mods",
  "mcvm_net",
@@ -2480,7 +2480,6 @@ dependencies = [
 [[package]]
 name = "mcvm_auth"
 version = "0.6.0"
-source = "git+https://github.com/tristanpoland/Chai-MCVM?rev=d9ac2d425b7794fb3ec08979e33a9698677789fa#d9ac2d425b7794fb3ec08979e33a9698677789fa"
 dependencies = [
  "anyhow",
  "bytes",
@@ -2501,7 +2500,6 @@ dependencies = [
 [[package]]
 name = "mcvm_core"
 version = "0.8.0"
-source = "git+https://github.com/tristanpoland/Chai-MCVM?rev=d9ac2d425b7794fb3ec08979e33a9698677789fa#d9ac2d425b7794fb3ec08979e33a9698677789fa"
 dependencies = [
  "anyhow",
  "bytes",
@@ -2524,7 +2522,6 @@ dependencies = [
 [[package]]
 name = "mcvm_mods"
 version = "0.8.0"
-source = "git+https://github.com/tristanpoland/Chai-MCVM?rev=d9ac2d425b7794fb3ec08979e33a9698677789fa#d9ac2d425b7794fb3ec08979e33a9698677789fa"
 dependencies = [
  "anyhow",
  "mcvm_core",
@@ -2538,7 +2535,6 @@ dependencies = [
 [[package]]
 name = "mcvm_net"
 version = "0.2.0"
-source = "git+https://github.com/tristanpoland/Chai-MCVM?rev=d9ac2d425b7794fb3ec08979e33a9698677789fa#d9ac2d425b7794fb3ec08979e33a9698677789fa"
 dependencies = [
  "anyhow",
  "bytes",
@@ -2553,7 +2549,6 @@ dependencies = [
 [[package]]
 name = "mcvm_parse"
 version = "0.16.0"
-source = "git+https://github.com/tristanpoland/Chai-MCVM?rev=d9ac2d425b7794fb3ec08979e33a9698677789fa#d9ac2d425b7794fb3ec08979e33a9698677789fa"
 dependencies = [
  "anyhow",
  "mcvm_shared",
@@ -2563,7 +2558,6 @@ dependencies = [
 [[package]]
 name = "mcvm_pkg"
 version = "0.15.0"
-source = "git+https://github.com/tristanpoland/Chai-MCVM?rev=d9ac2d425b7794fb3ec08979e33a9698677789fa#d9ac2d425b7794fb3ec08979e33a9698677789fa"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2578,7 +2572,6 @@ dependencies = [
 [[package]]
 name = "mcvm_plugin"
 version = "0.4.0"
-source = "git+https://github.com/tristanpoland/Chai-MCVM?rev=d9ac2d425b7794fb3ec08979e33a9698677789fa#d9ac2d425b7794fb3ec08979e33a9698677789fa"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -2592,7 +2585,6 @@ dependencies = [
 [[package]]
 name = "mcvm_shared"
 version = "0.15.0"
-source = "git+https://github.com/tristanpoland/Chai-MCVM?rev=d9ac2d425b7794fb3ec08979e33a9698677789fa#d9ac2d425b7794fb3ec08979e33a9698677789fa"
 dependencies = [
  "anyhow",
  "async-trait",
