@@ -22,7 +22,7 @@ pub struct ModrinthPack {
     pub website_url: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ModrinthVersion {
     pub id: String,
     pub project_id: String,
