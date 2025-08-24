@@ -163,10 +163,11 @@ lazy_static! {
 #[command]
 pub async fn start_microsoft_oauth() -> Result<String, String> {
     let client = BasicClient::new(
-        ClientId::new(CLIENT_ID.to_string())
+        ClientId::new(CLIENT_ID.to_string()),
+        None, // ClientSecret
+        AuthUrl::new(MICROSOFT_AUTH_URL.to_string()).unwrap(),
+        Some(TokenUrl::new(MICROSOFT_TOKEN_URL.to_string()).unwrap())
     )
-    .set_auth_uri(AuthUrl::new(MICROSOFT_AUTH_URL.to_string()).unwrap())
-    .set_token_uri(TokenUrl::new(MICROSOFT_TOKEN_URL.to_string()).unwrap())
     .set_redirect_uri(RedirectUrl::new(REDIRECT_URI.to_string()).unwrap());
 
     // Generate PKCE challenge
@@ -199,10 +200,11 @@ pub async fn start_microsoft_oauth() -> Result<String, String> {
 #[command]
 pub async fn start_oauth_with_server() -> Result<MinecraftAccount, String> {
     let client = BasicClient::new(
-        ClientId::new(CLIENT_ID.to_string())
+        ClientId::new(CLIENT_ID.to_string()),
+        None, // ClientSecret
+        AuthUrl::new(MICROSOFT_AUTH_URL.to_string()).unwrap(),
+        Some(TokenUrl::new(MICROSOFT_TOKEN_URL.to_string()).unwrap())
     )
-    .set_auth_uri(AuthUrl::new(MICROSOFT_AUTH_URL.to_string()).unwrap())
-    .set_token_uri(TokenUrl::new(MICROSOFT_TOKEN_URL.to_string()).unwrap())
     .set_redirect_uri(RedirectUrl::new(REDIRECT_URI.to_string()).unwrap());
 
     // Generate PKCE challenge
