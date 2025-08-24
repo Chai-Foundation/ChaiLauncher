@@ -18,7 +18,8 @@ use mcvm::core::io::java::install::JavaInstallationKind;
 use mcvm::shared::modifications::{Modloader, ClientType, ServerType};
 use mcvm::shared::id::InstanceID;
 use mcvm::plugin::PluginManager;
-use mcvm::core::user::UserManager;
+use mcvm::core::user::{UserManager, User, UserKind, CustomAuthFunction};
+use mcvm::core::net::minecraft::MinecraftUserProfile;
 use oauth2::ClientId;
 use std::sync::Arc;
 use serde_json::Map;
@@ -28,6 +29,7 @@ use tokio::sync::Mutex;
 use tauri::{AppHandle, Emitter};
 use serde_json;
 use chrono;
+use crate::minecraft::versions;
 
 static MCVM_PATHS: OnceLock<Paths> = OnceLock::new();
 
@@ -78,9 +80,18 @@ impl MCVMCore {
         }
         
         // Create a minimal stored config using the actual MCVM API
+        // For very old versions (pre-1.6), use a different approach
+        let minecraft_version = if versions::version_compare(version, "1.6") < 0 {
+            // For legacy versions, MCVM might not have proper metadata
+            // We should skip MCVM for these and use fallback directly
+            return Err(format!("Legacy Minecraft version {} not fully supported by MCVM, use fallback launcher", version));
+        } else {
+            MinecraftVersion::Version(version.to_string().into())
+        };
+        
         let stored_config = InstanceStoredConfig {
             name: Some(name.to_string()),
-            version: MinecraftVersion::Version(version.to_string().into()),
+            version: minecraft_version,
             modifications: GameModifications::new(
                 Modloader::Vanilla,
                 ClientType::Vanilla,
@@ -121,7 +132,7 @@ impl MCVMCore {
         java_path: String,
         memory: u32,
         username: String,
-        uuid: String,
+        _uuid: String,
         access_token: String,
         app_handle: Option<AppHandle>,
         instance_name: String,
@@ -165,13 +176,49 @@ impl MCVMCore {
         let client_id = ClientId::new("00000000-0000-0000-0000-000000000000".to_string());
         let mut users = UserManager::new(client_id.clone());
         
+        // Create custom auth function for ChaiLauncher users
+        let username_clone = username.clone();
+        let uuid_clone = _uuid.clone();
+        let custom_auth: CustomAuthFunction = Arc::new(move |_user_id: &str, user_type: &str| {
+            if user_type == "chailauncher" {
+                Ok(Some(MinecraftUserProfile {
+                    name: username_clone.clone(),
+                    uuid: uuid_clone.clone(),
+                    skins: vec![],
+                    capes: vec![],
+                }))
+            } else {
+                Ok(None)
+            }
+        });
+        
+        // Set the custom auth function
+        users.set_custom_auth_function(custom_auth);
+        
+        // Create and add user for authentication
+        let mut user = if access_token != "offline" && !access_token.is_empty() {
+            // Create Microsoft user for online authentication
+            User::new(UserKind::Microsoft { xbox_uid: None }, username.clone().into())
+        } else {
+            // Use Unknown user type to allow custom authentication
+            User::new(UserKind::Unknown("chailauncher".to_string()), username.clone().into())
+        };
+        
+        // Set UUID for the user (required for game profile)
+        user.set_uuid(&_uuid);
+        
+        // Add user to manager and choose it
+        users.add_user(user);
+        users.choose_user(&username)
+            .map_err(|e| format!("Failed to choose user: {}", e))?;
+        
         // Initialize plugin manager
         let plugins = PluginManager::new(); // Start with empty plugin manager for now
         
         // Configure launch settings
         let settings = LaunchSettings {
             ms_client_id: client_id,
-            offline_auth: access_token == "offline", // Use offline mode if no valid token
+            offline_auth: access_token == "offline" || access_token.is_empty(), // Use offline if no valid token
         };
         
         output.display_text(

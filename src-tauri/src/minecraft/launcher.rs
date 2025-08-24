@@ -52,19 +52,7 @@ async fn try_mcvm_launch(
         &instance.version,
         instance.game_dir.clone(),
     ).await?;
-
-    // Ensure assets are downloaded
-    MCVMCore::ensure_assets(
-        &mcvm_instance,
-        &instance.version,
-        None, // No app handle in this context
-    ).await.map_err(|e| {
-        println!("⚠️  MCVM asset download failed: {}", e);
-        format!("MCVM asset preparation failed: {}", e)
-    })?;
-
-    println!("✓ Assets ready for Minecraft {}", instance.version);
-
+    
     // Launch with MCVM using the proper API
     let _handle = MCVMCore::launch_instance_with_mcvm(
         mcvm_instance,

@@ -1040,7 +1040,7 @@ pub async fn restore_instance(instance_id: String, backup_path: String) -> Resul
 /// Refresh instance sizes
 #[command]
 pub async fn refresh_instance_sizes() -> Result<(), String> {
-    let mut storage = StorageManager::new().await
+    let storage = StorageManager::new().await
         .map_err(|e| format!("Failed to initialize storage: {}", e))?;
     
     println!("📊 Refreshing instance sizes...");

@@ -26,7 +26,6 @@ const HomeView: React.FC<HomeViewProps> = ({
   // Helper to render inline code and decode HTML entities
   function renderWithInlineCode(text: string) {
     if (!text) return null;
-    // Decode HTML entities
     const htmlDecode = (input: string) => {
       const doc = typeof window !== 'undefined' ? window.document : null;
       if (doc) {
@@ -34,25 +33,31 @@ const HomeView: React.FC<HomeViewProps> = ({
         el.innerHTML = input;
         return el.value;
       }
-      // Fallback for SSR
       return input.replace(/&#(\d+);/g, (_, code) => String.fromCharCode(code));
     };
-    // Split by backticks, wrap odd indices in <code>
     const decoded = htmlDecode(text);
     const parts = decoded.split(/(`[^`]+`)/g);
     return parts.map((part, i) => {
       if (/^`[^`]+`$/.test(part)) {
         return (
-          <code key={i} className="bg-stone-800 text-amber-300 px-1 rounded text-xs font-mono">{part.slice(1, -1)}</code>
+          <code
+            key={i}
+            className="bg-stone-800 text-amber-300 px-1 rounded text-xs font-mono"
+          >
+            {part.slice(1, -1)}
+          </code>
         );
       }
       return part;
     });
   }
+
   return (
     <div className="flex-1 p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-200 via-white to-amber-200 bg-clip-text text-transparent mb-2">Welcome back!</h1>
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-200 via-white to-amber-200 bg-clip-text text-transparent mb-2">
+          Welcome back!
+        </h1>
         <p className="text-stone-300">Ready to dive into Minecraft?</p>
       </div>
 
@@ -99,7 +104,11 @@ const HomeView: React.FC<HomeViewProps> = ({
             <div className="flex justify-between">
               <span className="text-stone-300">Total Playtime:</span>
               <span className="text-white">
-                {Math.floor(recentInstances.reduce((acc, i) => acc + i.totalPlayTime, 0) / 60)}h
+                {Math.floor(
+                  recentInstances.reduce((acc, i) => acc + i.totalPlayTime, 0) /
+                  60
+                )}
+                h
               </span>
             </div>
           </div>
@@ -107,7 +116,9 @@ const HomeView: React.FC<HomeViewProps> = ({
       </div>
 
       <div>
-        <h2 className="text-xl font-semibold text-white mb-4">Recent Instances</h2>
+        <h2 className="text-xl font-semibold text-white mb-4">
+          Recent Instances
+        </h2>
         {recentInstances.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {recentInstances.slice(0, 8).map((instance) => (
@@ -135,28 +146,53 @@ const HomeView: React.FC<HomeViewProps> = ({
       </div>
 
       <div>
-        <h2 className="text-xl font-semibold text-white mb-4">Latest News</h2>
+        <div className="flex items-center gap-2 mb-4">
+          <h2 className="text-xl font-semibold text-white">Latest News</h2>
+          <a
+            href="https://www.minecraft.net/en-us/articles"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-amber-400 underline text-sm hover:text-amber-300"
+          >
+            View from source on minecraft.net
+          </a>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {news.slice(0, 24).map((article) => (
             <motion.div
               key={article.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-stone-900/50 backdrop-blur-sm rounded-xl border border-amber-600/30 overflow-hidden hover:border-amber-500/50 transition-all duration-300 hover:transform hover:scale-105"
+              className="relative bg-stone-900/50 backdrop-blur-sm rounded-xl border border-amber-600/30 overflow-hidden hover:border-amber-500/50 transition-all duration-300 hover:scale-105"
             >
-              {article.imageUrl && (
-                <img
-                  src={article.imageUrl}
-                  alt={article.title}
-                  className="w-full h-32 object-cover"
-                />
-              )}
-              <div className="p-4">
-                <h3 className="font-semibold text-white mb-2 line-clamp-2">{renderWithInlineCode(article.title)}</h3>
-                <p className="text-stone-300 text-sm mb-3 line-clamp-3">{renderWithInlineCode(article.summary)}</p>
-                <div className="flex items-center justify-between text-xs text-stone-400">
-                  <span className="capitalize">{article.category}</span>
-                  <span>{new Date(article.publishedAt).toLocaleDateString()}</span>
+              <a
+                href={article.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="absolute inset-0 z-10"
+                onClick={() => console.log('News link:', article.url)}
+              ></a>
+              <div className="relative z-20">
+                {article.imageUrl && (
+                  <img
+                    src={article.imageUrl}
+                    alt={article.title}
+                    className="w-full h-32 object-cover"
+                  />
+                )}
+                <div className="p-4">
+                  <h3 className="font-semibold text-white mb-2 line-clamp-2">
+                    {renderWithInlineCode(article.title)}
+                  </h3>
+                  <p className="text-stone-300 text-sm mb-3 line-clamp-3">
+                    {renderWithInlineCode(article.summary)}
+                  </p>
+                  <div className="flex items-center justify-between text-xs text-stone-400">
+                    <span className="capitalize">{article.category}</span>
+                    <span>
+                      {new Date(article.publishedAt).toLocaleDateString()}
+                    </span>
+                  </div>
                 </div>
               </div>
             </motion.div>
