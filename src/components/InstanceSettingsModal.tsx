@@ -70,10 +70,24 @@ export default function InstanceSettingsModal({
 
     try {
       const offset = reset ? 0 : currentOffset;
+      
+      // Detect the installed mod loader for this instance
+      let installedLoader = null;
+      try {
+        const loaderInfo = await invoke<any>('get_installed_mod_loader', {
+          instanceId: instance.id
+        });
+        if (loaderInfo) {
+          installedLoader = loaderInfo.name ? loaderInfo.name().toLowerCase() : null;
+        }
+      } catch (err) {
+        console.log('No mod loader detected for instance:', instance.id);
+      }
+
       const results = await invoke<ModInfo[]>('search_mods', {
         query: searchQuery,
         gameVersion: instance.version,
-        modLoader: null, // TODO: Detect installed mod loader
+        modLoader: installedLoader,
         limit: 20,
         offset: offset
       });

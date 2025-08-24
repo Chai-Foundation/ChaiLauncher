@@ -5,6 +5,7 @@ use crate::mods::api::ModApi;
 use std::path::Path;
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
+use serde_json;
 
 /// CurseForge API client implementation
 /// Note: CurseForge requires an API key for full functionality
@@ -20,7 +21,7 @@ impl CurseForgeApi {
         Self {
             client: Client::new(),
             base_url: "https://api.curseforge.com/v1".to_string(),
-            api_key: None, // TODO: Add API key configuration
+            api_key: Self::get_api_key_from_config(),
         }
     }
 
@@ -30,6 +31,31 @@ impl CurseForgeApi {
             base_url: "https://api.curseforge.com/v1".to_string(),
             api_key: Some(api_key),
         }
+    }
+
+    fn get_api_key_from_config() -> Option<String> {
+        // Try to get API key from environment variable first
+        if let Ok(key) = std::env::var("CURSEFORGE_API_KEY") {
+            if !key.is_empty() {
+                return Some(key);
+            }
+        }
+        
+        // Try to get from config file
+        if let Ok(launcher_dir) = crate::storage::get_launcher_dir() {
+            let config_path = launcher_dir.join("config").join("curseforge.json");
+            if let Ok(config_content) = std::fs::read_to_string(&config_path) {
+                if let Ok(config) = serde_json::from_str::<serde_json::Value>(&config_content) {
+                    if let Some(api_key) = config.get("api_key").and_then(|k| k.as_str()) {
+                        if !api_key.is_empty() {
+                            return Some(api_key.to_string());
+                        }
+                    }
+                }
+            }
+        }
+        
+        None
     }
 
     fn _has_api_key(&self) -> bool {

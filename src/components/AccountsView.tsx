@@ -139,8 +139,29 @@ const AccountsView: React.FC<AccountsViewProps> = ({
 
   const handleAddOfflineAccount = () => {
     if (offlineUsername.trim()) {
-      // TODO: Implement offline account creation
-      console.log('Adding offline account:', offlineUsername);
+      // Create a new offline account
+      const newAccount: MinecraftAccount = {
+        id: `offline_${Date.now()}`,
+        username: offlineUsername.trim(),
+        uuid: `offline-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        access_token: 'offline',
+        refresh_token: 'offline',
+        expires_at: Date.now() + (365 * 24 * 60 * 60 * 1000), // 1 year from now
+        type: 'offline',
+        isActive: false,
+        lastUsed: new Date()
+      };
+      
+      // Add to accounts list
+      setAccounts(prev => [...prev, newAccount]);
+      
+      // If this is the first account, make it active
+      if (accounts.length === 0) {
+        setActiveAccountId(newAccount.id);
+        onSetActiveAccount?.(newAccount.id);
+      }
+      
+      // Reset form
       setOfflineUsername('');
       setShowOfflineForm(false);
     }

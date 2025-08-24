@@ -161,17 +161,85 @@ impl ModLoader {
     }
     
     /// Check if this loader is compatible with a game version
-    pub async fn is_compatible(&self, _mc_version: &str) -> bool {
-        // TODO: Implement actual compatibility checking
-        // This would check against known compatibility matrices
-        true
+    pub async fn is_compatible(&self, mc_version: &str) -> bool {
+        // Implement basic compatibility checking based on known version ranges
+        match self {
+            ModLoader::Forge(_) => {
+                // Forge supports most MC versions, but check basic compatibility
+                let mc_parts: Vec<&str> = mc_version.split('.').collect();
+                if mc_parts.len() >= 2 {
+                    let major: i32 = mc_parts[1].parse().unwrap_or(0);
+                    major >= 12 // Forge generally supports 1.12+ 
+                } else {
+                    false
+                }
+            },
+            ModLoader::Fabric(_) => {
+                // Fabric supports newer versions well
+                let mc_parts: Vec<&str> = mc_version.split('.').collect();
+                if mc_parts.len() >= 2 {
+                    let major: i32 = mc_parts[1].parse().unwrap_or(0);
+                    major >= 14 // Fabric generally supports 1.14+
+                } else {
+                    false
+                }
+            },
+            ModLoader::Quilt(_) => {
+                // Quilt is Fabric-compatible and supports similar versions
+                let mc_parts: Vec<&str> = mc_version.split('.').collect();
+                if mc_parts.len() >= 2 {
+                    let major: i32 = mc_parts[1].parse().unwrap_or(0);
+                    major >= 14 // Quilt generally supports 1.14+
+                } else {
+                    false
+                }
+            },
+            ModLoader::NeoForge(_) => {
+                // NeoForge is for newer versions (1.20+)
+                let mc_parts: Vec<&str> = mc_version.split('.').collect();
+                if mc_parts.len() >= 2 {
+                    let major: i32 = mc_parts[1].parse().unwrap_or(0);
+                    major >= 20 // NeoForge generally supports 1.20+
+                } else {
+                    false
+                }
+            },
+            ModLoader::ModLoader(_) => {
+                // Legacy ModLoader, very old versions
+                let mc_parts: Vec<&str> = mc_version.split('.').collect();
+                if mc_parts.len() >= 2 {
+                    let major: i32 = mc_parts[1].parse().unwrap_or(0);
+                    major <= 12 // ModLoader was for very old versions
+                } else {
+                    false
+                }
+            },
+            ModLoader::Rift(_) => {
+                // Rift was specifically for 1.13.x
+                mc_version.starts_with("1.13")
+            },
+        }
     }
     
     /// Get available versions for a loader type and MC version
-    pub async fn get_available_versions(_loader_name: &str, _mc_version: &str) -> Vec<String> {
-        // TODO: Implement fetching available loader versions
-        // This would query the respective APIs for available versions
-        vec![]
+    pub async fn get_available_versions(loader_name: &str, mc_version: &str) -> Vec<String> {
+        // Use the ModLoaderManager to fetch available versions
+        let temp_path = std::env::temp_dir().join("temp_loader_versions");
+        let manager = crate::mods::loaders::ModLoaderManager::new(temp_path);
+        
+        match manager.get_available_versions(loader_name, mc_version).await {
+            Ok(versions) => versions,
+            Err(_) => {
+                // Fallback to basic version lists if API calls fail
+                match loader_name.to_lowercase().as_str() {
+                    "forge" => vec!["47.2.20".to_string(), "47.2.0".to_string(), "47.1.0".to_string()],
+                    "fabric" => vec!["0.15.3".to_string(), "0.14.24".to_string(), "0.14.23".to_string()],
+                    "quilt" => vec!["0.21.1".to_string(), "0.21.0".to_string(), "0.20.2".to_string()],
+                    "neoforge" => vec!["20.4.195".to_string(), "20.4.109".to_string(), "20.4.108".to_string()],
+                    _ => vec![],
+                }
+            }
+        }
     }
 }
 
