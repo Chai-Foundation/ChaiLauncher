@@ -31,7 +31,7 @@ const XBOX_XSTS_AUTH_URL: &str = "https://xsts.auth.xboxlive.com/xsts/authorize"
 // 6. After creation, note the "Application (client) ID"
 // 7. Go to "Authentication" tab, enable "Allow public client flows"
 // 8. Replace CLIENT_ID below with your Application (client) ID
-const CLIENT_ID: &str = "cbd5ce66-bb68-4a36-bb3a-6c489107e8e5"; // Replace with your Azure app client ID
+pub const CLIENT_ID: &str = "cbd5ce66-bb68-4a36-bb3a-6c489107e8e5"; // Replace with your Azure app client ID
 const REDIRECT_URI: &str = "http://localhost:7931/auth/callback";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -614,21 +614,31 @@ pub async fn get_active_account_token() -> Result<Option<String>> {
     let accounts = load_minecraft_accounts(&storage).await?;
     
     if let Some(account) = accounts.first() {
-        // Check if token is still valid
-        if account.expires_at > current_timestamp() + 300 {
-            // Token valid for at least 5 minutes
+        let current_time = current_timestamp();
+        let time_until_expiry = account.expires_at.saturating_sub(current_time);
+        
+        println!("🔐 Microsoft account found: {} (expires in {}s)", account.username, time_until_expiry);
+        
+        // Check if token is still valid (at least 5 minutes remaining)
+        if account.expires_at > current_time + 300 {
+            println!("✅ Microsoft account token is valid");
             Ok(Some(account.access_token.clone()))
         } else {
+            println!("⚠️  Microsoft account token expired or expiring soon, attempting refresh...");
             // Token expired, try to refresh
             match refresh_account_token(account).await {
-                Ok(refreshed_account) => Ok(Some(refreshed_account.access_token)),
+                Ok(refreshed_account) => {
+                    println!("✅ Microsoft account token refreshed successfully");
+                    Ok(Some(refreshed_account.access_token))
+                }
                 Err(e) => {
-                    println!("Failed to refresh token: {}", e);
+                    println!("❌ Failed to refresh Microsoft account token: {}", e);
                     Ok(None)
                 }
             }
         }
     } else {
+        println!("⚠️  No Microsoft account found in storage");
         Ok(None)
     }
 }

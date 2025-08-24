@@ -172,8 +172,8 @@ impl MCVMCore {
             instance.config,
         );
         
-        // Initialize user manager for authentication
-        let client_id = ClientId::new("00000000-0000-0000-0000-000000000000".to_string());
+        // Initialize user manager for authentication with ChaiLauncher's Microsoft client ID
+        let client_id = ClientId::new(crate::auth::CLIENT_ID.to_string());
         let mut users = UserManager::new(client_id.clone());
         
         // Create custom auth function for ChaiLauncher users
@@ -195,16 +195,15 @@ impl MCVMCore {
         // Set the custom auth function
         users.set_custom_auth_function(custom_auth);
         
-        // Create and add user for authentication
-        let mut user = if access_token != "offline" && !access_token.is_empty() {
-            // Create Microsoft user for online authentication
-            User::new(UserKind::Microsoft { xbox_uid: None }, username.clone().into())
-        } else {
-            // Use Unknown user type to allow custom authentication
-            User::new(UserKind::Unknown("chailauncher".to_string()), username.clone().into())
-        };
+        // Set offline mode since ChaiLauncher handles authentication externally
+        users.set_offline(true);
         
-        // Set UUID for the user (required for game profile)
+        // Create and add user for authentication
+        // Use Unknown type with ChaiLauncher provider to bypass MCVM's auth database
+        let mut user = User::new(UserKind::Unknown("chailauncher".to_string()), username.clone().into());
+        
+        // Set username and UUID for the user (required for game profile)
+        user.set_name(&username);
         user.set_uuid(&_uuid);
         
         // Add user to manager and choose it
@@ -212,13 +211,25 @@ impl MCVMCore {
         users.choose_user(&username)
             .map_err(|e| format!("Failed to choose user: {}", e))?;
         
+        // For Microsoft users, we need to provide the access token to MCVM
+        if access_token != "offline" && !access_token.is_empty() {
+            // Set the Microsoft access token on the chosen user
+            if let Some(chosen_user) = users.get_chosen_user_mut() {
+                // Create an AccessToken and set it on the user
+                use mcvm::auth::mc::AccessToken;
+                let mc_access_token = AccessToken(access_token.clone());
+                chosen_user.set_access_token(mc_access_token);
+            }
+        }
+        
         // Initialize plugin manager
         let plugins = PluginManager::new(); // Start with empty plugin manager for now
         
         // Configure launch settings
+        // Always use offline_auth since ChaiLauncher provides pre-authenticated tokens
         let settings = LaunchSettings {
             ms_client_id: client_id,
-            offline_auth: access_token == "offline" || access_token.is_empty(), // Use offline if no valid token
+            offline_auth: true,
         };
         
         output.display_text(
