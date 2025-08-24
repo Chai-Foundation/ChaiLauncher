@@ -236,7 +236,7 @@ impl ModpackInstaller {
             if hit.project_type == "modpack" {
                 let pack = ModrinthPack {
                     project_id: hit.project_id,
-                    version_id: hit.latest_version,
+                    version_id: "latest".to_string(), // Use "latest" as a safe default
                     name: hit.title,
                     description: hit.description,
                     author: hit.author,
@@ -270,7 +270,7 @@ impl ModpackInstaller {
 
     pub async fn install_modrinth_pack<F>(
         &self,
-    _project_id: &str,
+        project_id: &str,
         version_id: &str,
         progress_callback: F,
     ) -> Result<()>
@@ -279,16 +279,28 @@ impl ModpackInstaller {
     {
         progress_callback(0.0, "Fetching modpack information".to_string());
 
-        // Get version details
-        let url = format!("https://api.modrinth.com/v2/version/{}", version_id);
-        let response = self.client.get(&url)
+        // First, get the project versions to find the latest version or a valid version
+        let versions_url = format!("https://api.modrinth.com/v2/project/{}/version", project_id);
+        let versions_response = self.client.get(&versions_url)
             .header("User-Agent", "ChaiLauncher/2.0.0")
             .send()
             .await
-            .context("Failed to get version details")?;
+            .context("Failed to get project versions")?;
 
-        let version: ModrinthVersion = response.json().await
-            .context("Failed to parse version details")?;
+        let versions: Vec<ModrinthVersion> = versions_response.json().await
+            .context("Failed to parse project versions")?;
+
+        // Find the latest version or a specific version
+        let version = if version_id.is_empty() || version_id == "latest" {
+            versions.into_iter().next().context("No versions found for this project")?
+        } else {
+            // Try to find a version that matches or use the first available
+            let versions_clone = versions.clone();
+            versions.into_iter()
+                .find(|v| v.id == version_id || v.version_number == version_id)
+                .or_else(|| versions_clone.into_iter().next())
+                .context("No valid version found for this project")?
+        };
 
         progress_callback(10.0, "Downloading modpack file".to_string());
 

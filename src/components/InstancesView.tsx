@@ -206,7 +206,7 @@ const InstancesView: React.FC<InstancesViewProps> = ({
                       <Play size={16} />
                     </button>
                     <button
-                      onClick={() => onEditInstance(instance)}
+                      onClick={() => handleEditInstance(instance)}
                       className="bg-amber-600 hover:bg-amber-700 text-white p-2 rounded-lg transition-colors"
                     >
                       <Settings size={16} />
