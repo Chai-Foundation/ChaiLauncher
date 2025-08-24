@@ -101,3 +101,59 @@ pub async fn clear_auth_token() -> Result<(), String> {
     
     Ok(())
 }
+
+/// Get current authentication status for debugging
+#[command]
+pub async fn get_auth_status() -> Result<serde_json::Value, String> {
+    let mut status = serde_json::Map::new();
+    
+    // Check Microsoft accounts
+    match crate::auth::get_stored_accounts().await {
+        Ok(accounts) => {
+            status.insert("microsoft_accounts_count".to_string(), serde_json::Value::from(accounts.len()));
+            if let Some(account) = accounts.first() {
+                status.insert("microsoft_username".to_string(), serde_json::Value::from(account.username.clone()));
+                status.insert("microsoft_uuid".to_string(), serde_json::Value::from(account.uuid.clone()));
+                
+                let current_time = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs();
+                let expires_in = account.expires_at.saturating_sub(current_time);
+                status.insert("microsoft_token_expires_in".to_string(), serde_json::Value::from(expires_in));
+                status.insert("microsoft_token_valid".to_string(), serde_json::Value::from(expires_in > 300));
+            }
+        }
+        Err(e) => {
+            status.insert("microsoft_accounts_error".to_string(), serde_json::Value::from(e));
+        }
+    }
+    
+    // Check manual auth token
+    match get_auth_token().await {
+        Ok(token) => {
+            status.insert("manual_token_set".to_string(), serde_json::Value::from(token.is_some()));
+            if let Some(token) = token {
+                status.insert("manual_token_length".to_string(), serde_json::Value::from(token.len()));
+            }
+        }
+        Err(e) => {
+            status.insert("manual_token_error".to_string(), serde_json::Value::from(e));
+        }
+    }
+    
+    // Check what auth would be used for launch
+    match crate::minecraft::commands::get_auth_info_debug().await {
+        Ok(auth_info) => {
+            status.insert("active_username".to_string(), serde_json::Value::from(auth_info.username));
+            status.insert("active_uuid".to_string(), serde_json::Value::from(auth_info.uuid));
+            status.insert("active_user_type".to_string(), serde_json::Value::from(auth_info.user_type));
+            status.insert("active_token_length".to_string(), serde_json::Value::from(auth_info.access_token.len()));
+        }
+        Err(e) => {
+            status.insert("active_auth_error".to_string(), serde_json::Value::from(e));
+        }
+    }
+    
+    Ok(serde_json::Value::Object(status))
+}

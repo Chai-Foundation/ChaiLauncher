@@ -197,10 +197,10 @@ impl MCVMCore {
         
         // Create and add user for authentication
         let mut user = if access_token != "offline" && !access_token.is_empty() {
-            // Create Microsoft user for online authentication
-            User::new(UserKind::Microsoft { xbox_uid: None }, username.clone().into())
+            // For Microsoft tokens, use Unknown type with custom auth to avoid MCVM's Microsoft auth flow
+            User::new(UserKind::Unknown("chailauncher".to_string()), username.clone().into())
         } else {
-            // Use Unknown user type to allow custom authentication
+            // For offline, use Unknown type as well for consistency
             User::new(UserKind::Unknown("chailauncher".to_string()), username.clone().into())
         };
         
@@ -216,9 +216,11 @@ impl MCVMCore {
         let plugins = PluginManager::new(); // Start with empty plugin manager for now
         
         // Configure launch settings
+        // Always use offline auth since ChaiLauncher handles authentication externally
+        // and provides the token through the custom auth function
         let settings = LaunchSettings {
             ms_client_id: client_id,
-            offline_auth: access_token == "offline" || access_token.is_empty(), // Use offline if no valid token
+            offline_auth: true,
         };
         
         output.display_text(

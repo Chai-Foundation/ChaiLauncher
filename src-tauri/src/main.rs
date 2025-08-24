@@ -63,6 +63,7 @@ fn main() {
             commands::set_auth_token,
             commands::get_auth_token,
             commands::clear_auth_token,
+            commands::get_auth_status,
             auth::start_microsoft_oauth,
             auth::start_oauth_with_server,
             auth::complete_microsoft_oauth,

@@ -115,6 +115,7 @@ pub async fn launch_minecraft(
     }
     
     let auth_info = get_auth_info().await.unwrap_or_default();
+    println!("🔐 Using authentication: {} ({})", auth_info.username, auth_info.user_type);
     
     match crate::minecraft::launch_minecraft(&launch_instance, Some(auth_info), memory).await {
         Ok(result) => {
@@ -166,6 +167,7 @@ pub async fn launch_instance(
     
     // Try to get auth info from storage
     let auth_info = get_auth_info().await.unwrap_or_default();
+    println!("🔐 Using authentication: {} ({})", auth_info.username, auth_info.user_type);
     
     // Launch using the modular system
     match crate::minecraft::launch_minecraft(&instance, Some(auth_info), memory).await {
@@ -1087,30 +1089,47 @@ impl From<InstanceMetadata> for MinecraftInstance {
 
 /// Get authentication info from storage
 async fn get_auth_info() -> Result<AuthInfo, String> {
-    // Try to get auth info from the existing storage system
+    // First priority: Try to get Microsoft account info
+    if let Ok(accounts) = crate::auth::get_stored_accounts().await {
+        if let Some(account) = accounts.first() {
+            // Check if token is still valid and refresh if needed
+            match crate::auth::get_active_account_token().await {
+                Ok(Some(active_token)) => {
+                    return Ok(AuthInfo {
+                        username: account.username.clone(),
+                        uuid: account.uuid.clone(),
+                        access_token: active_token,
+                        user_type: "msa".to_string(),
+                    });
+                }
+                Ok(None) => {
+                    println!("⚠️  Microsoft account token expired or invalid");
+                }
+                Err(e) => {
+                    println!("⚠️  Failed to get Microsoft account token: {}", e);
+                }
+            }
+        }
+    }
+    
+    // Second priority: Try to get manual auth token from settings
     let storage = crate::storage::StorageManager::new().await
         .map_err(|e| format!("Failed to initialize storage: {}", e))?;
     
     if let Some(token) = storage.get_settings().auth_token.clone() {
-        // Try to get account details for username/UUID
-        match crate::auth::get_active_account_token().await {
-            Ok(Some(_)) => {
-                // Get account info
-                if let Ok(accounts) = crate::auth::get_stored_accounts().await {
-                    if let Some(account) = accounts.first() {
-                        return Ok(AuthInfo {
-                            username: account.username.clone(),
-                            uuid: account.uuid.clone(),
-                            access_token: token,
-                            user_type: "msa".to_string(),
-                        });
-                    }
-                }
+        // If we have accounts but no valid token, use account info with manual token
+        if let Ok(accounts) = crate::auth::get_stored_accounts().await {
+            if let Some(account) = accounts.first() {
+                return Ok(AuthInfo {
+                    username: account.username.clone(),
+                    uuid: account.uuid.clone(),
+                    access_token: token,
+                    user_type: "msa".to_string(),
+                });
             }
-            _ => {}
         }
         
-        // Fallback with just the token
+        // Fallback with just the manual token
         return Ok(AuthInfo {
             username: "Player".to_string(),
             uuid: "12345678-90ab-cdef-1234-567890abcdef".to_string(),
@@ -1119,8 +1138,15 @@ async fn get_auth_info() -> Result<AuthInfo, String> {
         });
     }
     
-    // No auth available, use default
+    // Last resort: Use offline credentials (this should show a warning)
+    println!("⚠️  No valid authentication found - launching in offline mode");
+    println!("⚠️  Please sign in with a Microsoft account for online play");
     Ok(AuthInfo::default())
+}
+
+/// Get authentication info for debugging (public version of get_auth_info)
+pub async fn get_auth_info_debug() -> Result<AuthInfo, String> {
+    get_auth_info().await
 }
 
 /// Download Minecraft assets with progress tracking
