@@ -62,6 +62,33 @@ export interface ModpackInstallProgress {
   stage: string;
 }
 
+export interface ModpackCreationRequest {
+  instanceId: string;
+  instancePath: string;
+  metadata: ModpackMetadata;
+}
+
+export interface ModpackMetadata {
+  name: string;
+  version: string;
+  author: string;
+  description: string;
+  minecraftVersion: string;
+  tags: string[];
+  iconPath?: string;
+  includeUserData: boolean;
+  includeResourcePacks: boolean;
+  includeShaderPacks: boolean;
+  includeConfig: boolean;
+  includeSaves: boolean;
+}
+
+export interface ModpackCreationProgress {
+  instanceId: string;
+  progress: number;
+  stage: string;
+}
+
 export interface LauncherSettings {
   default_java_path?: string;
   default_memory: number;

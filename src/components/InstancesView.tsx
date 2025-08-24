@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Plus, Search, Grid, List, Play, Settings, Folder } from 'lucide-react';
+import { Plus, Search, Grid, List, Play, Settings, Folder, Package } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MinecraftInstance } from '../types/minecraft';
 import InstanceCard from './InstanceCard';
+import ModpackCreator from './ModpackCreator';
 
 interface InstancesViewProps {
   instances: MinecraftInstance[];
@@ -35,6 +36,7 @@ const InstancesView: React.FC<InstancesViewProps> = ({
   const [sortBy, setSortBy] = useState<'name' | 'lastPlayed' | 'version'>('lastPlayed');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [filterModded, setFilterModded] = useState<'all' | 'modded' | 'vanilla'>('all');
+  const [showModpackCreator, setShowModpackCreator] = useState(false);
 
   const filteredInstances = instances
     .filter(instance => {
@@ -70,13 +72,23 @@ const InstancesView: React.FC<InstancesViewProps> = ({
           <h1 className="text-2xl font-bold text-white mb-1">Instances</h1>
           <p className="text-stone-400">{instances.length} instances</p>
         </div>
-        <button
-          onClick={onCreateInstance}
-          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-        >
-          <Plus size={18} />
-          Create Instance
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowModpackCreator(true)}
+            disabled={instances.length === 0}
+            className="bg-amber-600 hover:bg-amber-700 disabled:bg-stone-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+          >
+            <Package size={18} />
+            Create Modpack
+          </button>
+          <button
+            onClick={onCreateInstance}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+          >
+            <Plus size={18} />
+            Create Instance
+          </button>
+        </div>
       </div>
 
       <div className="bg-stone-800 border border-stone-700 rounded-lg p-4 mb-6">
@@ -227,6 +239,18 @@ const InstancesView: React.FC<InstancesViewProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Modpack Creator Modal */}
+      {showModpackCreator && (
+        <ModpackCreator
+          instances={instances.filter(instance => instance.status === 'ready')}
+          onClose={() => setShowModpackCreator(false)}
+          onCreateSuccess={(modpackPath) => {
+            console.log('Modpack created at:', modpackPath);
+            setShowModpackCreator(false);
+          }}
+        />
+      )}
     </div>
   );
 };
