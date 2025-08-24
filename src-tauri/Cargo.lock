@@ -439,9 +439,11 @@ name = "chailauncher"
 version = "0.3.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "chrono",
  "dirs",
  "futures",
+ "hex",
  "lazy_static",
  "mcvm",
  "oauth2",
@@ -454,6 +456,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-fs",
  "tauri-plugin-shell",
+ "thiserror 1.0.69",
  "tokio",
  "urlencoding",
  "uuid",

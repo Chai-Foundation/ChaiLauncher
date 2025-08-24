@@ -6,6 +6,7 @@ mod types;
 mod commands;
 mod storage;
 mod modpack;
+mod mods;
 mod auth;
 
 use tauri::Manager;
@@ -58,6 +59,19 @@ fn main() {
             minecraft::commands::refresh_instance_sizes,
             modpack::search_modpacks,
             modpack::install_modpack,
+            mods::commands::search_mods,
+            mods::commands::get_mod_details,
+            mods::commands::install_mod,
+            mods::commands::uninstall_mod,
+            mods::commands::update_mod,
+            mods::commands::get_installed_mods,
+            mods::commands::set_mod_enabled,
+            mods::commands::check_mod_updates,
+            mods::commands::get_mod_loader_versions,
+            mods::commands::install_mod_loader,
+            mods::commands::get_installed_mod_loader,
+            mods::commands::get_featured_mods,
+            mods::commands::get_mod_categories,
             commands::open_folder,
             commands::open_instance_folder,
             commands::set_auth_token,
