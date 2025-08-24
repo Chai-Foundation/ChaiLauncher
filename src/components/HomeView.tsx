@@ -23,6 +23,32 @@ const HomeView: React.FC<HomeViewProps> = ({
   onDeleteInstance,
   onOpenFolder,
 }) => {
+  // Helper to render inline code and decode HTML entities
+  function renderWithInlineCode(text: string) {
+    if (!text) return null;
+    // Decode HTML entities
+    const htmlDecode = (input: string) => {
+      const doc = typeof window !== 'undefined' ? window.document : null;
+      if (doc) {
+        const el = doc.createElement('textarea');
+        el.innerHTML = input;
+        return el.value;
+      }
+      // Fallback for SSR
+      return input.replace(/&#(\d+);/g, (_, code) => String.fromCharCode(code));
+    };
+    // Split by backticks, wrap odd indices in <code>
+    const decoded = htmlDecode(text);
+    const parts = decoded.split(/(`[^`]+`)/g);
+    return parts.map((part, i) => {
+      if (/^`[^`]+`$/.test(part)) {
+        return (
+          <code key={i} className="bg-stone-800 text-amber-300 px-1 rounded text-xs font-mono">{part.slice(1, -1)}</code>
+        );
+      }
+      return part;
+    });
+  }
   return (
     <div className="flex-1 p-6 space-y-6">
       <div>
@@ -126,8 +152,8 @@ const HomeView: React.FC<HomeViewProps> = ({
                 />
               )}
               <div className="p-4">
-                <h3 className="font-semibold text-white mb-2 line-clamp-2">{article.title}</h3>
-                <p className="text-stone-300 text-sm mb-3 line-clamp-3">{article.summary}</p>
+                <h3 className="font-semibold text-white mb-2 line-clamp-2">{renderWithInlineCode(article.title)}</h3>
+                <p className="text-stone-300 text-sm mb-3 line-clamp-3">{renderWithInlineCode(article.summary)}</p>
                 <div className="flex items-center justify-between text-xs text-stone-400">
                   <span className="capitalize">{article.category}</span>
                   <span>{new Date(article.publishedAt).toLocaleDateString()}</span>
