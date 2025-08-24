@@ -288,7 +288,7 @@ function App() {
 
   // Automatic orphaned instance scanning
   useEffect(() => {
-    let intervalId: NodeJS.Timeout;
+    let intervalId: ReturnType<typeof setInterval> | undefined = undefined;
 
     const importOrphanedInstances = async () => {
       try {
@@ -339,7 +339,7 @@ function App() {
 
     // Cleanup interval on unmount
     return () => {
-      if (intervalId) {
+      if (intervalId !== undefined) {
         clearInterval(intervalId);
       }
     };
