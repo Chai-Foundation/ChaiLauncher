@@ -42,7 +42,7 @@ pub struct ModrinthVersion {
     pub loaders: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ModrinthFile {
     pub hashes: HashMap<String, String>,
     pub url: String,
