@@ -19,7 +19,7 @@ use mcvm::shared::modifications::{Modloader, ClientType, ServerType};
 use mcvm::shared::id::InstanceID;
 use mcvm::plugin::PluginManager;
 use mcvm::core::user::UserManager;
-use mcvm::core::auth::mc::ClientId as MCClientId;
+use oauth2::ClientId;
 use std::sync::Arc;
 use serde_json::Map;
 use std::collections::HashMap;
@@ -162,7 +162,7 @@ impl MCVMCore {
         );
         
         // Initialize user manager for authentication
-        let client_id = MCClientId::new("00000000-0000-0000-0000-000000000000".to_string());
+        let client_id = ClientId::new("00000000-0000-0000-0000-000000000000".to_string());
         let mut users = UserManager::new(client_id.clone());
         
         // Initialize plugin manager
