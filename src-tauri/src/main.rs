@@ -9,6 +9,15 @@ mod modpack;
 mod auth;
 
 use tauri::Manager;
+use reqwest;
+
+#[tauri::command]
+async fn fetch_news() -> Result<String, String> {
+    let url = "https://net-secondary.web.minecraft-services.net/api/v1.0/en-us/search?pageSize=24&sortType=Recent&category=News&newsOnly=true";
+    let resp = reqwest::get(url).await.map_err(|e| e.to_string())?;
+    let body = resp.text().await.map_err(|e| e.to_string())?;
+    Ok(body)
+}
 
 fn main() {
     tauri::Builder::default()
@@ -59,7 +68,8 @@ fn main() {
             auth::complete_microsoft_oauth,
             auth::get_stored_accounts,
             auth::refresh_minecraft_token,
-            auth::remove_minecraft_account
+            auth::remove_minecraft_account,
+            fetch_news
         ])
         .setup(|app| {
             // Initialize MCVM integration

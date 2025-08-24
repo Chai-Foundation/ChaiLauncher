@@ -385,25 +385,56 @@ function App() {
     },
   ];
 
-  const mockNews: NewsItem[] = [
-    {
-      id: '1',
-      title: 'Minecraft 1.21 - The Tricky Trials Update',
-      summary: 'Brave new challenges with the Trial Chambers, fight the Breeze and Bogged, and collect their unique drops!',
-      content: '',
-      publishedAt: '2024-06-13T12:00:00Z',
-      category: 'minecraft',
-      imageUrl: '',
-    },
-    {
-      id: '2',
-      title: 'Launcher Update v2.0.0',
-      summary: 'Major launcher overhaul with improved UI, better performance, and new features.',
-      content: '',
-      publishedAt: '2024-01-15T12:00:00Z',
-      category: 'launcher',
-    },
-  ];
+  const [news, setNews] = useState<NewsItem[]>([]);
+
+  useEffect(() => {
+    const fetchNews = async () => {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const raw = await invoke('fetch_news') as string;
+        const data = JSON.parse(raw);
+        const results = data.result?.results || [];
+        const mappedNews: NewsItem[] = results.map((item: any, idx: number) => ({
+          id: item.url || String(idx),
+          title: item.title,
+          summary: item.description || '',
+          content: '',
+          publishedAt: item.time
+            ? new Date(item.time * 1000).toISOString()
+            : '',
+          category: 'minecraft',
+          imageUrl: item.image || '',
+        }));
+        setNews(mappedNews);
+      } catch (error) {
+        console.error('Failed to fetch news:', error);
+        // fallback to static news if fetch fails
+        setNews([
+          {
+            id: '1',
+            title: 'Minecraft 1.21 - The Tricky Trials Update',
+            summary:
+              'Brave new challenges with the Trial Chambers, fight the Breeze and Bogged, and collect their unique drops!',
+            content: '',
+            publishedAt: '2024-06-13T12:00:00Z',
+            category: 'minecraft',
+            imageUrl: '',
+          },
+          {
+            id: '2',
+            title: 'Launcher Update v2.0.0',
+            summary:
+              'Major launcher overhaul with improved UI, better performance, and new features.',
+            content: '',
+            publishedAt: '2024-01-15T12:00:00Z',
+            category: 'launcher',
+            imageUrl: '',
+          },
+        ]);
+      }
+    };
+    fetchNews();
+  }, []);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const mockAccounts = [
@@ -659,7 +690,7 @@ function App() {
               if (!b.lastPlayed) return -1;
               return b.lastPlayed.getTime() - a.lastPlayed.getTime();
             })}
-            news={mockNews}
+            news={news} // <-- FIXED: use news state instead of mockNews
             onCreateInstance={() => setShowCreateModal(true)}
             onPlayInstance={handlePlayInstance}
             onEditInstance={handleEditInstance}
@@ -697,107 +728,122 @@ function App() {
     }
   };
 
-  return (<div>
-      <div className="h-screen bg-stone-950 flex relative overflow-hidden">
-        {/* Hero Background Image */}
-        <div className="absolute inset-0">
-          <img
-            src={heroImage}
-            alt="Hero Background"
-            className="w-full h-full object-cover blur-sm"
-          />
-          {/* Dark overlay for UI readability */}
-          <div className="absolute inset-0 bg-black/60"></div>
+  useEffect(() => {
+    const handleContextMenu = (e: MouseEvent) => {
+      // Only allow right-clicks on instance cards
+      const target = e.target as HTMLElement;
+      if (!target.closest('.allow-context-menu')) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('contextmenu', handleContextMenu);
+    return () => {
+      window.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }, []);
+
+  return (
+  <div className="min-h-screen h-full w-full bg-stone-950 flex flex-col">
+    {/* Hero Background Image */}
+    <div className="absolute inset-0">
+      <img
+        src={heroImage}
+        alt="Hero Background"
+        className="w-full h-full object-cover blur-sm"
+      />
+      {/* Dark overlay for UI readability */}
+      <div className="absolute inset-0 bg-black/60"></div>
+    </div>
+
+    {/* Main Content */}
+    <div className="relative z-10 flex w-full">
+      <LauncherSidebar
+        activeView={activeView}
+        onViewChange={setActiveView}
+      />
+
+        {/* Titlebar */}
+        <div className="flex flex-col flex-1 min-h-0">
+        <div
+          className="bg-stone-900/60 backdrop-blur-sm border-r border-amber-600/30 h-9 flex items-center justify-between"
+          style={{ WebkitAppRegion: 'drag' } as CSSProperties}
+        >
+          <div className="flex-1"></div>
+          {/* Windows Buttons */}
+          <div
+            className="flex items-center gap-1 px-2"
+            style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
+          >
+          <button
+            className="w-6 h-6 flex items-center justify-center hover:bg-stone-800 rounded"
+            title="Minimize"
+            onClick={async (e) => {
+              e.stopPropagation();
+              const { getCurrentWindow } = await import('@tauri-apps/api/window');
+              const win = getCurrentWindow();
+              win.minimize();
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14">
+            <rect x="3" y="10" width="8" height="1.5" fill="#eab308" />
+            </svg>
+          </button>
+          <button
+            className="w-6 h-6 flex items-center justify-center hover:bg-stone-800 rounded"
+            title="Maximize"
+            onClick={async (e) => {
+              e.stopPropagation();
+              const { getCurrentWindow } = await import('@tauri-apps/api/window');
+              const win = getCurrentWindow();
+              const isMaximized = await win.isMaximized();
+              if (isMaximized) {
+                win.unmaximize();
+              } else {
+                win.maximize();
+              }
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14">
+            <rect x="3" y="3" width="8" height="8" stroke="#eab308" strokeWidth="1.5" fill="none" />
+            </svg>
+          </button>
+          <button
+            className="w-6 h-6 flex items-center justify-center hover:bg-red-700 rounded"
+            title="Close"
+            onClick={async (e) => {
+              e.stopPropagation();
+              const { getCurrentWindow } = await import('@tauri-apps/api/window');
+              const win = getCurrentWindow();
+              win.close();
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14">
+            <line x1="4" y1="4" x2="10" y2="10" stroke="#fff" strokeWidth="1.5" />
+            <line x1="10" y1="4" x2="4" y2="10" stroke="#fff" strokeWidth="1.5" />
+            </svg>
+          </button>
+          </div>
         </div>
-    
-        {/* Main Content */}
-        <div className="relative z-10 flex w-full">
-          <LauncherSidebar
-            activeView={activeView}
-            onViewChange={setActiveView}
-          />
-    
-            {/* Titlebar */}
-            <div className="flex flex-col flex-1">
-            <div
-              className="bg-stone-900/60 backdrop-blur-sm border-r border-amber-600/30 h-9 flex items-center justify-between"
-              style={{ WebkitAppRegion: 'drag' } as CSSProperties}
-            >
-              <div className="flex-1"></div>
-              {/* Windows Buttons */}
-              <div
-                className="flex items-center gap-1 px-2"
-                style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
-              >
-              <button
-                className="w-6 h-6 flex items-center justify-center hover:bg-stone-800 rounded"
-                title="Minimize"
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  const { getCurrentWindow } = await import('@tauri-apps/api/window');
-                  const win = getCurrentWindow();
-                  win.minimize();
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14">
-                <rect x="3" y="10" width="8" height="1.5" fill="#eab308" />
-                </svg>
-              </button>
-              <button
-                className="w-6 h-6 flex items-center justify-center hover:bg-stone-800 rounded"
-                title="Maximize"
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  const { getCurrentWindow } = await import('@tauri-apps/api/window');
-                  const win = getCurrentWindow();
-                  const isMaximized = await win.isMaximized();
-                  if (isMaximized) {
-                    win.unmaximize();
-                  } else {
-                    win.maximize();
-                  }
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14">
-                <rect x="3" y="3" width="8" height="8" stroke="#eab308" strokeWidth="1.5" fill="none" />
-                </svg>
-              </button>
-              <button
-                className="w-6 h-6 flex items-center justify-center hover:bg-red-700 rounded"
-                title="Close"
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  const { getCurrentWindow } = await import('@tauri-apps/api/window');
-                  const win = getCurrentWindow();
-                  win.close();
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14">
-                <line x1="4" y1="4" x2="10" y2="10" stroke="#fff" strokeWidth="1.5" />
-                <line x1="10" y1="4" x2="4" y2="10" stroke="#fff" strokeWidth="1.5" />
-                </svg>
-              </button>
-              </div>
-            </div>
-            {renderActiveView()}
-            </div>
-    
-          <CreateInstanceModal
-            isOpen={showCreateModal}
-            onClose={() => setShowCreateModal(false)}
-            onCreateInstance={handleCreateInstance}
-            minecraftVersions={versionsLoading ? [] : minecraftVersions}
-            popularModpacks={mockModpacks}
-          />
-    
-          <JavaInstallModal
-            isOpen={showJavaInstallModal}
-            onClose={handleJavaInstallCancel}
-            onInstallComplete={handleJavaInstallComplete}
-            requiredJavaVersion={requiredJavaVersion}
-          />
+        <main className="overflow-y-auto" style={{ height: 'calc(100vh - 40px)' }}>
+          {renderActiveView()}
+        </main>
         </div>
-      </div>
+
+      <CreateInstanceModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreateInstance={handleCreateInstance}
+        minecraftVersions={versionsLoading ? [] : minecraftVersions}
+        popularModpacks={mockModpacks}
+      />
+
+      <JavaInstallModal
+        isOpen={showJavaInstallModal}
+        onClose={handleJavaInstallCancel}
+        onInstallComplete={handleJavaInstallComplete}
+        requiredJavaVersion={requiredJavaVersion}
+      />
+    </div>
   </div>
   );
 }
