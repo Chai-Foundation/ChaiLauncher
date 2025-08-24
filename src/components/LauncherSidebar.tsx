@@ -1,4 +1,5 @@
-import React, { CSSProperties } from 'react';
+import React, { CSSProperties, useEffect, useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { Home, Package, Settings, Plus, Download, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -16,6 +17,14 @@ const LauncherSidebar: React.FC<LauncherSidebarProps> = ({ activeView, onViewCha
     { id: 'accounts', label: 'Accounts', icon: User },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
+
+  const [appVersion, setAppVersion] = useState<string>("");
+
+  useEffect(() => {
+    invoke<string>("get_app_version")
+      .then(setAppVersion)
+      .catch(() => setAppVersion(""));
+  }, []);
 
   return (
     <div className="w-64 bg-stone-900/60 backdrop-blur-sm flex flex-col" style={{ WebkitAppRegion: 'drag' } as CSSProperties}>
@@ -67,10 +76,10 @@ const LauncherSidebar: React.FC<LauncherSidebarProps> = ({ activeView, onViewCha
       </nav>
       
       <div className="p-4 border-t border-amber-600/30">
-      <div className="text-sm text-stone-300">
-        <p>Version 2.0.0</p>
-        <p className="text-amber-300">Ready to launch</p>
-      </div>
+        <div className="text-sm text-stone-300">
+          <p>Version {appVersion || "..."}</p>
+          <p className="text-amber-300">Ready to launch</p>
+        </div>
       </div>
     </div>
   );

@@ -6,9 +6,9 @@ mod types;
 mod commands;
 mod storage;
 mod modpack;
+mod mods;
 mod auth;
 
-use tauri::Manager;
 use reqwest;
 
 #[tauri::command]
@@ -17,6 +17,12 @@ async fn fetch_news() -> Result<String, String> {
     let resp = reqwest::get(url).await.map_err(|e| e.to_string())?;
     let body = resp.text().await.map_err(|e| e.to_string())?;
     Ok(body)
+}
+
+// Expose the app version as a Tauri command
+#[tauri::command]
+fn get_app_version() -> &'static str {
+    env!("CARGO_PKG_VERSION")
 }
 
 fn main() {
@@ -58,6 +64,20 @@ fn main() {
             minecraft::commands::refresh_instance_sizes,
             modpack::search_modpacks,
             modpack::install_modpack,
+            modpack::create_modpack,
+            mods::commands::search_mods,
+            mods::commands::get_mod_details,
+            mods::commands::install_mod,
+            mods::commands::uninstall_mod,
+            mods::commands::update_mod,
+            mods::commands::get_installed_mods,
+            mods::commands::set_mod_enabled,
+            mods::commands::check_mod_updates,
+            mods::commands::get_mod_loader_versions,
+            mods::commands::install_mod_loader,
+            mods::commands::get_installed_mod_loader,
+            mods::commands::get_featured_mods,
+            mods::commands::get_mod_categories,
             commands::open_folder,
             commands::open_instance_folder,
             commands::set_auth_token,
@@ -70,7 +90,8 @@ fn main() {
             auth::get_stored_accounts,
             auth::refresh_minecraft_token,
             auth::remove_minecraft_account,
-            fetch_news
+            fetch_news,
+            get_app_version
         ])
         .setup(|app| {
             // Initialize MCVM integration
@@ -81,11 +102,6 @@ fn main() {
                 }
             });
             
-            #[cfg(debug_assertions)]
-            {
-                let window = app.get_webview_window("main").unwrap();
-                window.open_devtools();
-            }
             Ok(())
         })
         .run(tauri::generate_context!())

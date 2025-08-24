@@ -94,3 +94,7 @@ export interface AppSettings {
   default_download_path: string;
   keyboard_shortcuts: Record<string, string>;
 }
+
+// Re-export minecraft and mod types
+export * from './minecraft';
+export * from './mods';
