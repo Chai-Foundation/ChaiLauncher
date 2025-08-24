@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MinecraftInstance } from '../types/minecraft';
 import InstanceCard from './InstanceCard';
 import ModpackCreator from './ModpackCreator';
-import InstanceSettingsModal from './InstanceSettingsModal';
 
 interface InstancesViewProps {
   instances: MinecraftInstance[];
@@ -38,12 +37,14 @@ const InstancesView: React.FC<InstancesViewProps> = ({
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [filterModded, setFilterModded] = useState<'all' | 'modded' | 'vanilla'>('all');
   const [showModpackCreator, setShowModpackCreator] = useState(false);
-  const [showInstanceSettings, setShowInstanceSettings] = useState(false);
-  const [selectedInstance, setSelectedInstance] = useState<MinecraftInstance | null>(null);
 
+  // Remove local modal state for editing
+  // const [showInstanceSettings, setShowInstanceSettings] = useState(false);
+  // const [selectedInstance, setSelectedInstance] = useState<MinecraftInstance | null>(null);
+
+  // Use only the global edit handler
   const handleEditInstance = (instance: MinecraftInstance) => {
-    setSelectedInstance(instance);
-    setShowInstanceSettings(true);
+    onEditInstance(instance);
   };
 
   const filteredInstances = instances
@@ -256,22 +257,6 @@ const InstancesView: React.FC<InstancesViewProps> = ({
           onCreateSuccess={(modpackPath) => {
             console.log('Modpack created at:', modpackPath);
             setShowModpackCreator(false);
-          }}
-        />
-      )}
-
-      {/* Instance Settings Modal */}
-      {showInstanceSettings && selectedInstance && (
-        <InstanceSettingsModal
-          isOpen={showInstanceSettings}
-          onClose={() => {
-            setShowInstanceSettings(false);
-            setSelectedInstance(null);
-          }}
-          instance={selectedInstance}
-          onUpdateInstance={(updatedInstance) => {
-            // Handle instance updates if needed
-            console.log('Instance updated:', updatedInstance);
           }}
         />
       )}

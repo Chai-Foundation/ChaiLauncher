@@ -3,8 +3,6 @@ use reqwest::Client;
 use crate::mods::types::*;
 use crate::mods::api::ModApi;
 use std::path::Path;
-use chrono::{DateTime, Utc};
-use std::collections::HashMap;
 use serde_json;
 
 /// CurseForge API client implementation
@@ -42,7 +40,8 @@ impl CurseForgeApi {
         }
         
         // Try to get from config file
-        if let Ok(launcher_dir) = crate::storage::get_launcher_dir() {
+        let launcher_dir = crate::storage::get_launcher_dir();
+        {
             let config_path = launcher_dir.join("config").join("curseforge.json");
             if let Ok(config_content) = std::fs::read_to_string(&config_path) {
                 if let Ok(config) = serde_json::from_str::<serde_json::Value>(&config_content) {

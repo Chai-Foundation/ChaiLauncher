@@ -309,7 +309,7 @@ impl ModManager {
                 let path = entry.path();
                 if let Some(extension) = path.extension() {
                     if extension == "jar" {
-                        let file_name = path.file_name().unwrap().to_string_lossy().to_string();
+                        let _file_name = path.file_name().unwrap().to_string_lossy().to_string();
                         
                         // If we don't have metadata for this file, create a basic entry
                         if !self.installed_mods.values().any(|m| m.install_path == path) {

@@ -1,6 +1,4 @@
 use crate::mods::types::*;
-use std::path::Path;
-use anyhow::{Result, Context};
 use tokio::fs;
 use serde_json;
 use reqwest;
@@ -211,7 +209,7 @@ impl ModLoaderManager {
         let libraries_path = self.instance_path.join("libraries");
         if let Ok(mut entries) = fs::read_dir(&libraries_path).await {
             while let Ok(Some(entry)) = entries.next_entry().await {
-                let name = entry.file_name().to_string_lossy();
+                let name = entry.file_name().to_string_lossy().to_string();
                 if name.contains("forge") && name.contains("-") {
                     // Extract version from filename like "forge-1.20.1-47.2.0.jar"
                     let parts: Vec<&str> = name.split('-').collect();
@@ -292,7 +290,7 @@ impl ModLoaderManager {
         let libraries_path = self.instance_path.join("libraries");
         if let Ok(mut entries) = fs::read_dir(&libraries_path).await {
             while let Ok(Some(entry)) = entries.next_entry().await {
-                let name = entry.file_name().to_string_lossy();
+                let name = entry.file_name().to_string_lossy().to_string();
                 if name.contains("neoforge") && name.contains("-") {
                     // Extract version from filename like "neoforge-1.20.1-20.4.109.jar"
                     let parts: Vec<&str> = name.split('-').collect();
@@ -356,10 +354,10 @@ impl ModLoaderManager {
             }
         }
         
-        Err(ModError::Api(reqwest::Error::from(std::io::Error::new(
+        Err(ModError::Io(std::io::Error::new(
             std::io::ErrorKind::NotFound,
             "No versions found"
-        ))))
+        )))
     }
     
     async fn get_fabric_versions(&self, mc_version: &str) -> Result<Vec<String>, ModError> {
@@ -402,10 +400,10 @@ impl ModLoaderManager {
             }
         }
         
-        Err(ModError::Api(reqwest::Error::from(std::io::Error::new(
+        Err(ModError::Io(std::io::Error::new(
             std::io::ErrorKind::NotFound,
             "No versions found"
-        ))))
+        )))
     }
     
     async fn get_quilt_versions(&self, mc_version: &str) -> Result<Vec<String>, ModError> {
@@ -448,10 +446,10 @@ impl ModLoaderManager {
             }
         }
         
-        Err(ModError::Api(reqwest::Error::from(std::io::Error::new(
+        Err(ModError::Io(std::io::Error::new(
             std::io::ErrorKind::NotFound,
             "No versions found"
-        ))))
+        )))
     }
     
     async fn get_neoforge_versions(&self, mc_version: &str) -> Result<Vec<String>, ModError> {
@@ -495,9 +493,9 @@ impl ModLoaderManager {
             }
         }
         
-        Err(ModError::Api(reqwest::Error::from(std::io::Error::new(
+        Err(ModError::Io(std::io::Error::new(
             std::io::ErrorKind::NotFound,
             "No versions found"
-        ))))
+        )))
     }
 }

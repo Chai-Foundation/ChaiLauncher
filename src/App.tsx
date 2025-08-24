@@ -7,6 +7,7 @@ import SettingsView from './components/SettingsView';
 import AccountsView from './components/AccountsView';
 import CreateInstanceModal from './components/CreateInstanceModal';
 import JavaInstallModal from './components/JavaInstallModal';
+import InstanceSettingsModal from './components/InstanceSettingsModal';
 import { MinecraftInstance, MinecraftVersion, ModpackInfo, LauncherSettings, NewsItem, InstallProgressEvent, InstallCompleteEvent } from './types/minecraft';
 import heroImage from './assets/hero.png';
 import type { CSSProperties } from 'react';
@@ -18,17 +19,20 @@ function App() {
   const [showJavaInstallModal, setShowJavaInstallModal] = useState(false);
   const [pendingInstanceLaunch, setPendingInstanceLaunch] = useState<MinecraftInstance | null>(null);
   const [requiredJavaVersion, setRequiredJavaVersion] = useState<number>(17);
-  
+
   // Instance state
   const [instances, setInstances] = useState<MinecraftInstance[]>([]);
   const [launcherSettings, setLauncherSettings] = useState<LauncherSettings | null>(null);
   const [, setInstallProgress] = useState<Map<string, InstallProgressEvent>>(new Map());
   const [minecraftVersions, setMinecraftVersions] = useState<MinecraftVersion[]>([]);
   const [versionsLoading, setVersionsLoading] = useState(true);
-  
+
+  // Editing instance state
+  const [editingInstance, setEditingInstance] = useState<MinecraftInstance | null>(null);
+
   // Use ref to maintain current instances for event handlers
   const instancesRef = useRef<MinecraftInstance[]>([]);
-  
+
   // Update ref whenever instances change
   useEffect(() => {
     instancesRef.current = instances;
@@ -618,7 +622,12 @@ function App() {
   };
 
   const handleEditInstance = (instance: MinecraftInstance) => {
-    console.log('Editing instance:', instance.name);
+    setEditingInstance(instance);
+    setShowCreateModal(false);
+  };
+
+  const handleCreateButton = () => {
+    setShowCreateModal(true);
   };
 
   const handleDeleteInstance = async (instance: MinecraftInstance) => {
@@ -839,7 +848,9 @@ function App() {
 
       <CreateInstanceModal
         isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
+        onClose={() => {
+          setShowCreateModal(false);
+        }}
         onCreateInstance={handleCreateInstance}
         minecraftVersions={versionsLoading ? [] : minecraftVersions}
         popularModpacks={mockModpacks}
@@ -851,6 +862,14 @@ function App() {
         onInstallComplete={handleJavaInstallComplete}
         requiredJavaVersion={requiredJavaVersion}
       />
+
+      {editingInstance && (
+        <InstanceSettingsModal
+          isOpen={!!editingInstance}
+          onClose={() => setEditingInstance(null)}
+          instance={editingInstance}
+        />
+      )}
     </div>
   </div>
   );

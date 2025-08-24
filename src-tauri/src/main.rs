@@ -9,7 +9,6 @@ mod modpack;
 mod mods;
 mod auth;
 
-use tauri::Manager;
 use reqwest;
 
 #[tauri::command]
@@ -103,11 +102,6 @@ fn main() {
                 }
             });
             
-            #[cfg(debug_assertions)]
-            {
-                let window = app.get_webview_window("main").unwrap();
-                window.open_devtools();
-            }
             Ok(())
         })
         .run(tauri::generate_context!())

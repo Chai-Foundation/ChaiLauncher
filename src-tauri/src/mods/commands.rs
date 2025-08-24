@@ -35,7 +35,7 @@ pub async fn search_mods(
 #[command]
 pub async fn get_mod_details(mod_id: String) -> Result<ModInfo, String> {
     let temp_instance_path = std::env::temp_dir().join("temp_mod_search");
-    let manager = ModManager::new(temp_instance_path).await
+    let _manager = ModManager::new(temp_instance_path).await
         .map_err(|e| format!("Failed to create mod manager: {}", e))?;
     
     // Try to get mod details from any available API
@@ -273,7 +273,7 @@ pub async fn get_featured_mods(
     limit: Option<u32>,
 ) -> Result<Vec<ModInfo>, String> {
     let temp_instance_path = std::env::temp_dir().join("temp_mod_search");
-    let manager = ModManager::new(temp_instance_path).await
+    let _manager = ModManager::new(temp_instance_path).await
         .map_err(|e| format!("Failed to create mod manager: {}", e))?;
     
     let mut all_featured = Vec::new();
