@@ -20,6 +20,12 @@ async fn fetch_news() -> Result<String, String> {
     Ok(body)
 }
 
+// Expose the app version as a Tauri command
+#[tauri::command]
+fn get_app_version() -> &'static str {
+    env!("CARGO_PKG_VERSION")
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -85,7 +91,8 @@ fn main() {
             auth::get_stored_accounts,
             auth::refresh_minecraft_token,
             auth::remove_minecraft_account,
-            fetch_news
+            fetch_news,
+            get_app_version
         ])
         .setup(|app| {
             // Initialize MCVM integration
