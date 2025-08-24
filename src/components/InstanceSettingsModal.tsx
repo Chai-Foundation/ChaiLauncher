@@ -27,6 +27,9 @@ export default function InstanceSettingsModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [hasMoreResults, setHasMoreResults] = useState(false);
+  const [currentOffset, setCurrentOffset] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // Load installed mods for this instance
   React.useEffect(() => {
@@ -47,21 +50,32 @@ export default function InstanceSettingsModal({
     }
   };
 
-  const searchMods = async () => {
+  const searchMods = async (reset = true) => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
+      setHasMoreResults(false);
+      setCurrentOffset(0);
       return;
     }
 
-    setLoading(true);
+    if (reset) {
+      setLoading(true);
+      setCurrentOffset(0);
+      setSearchResults([]);
+    } else {
+      setIsLoadingMore(true);
+    }
+    
     setError(null);
 
     try {
+      const offset = reset ? 0 : currentOffset;
       const results = await invoke<ModInfo[]>('search_mods', {
         query: searchQuery,
         gameVersion: instance.version,
         modLoader: null, // TODO: Detect installed mod loader
-        limit: 20
+        limit: 20,
+        offset: offset
       });
       
       // Filter results to only show compatible mods
@@ -70,13 +84,31 @@ export default function InstanceSettingsModal({
         return mod.game_versions?.includes(instance.version) ?? true;
       });
       
-      setSearchResults(compatibleResults);
+      if (reset) {
+        setSearchResults(compatibleResults);
+      } else {
+        setSearchResults(prev => [...prev, ...compatibleResults]);
+      }
+      
+      // Check if there are more results (if we got a full page, assume there might be more)
+      setHasMoreResults(compatibleResults.length === 20);
+      setCurrentOffset(offset + compatibleResults.length);
+      
     } catch (err) {
       console.error('Search failed:', err);
       setError('Search failed. Please try again.');
-      setSearchResults([]);
+      if (reset) {
+        setSearchResults([]);
+      }
     } finally {
       setLoading(false);
+      setIsLoadingMore(false);
+    }
+  };
+
+  const loadMoreResults = () => {
+    if (!isLoadingMore && hasMoreResults) {
+      searchMods(false);
     }
   };
 
@@ -113,7 +145,7 @@ export default function InstanceSettingsModal({
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    searchMods();
+    searchMods(true);
   };
 
   const formatDownloads = (downloads: number) => {
@@ -133,102 +165,184 @@ export default function InstanceSettingsModal({
     }
   };
 
-  const ModCard = ({ mod, installed = false }: { mod: ModInfo; installed?: boolean }) => (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="bg-stone-800 border border-stone-700 rounded-lg p-4 hover:border-stone-600 transition-colors"
-    >
-      <div className="flex items-start gap-3">
-        {mod.icon_url ? (
-          <img
-            src={mod.icon_url}
-            alt={mod.name}
-            className="w-12 h-12 rounded-lg object-cover"
-          />
-        ) : (
-          <div className="w-12 h-12 bg-stone-700 rounded-lg flex items-center justify-center">
-            <Package size={24} className="text-stone-400" />
-          </div>
-        )}
-        
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-semibold text-white truncate">{mod.name}</h3>
-            {mod.featured && (
-              <Star size={16} className="text-yellow-500 fill-current" />
-            )}
-          </div>
-          
-          <p className="text-stone-400 text-sm mb-2 line-clamp-2">
-            {mod.description}
-          </p>
-          
-          <div className="flex items-center justify-between text-xs text-stone-500 mb-3">
-            <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1">
-                <User size={12} />
-                {mod.author}
-              </span>
-              <span className="flex items-center gap-1">
-                <Download size={12} />
-                {formatDownloads(mod.downloads)}
-              </span>
-              <span className="flex items-center gap-1">
-                <Calendar size={12} />
-                {formatDate(mod.date_updated)}
-              </span>
+  const ModCard = ({ mod, installed = false }: { mod: ModInfo; installed?: boolean }) => {
+    const getPlatformBadge = () => {
+      const platformName = typeof mod.source === 'string' ? mod.source : 
+                          'Direct' in mod.source ? 'Direct' : 'Unknown';
+      
+      const platformColors = {
+        'CurseForge': 'bg-orange-600 text-white',
+        'Modrinth': 'bg-green-600 text-white',
+        'GitHub': 'bg-gray-600 text-white',
+        'Direct': 'bg-blue-600 text-white',
+        'Local': 'bg-purple-600 text-white',
+        'Unknown': 'bg-gray-500 text-white'
+      };
+
+      return (
+        <span className={`px-2 py-1 text-xs rounded-full ${platformColors[platformName] || platformColors.Unknown}`}>
+          {platformName}
+        </span>
+      );
+    };
+
+    const getLoaderBadges = () => {
+      if (!mod.loaders || mod.loaders.length === 0) return null;
+      
+      const loaderColors = {
+        'forge': 'bg-red-600 text-white',
+        'fabric': 'bg-amber-600 text-white',
+        'quilt': 'bg-purple-600 text-white',
+        'neoforge': 'bg-orange-700 text-white',
+        'optifine': 'bg-blue-700 text-white'
+      };
+
+      return (
+        <div className="flex gap-1 flex-wrap">
+          {mod.loaders.slice(0, 3).map((loader: string) => (
+            <span
+              key={loader}
+              className={`px-2 py-1 text-xs rounded ${loaderColors[loader.toLowerCase() as keyof typeof loaderColors] || 'bg-gray-600 text-white'}`}
+            >
+              {loader.charAt(0).toUpperCase() + loader.slice(1)}
+            </span>
+          ))}
+          {mod.loaders.length > 3 && (
+            <span className="px-2 py-1 bg-gray-600 text-white text-xs rounded">
+              +{mod.loaders.length - 3}
+            </span>
+          )}
+        </div>
+      );
+    };
+
+    const getVersionCompatibility = () => {
+      if (!mod.game_versions || mod.game_versions.length === 0) return null;
+      
+      const isCompatible = mod.game_versions.includes(instance.version);
+      const displayVersions = mod.game_versions.slice(0, 3);
+      
+      return (
+        <div className="flex items-center gap-2 text-xs">
+          <span className={`px-2 py-1 rounded-full ${isCompatible ? 'bg-green-900 text-green-200' : 'bg-yellow-900 text-yellow-200'}`}>
+            {isCompatible ? '✓ Compatible' : '⚠ Check Version'}
+          </span>
+          <span className="text-stone-400">
+            {displayVersions.join(', ')}
+            {mod.game_versions.length > 3 && ` +${mod.game_versions.length - 3}`}
+          </span>
+        </div>
+      );
+    };
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-stone-800 border border-stone-700 rounded-lg p-4 hover:border-stone-600 transition-colors"
+      >
+        <div className="flex items-start gap-3">
+          {mod.icon_url ? (
+            <img
+              src={mod.icon_url}
+              alt={mod.name}
+              className="w-12 h-12 rounded-lg object-cover"
+            />
+          ) : (
+            <div className="w-12 h-12 bg-stone-700 rounded-lg flex items-center justify-center">
+              <Package size={24} className="text-stone-400" />
             </div>
-          </div>
+          )}
           
-          <div className="flex items-center justify-between">
-            <div className="flex gap-1">
-              {mod.categories.slice(0, 2).map((category: string) => (
-                <span
-                  key={category}
-                  className="px-2 py-1 bg-stone-700 text-stone-300 text-xs rounded"
-                >
-                  {category}
-                </span>
-              ))}
-              {mod.categories.length > 2 && (
-                <span className="px-2 py-1 bg-stone-700 text-stone-300 text-xs rounded">
-                  +{mod.categories.length - 2}
-                </span>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <h3 className="font-semibold text-white truncate">{mod.name}</h3>
+              {mod.featured && (
+                <Star size={16} className="text-yellow-500 fill-current" />
               )}
+              {getPlatformBadge()}
             </div>
             
-            <div className="flex gap-2">
-              {mod.website_url && (
-                <button
-                  onClick={() => window.open(mod.website_url, '_blank')}
-                  className="p-1 text-stone-400 hover:text-white transition-colors"
-                  title="Visit website"
-                >
-                  <ExternalLink size={16} />
-                </button>
-              )}
-              {installed ? (
-                <button
-                  onClick={() => uninstallMod(mod)}
-                  className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition-colors"
-                >
-                  Uninstall
-                </button>
-              ) : (
-                <button
-                  onClick={() => installMod(mod)}
-                  className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded transition-colors"
-                >
-                  Install
-                </button>
-              )}
+            <p className="text-stone-400 text-sm mb-3 line-clamp-2">
+              {mod.description}
+            </p>
+            
+            {/* Version Compatibility */}
+            <div className="mb-3">
+              {getVersionCompatibility()}
+            </div>
+            
+            {/* Loader Requirements */}
+            <div className="mb-3">
+              {getLoaderBadges()}
+            </div>
+            
+            <div className="flex items-center justify-between text-xs text-stone-500 mb-3">
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1">
+                  <User size={12} />
+                  {mod.author}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Download size={12} />
+                  {formatDownloads(mod.downloads)}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Calendar size={12} />
+                  {formatDate(mod.date_updated)}
+                </span>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="flex gap-1">
+                {mod.categories.slice(0, 2).map((category: string) => (
+                  <span
+                    key={category}
+                    className="px-2 py-1 bg-stone-700 text-stone-300 text-xs rounded"
+                  >
+                    {category}
+                  </span>
+                ))}
+                {mod.categories.length > 2 && (
+                  <span className="px-2 py-1 bg-stone-700 text-stone-300 text-xs rounded">
+                    +{mod.categories.length - 2}
+                  </span>
+                )}
+              </div>
+              
+              <div className="flex gap-2">
+                {mod.website_url && (
+                  <button
+                    onClick={() => window.open(mod.website_url, '_blank')}
+                    className="p-1 text-stone-400 hover:text-white transition-colors"
+                    title="Visit website"
+                  >
+                    <ExternalLink size={16} />
+                  </button>
+                )}
+                {installed ? (
+                  <button
+                    onClick={() => uninstallMod(mod)}
+                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition-colors"
+                  >
+                    Uninstall
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => installMod(mod)}
+                    className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded transition-colors"
+                  >
+                    Install
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </motion.div>
-  );
+      </motion.div>
+    );
+  };
 
   const renderGeneralTab = () => (
     <div className="space-y-6">
@@ -364,10 +478,30 @@ export default function InstanceSettingsModal({
       {/* Content */}
       <div className="max-h-96 overflow-y-auto">
         {searchResults.length > 0 ? (
-          <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-1' : 'grid-cols-1'}`}>
-            {searchResults.map((mod) => (
-              <ModCard key={`search-${mod.id}`} mod={mod} />
-            ))}
+          <div>
+            <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-1' : 'grid-cols-1'}`}>
+              {searchResults.map((mod) => (
+                <ModCard key={`search-${mod.id}`} mod={mod} />
+              ))}
+            </div>
+            
+            {/* Load More Button */}
+            {hasMoreResults && (
+              <div className="mt-4 text-center">
+                <button
+                  onClick={loadMoreResults}
+                  disabled={isLoadingMore}
+                  className="px-6 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-stone-600 text-white rounded-lg transition-colors flex items-center gap-2 mx-auto"
+                >
+                  {isLoadingMore ? (
+                    <Loader size={16} className="animate-spin" />
+                  ) : (
+                    <Download size={16} />
+                  )}
+                  {isLoadingMore ? 'Loading...' : 'Load More'}
+                </button>
+              </div>
+            )}
           </div>
         ) : installedMods.length > 0 ? (
           <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-1' : 'grid-cols-1'}`}>
