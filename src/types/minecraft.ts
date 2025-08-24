@@ -42,6 +42,26 @@ export interface ModpackInfo {
   websiteUrl?: string;
 }
 
+// Enhanced modpack types matching Rust backend
+export interface ModrinthPack {
+  project_id: string;
+  version_id: string;
+  name: string;
+  description: string;
+  author: string;
+  game_versions: string[];
+  loaders: string[];
+  downloads: number;
+  icon_url?: string;
+  website_url?: string;
+}
+
+export interface ModpackInstallProgress {
+  instance_dir: string;
+  progress: number;
+  stage: string;
+}
+
 export interface LauncherSettings {
   default_java_path?: string;
   default_memory: number;

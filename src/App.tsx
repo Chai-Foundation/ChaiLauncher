@@ -3,6 +3,7 @@ import LauncherSidebar from './components/LauncherSidebar';
 import HomeView from './components/HomeView';
 import InstancesView from './components/InstancesView';
 import ModsView from './components/ModsView';
+import ModpackBrowser from './components/ModpackBrowser';
 import SettingsView from './components/SettingsView';
 import AccountsView from './components/AccountsView';
 import CreateInstanceModal from './components/CreateInstanceModal';
@@ -714,6 +715,13 @@ function App() {
         return (
           <ModsView
             selectedInstance={instances.find(instance => instance.id === 'selected') || instances[0] || null}
+          />
+        );
+      case 'browse':
+        return (
+          <ModpackBrowser
+            onCreateInstance={handleCreateInstance}
+            launcherSettings={launcherSettings}
           />
         );
       case 'settings':
