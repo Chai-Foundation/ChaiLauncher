@@ -1,12 +1,13 @@
 import React from 'react';
-import { Plus, Zap, TrendingUp } from 'lucide-react';
+import { Plus, Zap, TrendingUp, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { MinecraftInstance, NewsItem } from '../types/minecraft';
+import { MinecraftInstance } from '../types/minecraft';
 import InstanceCard from './InstanceCard';
+import { useInfiniteNews } from '../hooks/useInfiniteNews';
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
 
 interface HomeViewProps {
   recentInstances: MinecraftInstance[];
-  news: NewsItem[];
   onCreateInstance: () => void;
   onPlayInstance: (instance: MinecraftInstance) => void;
   onEditInstance: (instance: MinecraftInstance) => void;
@@ -16,13 +17,18 @@ interface HomeViewProps {
 
 const HomeView: React.FC<HomeViewProps> = ({
   recentInstances,
-  news,
   onCreateInstance,
   onPlayInstance,
   onEditInstance,
   onDeleteInstance,
   onOpenFolder,
 }) => {
+  const { news, loading, hasMore, error, loadMore, refresh } = useInfiniteNews();
+  const { sentinelRef } = useInfiniteScroll({
+    loading,
+    hasMore,
+    onLoadMore: loadMore,
+  });
   // Helper to render inline code and decode HTML entities
   function renderWithInlineCode(text: string) {
     if (!text) return null;
@@ -148,6 +154,13 @@ const HomeView: React.FC<HomeViewProps> = ({
       <div>
         <div className="flex items-center gap-2 mb-4">
           <h2 className="text-xl font-semibold text-white">Latest News</h2>
+          <button
+            onClick={refresh}
+            className="text-amber-400 underline text-sm hover:text-amber-300 transition-colors"
+            title="Refresh news"
+          >
+            Refresh
+          </button>
           <a
             href="https://www.minecraft.net/en-us/articles"
             target="_blank"
@@ -157,12 +170,20 @@ const HomeView: React.FC<HomeViewProps> = ({
             View from source on minecraft.net
           </a>
         </div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-900/50 border border-red-600/30 rounded-lg text-red-200 text-sm">
+            Failed to load news: {error}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {news.slice(0, 48).map((article) => (
+          {news.map((article, index) => (
             <motion.div
               key={article.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: (index % 24) * 0.05 }}
               className="relative bg-stone-900/50 backdrop-blur-sm rounded-xl border border-amber-600/30 overflow-hidden hover:border-amber-500/50 transition-all duration-300 hover:scale-105"
             >
               <a
@@ -178,6 +199,7 @@ const HomeView: React.FC<HomeViewProps> = ({
                     src={article.imageUrl}
                     alt={article.title}
                     className="w-full h-32 object-cover"
+                    loading="lazy"
                   />
                 )}
                 <div className="p-4">
@@ -197,6 +219,21 @@ const HomeView: React.FC<HomeViewProps> = ({
               </div>
             </motion.div>
           ))}
+        </div>
+
+        {/* Infinite scroll sentinel */}
+        <div ref={sentinelRef} className="flex justify-center py-8">
+          {loading && (
+            <div className="flex items-center gap-2 text-amber-400">
+              <Loader2 className="animate-spin" size={20} />
+              <span>Loading more news...</span>
+            </div>
+          )}
+          {!hasMore && news.length > 0 && (
+            <div className="text-stone-400 text-sm">
+              No more news articles to load
+            </div>
+          )}
         </div>
       </div>
     </div>
