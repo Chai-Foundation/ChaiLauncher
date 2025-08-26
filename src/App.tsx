@@ -163,7 +163,15 @@ function App() {
         console.error('Failed to load Minecraft versions:', error);
         
         // Show detailed error message to user for debugging
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        let errorMessage: string;
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        } else if (typeof error === 'object' && error !== null && 'message' in error) {
+          errorMessage = String((error as any).message);
+        } else {
+          errorMessage = String(error);
+        }
+        
         alert(`Failed to load Minecraft versions: ${errorMessage}\n\nUsing fallback versions. Please check your internet connection or report this issue for macOS debugging.`);
         
         // Fallback to a minimal set if API fails
