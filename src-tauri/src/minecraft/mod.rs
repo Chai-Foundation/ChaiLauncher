@@ -25,16 +25,26 @@ pub struct MinecraftInstance {
     pub name: String,
     pub version: String,
     pub modpack: Option<String>,
+    #[serde(rename = "modpackVersion")]
     pub modpack_version: Option<String>,
+    #[serde(rename = "gameDir")]
     pub game_dir: PathBuf,
+    #[serde(rename = "javaPath")]
     pub java_path: Option<String>,
+    #[serde(rename = "jvmArgs")]
     pub jvm_args: Option<Vec<String>>,
+    #[serde(rename = "lastPlayed")]
     pub last_played: Option<String>,
+    #[serde(rename = "totalPlayTime")]
     pub total_play_time: u64,
     pub icon: Option<String>,
+    #[serde(rename = "isModded")]
     pub is_modded: bool,
+    #[serde(rename = "modsCount")]
     pub mods_count: u32,
+    #[serde(rename = "isExternal")]
     pub is_external: Option<bool>,
+    #[serde(rename = "externalLauncher")]
     pub external_launcher: Option<String>,
 }
 

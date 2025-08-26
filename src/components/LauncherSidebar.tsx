@@ -1,6 +1,6 @@
 import React, { CSSProperties, useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Home, Package, Settings, Plus, Download, User } from 'lucide-react';
+import { Home, Package, Settings, Plus, Download, User, Server } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface LauncherSidebarProps {
@@ -12,6 +12,7 @@ const LauncherSidebar: React.FC<LauncherSidebarProps> = ({ activeView, onViewCha
   const menuItems = [
     { id: 'home', label: 'Home', icon: Home },
     { id: 'instances', label: 'Instances', icon: Package },
+    { id: 'servers', label: 'Servers', icon: Server },
     { id: 'browse', label: 'Browse Modpacks', icon: Plus },
     { id: 'downloads', label: 'Downloads', icon: Download },
     { id: 'accounts', label: 'Accounts', icon: User },

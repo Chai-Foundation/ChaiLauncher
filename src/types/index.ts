@@ -95,6 +95,7 @@ export interface AppSettings {
   keyboard_shortcuts: Record<string, string>;
 }
 
-// Re-export minecraft and mod types
+// Re-export minecraft, mod, and server types
 export * from './minecraft';
 export * from './mods';
+export * from './servers';

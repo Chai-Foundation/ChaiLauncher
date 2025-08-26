@@ -8,8 +8,10 @@ mod storage;
 mod modpack;
 mod mods;
 mod auth;
+mod docker;
 
 use reqwest;
+use tauri::Manager;
 
 #[tauri::command]
 async fn fetch_news() -> Result<String, String> {
@@ -91,9 +93,26 @@ fn main() {
             auth::refresh_minecraft_token,
             auth::remove_minecraft_account,
             fetch_news,
-            get_app_version
+            get_app_version,
+            docker::commands::test_docker_connection,
+            docker::commands::add_docker_connection,
+            docker::commands::deploy_minecraft_server,
+            docker::commands::start_server,
+            docker::commands::stop_server,
+            docker::commands::remove_server,
+            docker::commands::get_servers,
+            docker::commands::get_servers_for_instance,
+            docker::commands::get_server_status,
+            docker::commands::get_server_logs,
+            docker::commands::execute_server_command,
+            docker::commands::restart_server,
+            docker::commands::backup_server,
+            docker::commands::get_server_stats
         ])
         .setup(|app| {
+            // Initialize Docker manager state
+            app.manage(docker::commands::DockerManagerState::new(docker::DockerManager::new()));
+            
             // Initialize MCVM integration
             tauri::async_runtime::spawn(async {
                 if let Err(e) = minecraft::initialize_minecraft().await {
