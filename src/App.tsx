@@ -161,6 +161,11 @@ function App() {
         setMinecraftVersions(versionManifest.versions);
       } catch (error) {
         console.error('Failed to load Minecraft versions:', error);
+        
+        // Show detailed error message to user for debugging
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        alert(`Failed to load Minecraft versions: ${errorMessage}\n\nUsing fallback versions. Please check your internet connection or report this issue for macOS debugging.`);
+        
         // Fallback to a minimal set if API fails
         setMinecraftVersions([
           { id: '1.20.4', type: 'release', releaseTime: '2023-12-07T12:00:00Z', url: '' },

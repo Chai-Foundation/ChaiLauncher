@@ -46,10 +46,19 @@ pub async fn get_minecraft_versions() -> Result<VersionManifest, String> {
     let url = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
     
     let response = reqwest::get(url).await
-        .map_err(|e| format!("Failed to fetch version manifest: {}", e))?;
+        .map_err(|e| {
+            let os_info = if cfg!(target_os = "macos") {
+                "macOS"
+            } else if cfg!(target_os = "windows") {
+                "Windows"
+            } else {
+                "Linux"
+            };
+            format!("Failed to fetch version manifest from {} (Platform: {}): {}", url, os_info, e)
+        })?;
     
     let manifest: VersionManifest = response.json().await
-        .map_err(|e| format!("Failed to parse version manifest: {}", e))?;
+        .map_err(|e| format!("Failed to parse version manifest JSON: {}. The response may be malformed or the API may have changed.", e))?;
     
     Ok(manifest)
 }
