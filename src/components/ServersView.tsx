@@ -8,6 +8,7 @@ import {
   Settings, 
   Plus, 
   Container,
+  RefreshCw,
   Monitor,
   Users,
   HardDrive,
@@ -43,11 +44,27 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
     loadServers();
   }, []);
 
+  // Separate effect for periodic status refresh
+  useEffect(() => {
+    if (servers.length === 0) return;
+
+    // Set up periodic status refresh every 10 seconds
+    const statusInterval = setInterval(() => {
+      refreshServerStatuses();
+    }, 10000);
+
+    return () => {
+      clearInterval(statusInterval);
+    };
+  }, [servers.length]); // Only depend on the number of servers, not the full array
+
   const loadServers = async () => {
     try {
       setLoading(true);
       const serversData = await invoke<ServerInstance[]>('get_servers');
       setServers(serversData);
+      // After loading servers, refresh their status from Docker
+      refreshServerStatuses(serversData);
     } catch (error) {
       console.error('Failed to load servers:', error);
     } finally {
@@ -55,17 +72,48 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
     }
   };
 
+  const refreshServerStatuses = async (serverList?: ServerInstance[]) => {
+    const serversToCheck = serverList || servers;
+    if (serversToCheck.length === 0) return;
+
+    try {
+      // Check status for each server
+      const statusPromises = serversToCheck.map(async (server) => {
+        try {
+          const status = await invoke<ServerStatus>('get_server_status', { serverId: server.id });
+          return { id: server.id, status };
+        } catch (error) {
+          console.error(`Failed to get status for server ${server.id}:`, error);
+          return { id: server.id, status: 'unknown' as ServerStatus };
+        }
+      });
+
+      const statusResults = await Promise.all(statusPromises);
+      
+      // Update server statuses in state
+      setServers(prev => 
+        prev.map(server => {
+          const statusUpdate = statusResults.find(result => result.id === server.id);
+          return statusUpdate ? { ...server, status: statusUpdate.status } : server;
+        })
+      );
+    } catch (error) {
+      console.error('Failed to refresh server statuses:', error);
+    }
+  };
+
   const handleStartServer = async (server: ServerInstance) => {
     try {
       await invoke('start_server', { serverId: server.id });
-      // Update local state
+      // Update local state immediately for responsive UI
       setServers(prev => 
         prev.map(s => s.id === server.id ? { ...s, status: 'starting' as ServerStatus } : s)
       );
-      // Reload servers to get actual status
-      setTimeout(loadServers, 2000);
+      // Refresh status after a short delay to get actual Docker status
+      setTimeout(() => refreshServerStatuses(), 2000);
     } catch (error) {
       console.error('Failed to start server:', error);
+      alert(`Failed to start server: ${error}`);
     }
   };
 
@@ -75,9 +123,11 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
       setServers(prev => 
         prev.map(s => s.id === server.id ? { ...s, status: 'stopping' as ServerStatus } : s)
       );
-      setTimeout(loadServers, 2000);
+      // Refresh status after a short delay to get actual Docker status
+      setTimeout(() => refreshServerStatuses(), 2000);
     } catch (error) {
       console.error('Failed to stop server:', error);
+      alert(`Failed to stop server: ${error}`);
     }
   };
 
@@ -113,7 +163,9 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
       console.log('Deploy server result:', result);
       
       setShowDeployModal(false);
-      loadServers();
+      await loadServers();
+      // Refresh status after deployment
+      setTimeout(() => refreshServerStatuses(), 3000);
       
       // Show success message
       alert(`Server "${request.name}" deployed successfully!`);
@@ -188,6 +240,14 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
           >
             <Container className="w-4 h-4" />
             Add Docker Connection
+          </button>
+          <button
+            onClick={() => refreshServerStatuses()}
+            className="flex items-center gap-2 px-4 py-2 bg-stone-600 hover:bg-stone-500 rounded-lg transition-colors"
+            title="Refresh server statuses"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh Status
           </button>
           <button
             onClick={() => setShowDeployModal(true)}

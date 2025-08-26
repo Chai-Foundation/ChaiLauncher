@@ -1,4 +1,4 @@
-use super::{DockerManager, DockerConnection, ServerDeploymentRequest, ServerInstance, LogEntry};
+use super::{DockerManager, DockerConnection, ServerDeploymentRequest, ServerInstance};
 use crate::minecraft::MinecraftInstance;
 use tokio::sync::Mutex;
 use tauri::State;
@@ -8,8 +8,10 @@ pub type DockerManagerState = Mutex<DockerManager>;
 
 #[tauri::command]
 pub async fn test_docker_connection(connection: DockerConnection) -> Result<bool, String> {
-    let manager = DockerManager::new();
-    manager.test_connection(&connection).await
+    match DockerManager::new().await {
+        Ok(manager) => manager.test_connection(&connection).await,
+        Err(e) => Err(format!("Failed to create Docker manager: {}", e))
+    }
 }
 
 #[tauri::command]
@@ -63,7 +65,7 @@ pub async fn get_servers(
     state: State<'_, DockerManagerState>,
 ) -> Result<Vec<ServerInstance>, String> {
     let manager = state.lock().await;
-    Ok(manager.get_servers().to_vec())
+    Ok(manager.get_servers().into_iter().cloned().collect())
 }
 
 #[tauri::command]
@@ -76,67 +78,21 @@ pub async fn get_servers_for_instance(
 }
 
 #[tauri::command]
-pub async fn get_server_status(
+pub async fn get_docker_connections(
     state: State<'_, DockerManagerState>,
-    server_id: String,
-) -> Result<super::ServerStatus, String> {
-    // Get server info first to avoid holding lock across await
-    let server = {
-        let manager = state.lock().await;
-        manager.get_servers().iter()
-            .find(|s| s.id == server_id)
-            .cloned()
-            .ok_or("Server not found")?
-    };
-
-    // For now, return the cached status
-    // In a full implementation, we would query Docker here
-    Ok(server.status)
+) -> Result<Vec<DockerConnection>, String> {
+    let manager = state.lock().await;
+    Ok(manager.get_docker_connections().into_iter().cloned().collect())
 }
 
 #[tauri::command]
 pub async fn get_server_logs(
     state: State<'_, DockerManagerState>,
     server_id: String,
-    _lines: Option<u32>,
-) -> Result<Vec<LogEntry>, String> {
+    lines: Option<u32>,
+) -> Result<Vec<super::LogEntry>, String> {
     let manager = state.lock().await;
-    
-    // Find the server
-    let server = manager.get_servers().iter()
-        .find(|s| s.id == server_id)
-        .ok_or("Server not found")?;
-
-    // For now, generate some mock logs since full Docker log implementation would be complex
-    let mock_logs = vec![
-        LogEntry {
-            timestamp: chrono::Utc::now() - chrono::Duration::minutes(5),
-            level: super::LogLevel::Info,
-            message: format!("[Server thread/INFO]: Starting minecraft server version 1.20.4"),
-        },
-        LogEntry {
-            timestamp: chrono::Utc::now() - chrono::Duration::minutes(4),
-            level: super::LogLevel::Info,
-            message: format!("[Server thread/INFO]: Loading properties"),
-        },
-        LogEntry {
-            timestamp: chrono::Utc::now() - chrono::Duration::minutes(3),
-            level: super::LogLevel::Info,
-            message: format!("[Server thread/INFO]: Preparing level \"world\""),
-        },
-        LogEntry {
-            timestamp: chrono::Utc::now() - chrono::Duration::minutes(2),
-            level: super::LogLevel::Info,
-            message: format!("[Server thread/INFO]: Done ({}s)! For help, type \"help\"", 2.5),
-        },
-        LogEntry {
-            timestamp: chrono::Utc::now() - chrono::Duration::minutes(1),
-            level: super::LogLevel::Info,
-            message: format!("[Server thread/INFO]: Server is running on port {}", server.port),
-        },
-    ];
-
-    Ok(mock_logs)
+    manager.get_server_logs(&server_id, lines).await
 }
 
 #[tauri::command]
@@ -146,27 +102,19 @@ pub async fn execute_server_command(
     command: String,
 ) -> Result<String, String> {
     let manager = state.lock().await;
-    
-    // Find the server
-    let server = manager.get_servers().iter()
-        .find(|s| s.id == server_id)
-        .ok_or("Server not found")?;
-
-    if server.status != super::ServerStatus::Running {
-        return Err("Server is not running".to_string());
-    }
-
-    // For a full implementation, we would use Docker exec to run the command in the container
-    // For now, just return a success message
-    match command.trim() {
-        "stop" => Ok("Server is shutting down...".to_string()),
-        cmd if cmd.starts_with("say ") => Ok(format!("Broadcasting: {}", &cmd[4..])),
-        cmd if cmd.starts_with("kick ") => Ok(format!("Kicking player: {}", &cmd[5..])),
-        "list" => Ok("There are 0 of a max of 20 players online:".to_string()),
-        "help" => Ok("Available commands: stop, say <message>, kick <player>, list, whitelist, op, deop".to_string()),
-        _ => Ok(format!("Command '{}' executed successfully", command)),
-    }
+    manager.exec_command(&server_id, command).await
 }
+
+#[tauri::command]
+pub async fn get_server_status(
+    state: State<'_, DockerManagerState>,
+    server_id: String,
+) -> Result<super::ServerStatus, String> {
+    let mut manager = state.lock().await;
+    manager.get_server_status(&server_id).await
+}
+
+
 
 #[tauri::command]
 pub async fn restart_server(
@@ -201,6 +149,7 @@ pub async fn backup_server(
     
     let server = manager.get_servers().iter()
         .find(|s| s.id == server_id)
+        .cloned()
         .ok_or("Server not found")?;
 
     let backup_id = format!("backup-{}-{}", server.name, chrono::Utc::now().timestamp());

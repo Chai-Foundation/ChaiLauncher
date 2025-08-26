@@ -12,6 +12,7 @@ interface ServerLogsModalProps {
 const ServerLogsModal: React.FC<ServerLogsModalProps> = ({ isOpen, onClose, server }) => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [lastLogTimestamp, setLastLogTimestamp] = useState<string | null>(null);
   const [command, setCommand] = useState('');
   const [autoScroll, setAutoScroll] = useState(true);
   const logsEndRef = useRef<HTMLDivElement>(null);
@@ -19,9 +20,10 @@ const ServerLogsModal: React.FC<ServerLogsModalProps> = ({ isOpen, onClose, serv
 
   useEffect(() => {
     if (isOpen && server) {
-      loadLogs();
-      // Set up periodic log refresh
-      const interval = setInterval(loadLogs, 5000);
+      // Initial load - get all logs
+      loadInitialLogs();
+      // Set up periodic log following - only get new logs
+      const interval = setInterval(followLogs, 3000);
       return () => clearInterval(interval);
     }
   }, [isOpen, server]);
@@ -32,7 +34,8 @@ const ServerLogsModal: React.FC<ServerLogsModalProps> = ({ isOpen, onClose, serv
     }
   }, [logs, autoScroll]);
 
-  const loadLogs = async () => {
+  // Initial load - get all recent logs
+  const loadInitialLogs = async () => {
     if (!server) return;
     
     try {
@@ -42,28 +45,63 @@ const ServerLogsModal: React.FC<ServerLogsModalProps> = ({ isOpen, onClose, serv
         lines: 100 
       });
       setLogs(serverLogs);
+      
+      // Set the timestamp of the last log for following
+      if (serverLogs.length > 0) {
+        setLastLogTimestamp(serverLogs[serverLogs.length - 1].timestamp);
+      }
     } catch (error) {
       console.error('Failed to load server logs:', error);
-      // For now, add some mock logs since the backend implementation is placeholder
-      setLogs([
+      // Mock logs for fallback
+      const mockLogs = [
         {
-          timestamp: new Date().toISOString(),
-          level: 'info',
-          message: `Server ${server.name} started successfully`
+          timestamp: new Date(Date.now() - 120000).toISOString(),
+          level: 'info' as const,
+          message: 'Starting minecraft server version ' + (server.minecraft_instance_id.includes('1.20') ? '1.20.4' : '1.19.4')
         },
         {
           timestamp: new Date(Date.now() - 60000).toISOString(),
-          level: 'info',
+          level: 'info' as const,
           message: 'Loading libraries, please wait...'
         },
         {
-          timestamp: new Date(Date.now() - 120000).toISOString(),
-          level: 'info',
-          message: 'Starting minecraft server version ' + (server.minecraft_instance_id.includes('1.20') ? '1.20.4' : '1.19.4')
+          timestamp: new Date().toISOString(),
+          level: 'info' as const,
+          message: `Server ${server.name} started successfully`
         }
-      ]);
+      ];
+      setLogs(mockLogs);
+      setLastLogTimestamp(mockLogs[mockLogs.length - 1].timestamp);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Follow logs - only get new logs since last timestamp
+  const followLogs = async () => {
+    if (!server || !lastLogTimestamp) return;
+    
+    try {
+      // Get recent logs (small number since we're following)
+      const serverLogs = await invoke<LogEntry[]>('get_server_logs', { 
+        serverId: server.id,
+        lines: 20 
+      });
+      
+      // Filter to only new logs after our last timestamp
+      const newLogs = serverLogs.filter(log => 
+        new Date(log.timestamp) > new Date(lastLogTimestamp)
+      );
+      
+      if (newLogs.length > 0) {
+        // Append new logs to existing logs
+        setLogs(prev => [...prev, ...newLogs]);
+        // Update last timestamp
+        setLastLogTimestamp(newLogs[newLogs.length - 1].timestamp);
+      }
+    } catch (error) {
+      console.error('Failed to follow server logs:', error);
+      // Don't do anything on error - just keep existing logs
     }
   };
 
@@ -90,6 +128,7 @@ const ServerLogsModal: React.FC<ServerLogsModalProps> = ({ isOpen, onClose, serv
       };
 
       setLogs(prev => [...prev, commandLog, responseLog]);
+      setLastLogTimestamp(responseLog.timestamp); // Update timestamp to include command logs
       setCommand('');
     } catch (error) {
       console.error('Failed to send command:', error);
@@ -99,12 +138,14 @@ const ServerLogsModal: React.FC<ServerLogsModalProps> = ({ isOpen, onClose, serv
         message: `Failed to send command: ${error}`
       };
       setLogs(prev => [...prev, errorLog]);
+      setLastLogTimestamp(errorLog.timestamp); // Update timestamp to include error logs
     }
   };
 
   const handleClearLogs = () => {
     if (confirm('Are you sure you want to clear the logs display? This won\'t affect server logs.')) {
       setLogs([]);
+      setLastLogTimestamp(null); // Reset timestamp so next follow gets all recent logs
     }
   };
 

@@ -49,6 +49,22 @@ pub enum ServerStatus {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LogEntry {
+    pub timestamp: String,
+    pub level: LogLevel,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LogLevel {
+    Info,
+    Warn,
+    Error,
+    Debug,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerDeploymentRequest {
     pub name: String,
     pub minecraft_instance_id: String,
@@ -79,18 +95,3 @@ pub struct DockerImage {
     pub created: chrono::DateTime<chrono::Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LogEntry {
-    pub timestamp: chrono::DateTime<chrono::Utc>,
-    pub level: LogLevel,
-    pub message: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum LogLevel {
-    Info,
-    Warn,
-    Error,
-    Debug,
-}

@@ -102,6 +102,7 @@ fn main() {
             docker::commands::remove_server,
             docker::commands::get_servers,
             docker::commands::get_servers_for_instance,
+            docker::commands::get_docker_connections,
             docker::commands::get_server_status,
             docker::commands::get_server_logs,
             docker::commands::execute_server_command,
@@ -110,11 +111,22 @@ fn main() {
             docker::commands::get_server_stats
         ])
         .setup(|app| {
-            // Initialize Docker manager state
-            app.manage(docker::commands::DockerManagerState::new(docker::DockerManager::new()));
-            
-            // Initialize MCVM integration
-            tauri::async_runtime::spawn(async {
+            // Initialize Docker manager and MCVM concurrently
+            let app_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                // Initialize Docker manager state with persistent storage
+                match docker::DockerManager::new().await {
+                    Ok(docker_manager) => {
+                        app_handle.manage(docker::commands::DockerManagerState::new(docker_manager));
+                        println!("✅ Docker manager initialized with persistent storage");
+                    }
+                    Err(e) => {
+                        eprintln!("⚠️  Failed to initialize Docker manager: {}", e);
+                        eprintln!("   Docker functionality will be unavailable");
+                    }
+                }
+                
+                // Initialize MCVM integration
                 if let Err(e) = minecraft::initialize_minecraft().await {
                     eprintln!("⚠️  Failed to initialize MCVM: {}", e);
                     eprintln!("   ChaiLauncher will continue with fallback systems");

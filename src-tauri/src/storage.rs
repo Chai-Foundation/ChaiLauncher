@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use tokio::fs;
 use anyhow::{Result, Context};
 use crate::minecraft::MinecraftInstance;
+use crate::docker::types::{DockerConnection, ServerInstance};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InstanceMetadata {
@@ -29,6 +30,8 @@ pub struct InstanceMetadata {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LauncherConfig {
     pub instances: HashMap<String, InstanceMetadata>,
+    pub docker_connections: HashMap<String, DockerConnection>,
+    pub servers: HashMap<String, ServerInstance>,
     pub settings: LauncherSettings,
     pub version: String,
 }
@@ -72,8 +75,10 @@ impl Default for LauncherConfig {
     fn default() -> Self {
         Self {
             instances: HashMap::new(),
+            docker_connections: HashMap::new(),
+            servers: HashMap::new(),
             settings: LauncherSettings::default(),
-            version: "2.0.0".to_string(),
+            version: "2.1.0".to_string(),
         }
     }
 }
@@ -101,6 +106,16 @@ impl StorageManager {
             default_config
         };
 
+        // If we just migrated (version is 2.1.0 and we loaded from existing file), save the migrated config
+        if config_path.exists() && config.version == "2.1.0" {
+            // Check if this is a fresh migration by looking for the docker_connections field in the raw file
+            let raw_content = fs::read_to_string(&config_path).await?;
+            if !raw_content.contains("docker_connections") {
+                Self::save_config(&config_path, &config).await?;
+                println!("💾 Saved migrated config to disk");
+            }
+        }
+
         // Ensure essential directories exist
         fs::create_dir_all(&config.settings.instances_dir).await
             .context("Failed to create instances directory")?;
@@ -114,10 +129,46 @@ impl StorageManager {
         let content = fs::read_to_string(path).await
             .context("Failed to read config file")?;
         
-        let config: LauncherConfig = serde_json::from_str(&content)
-            .context("Failed to parse config file")?;
-            
-        Ok(config)
+        // First, try to parse as the new format
+        match serde_json::from_str::<LauncherConfig>(&content) {
+            Ok(config) => Ok(config),
+            Err(_) => {
+                // If that fails, try to parse as the old format and migrate
+                let old_config: serde_json::Value = serde_json::from_str(&content)
+                    .context("Failed to parse config file as JSON")?;
+                
+                Self::migrate_config(old_config)
+            }
+        }
+    }
+
+    fn migrate_config(old_config: serde_json::Value) -> Result<LauncherConfig> {
+        // Create a new config with the old data + new fields
+        let mut new_config = LauncherConfig::default();
+        
+        // Migrate instances if they exist
+        if let Some(instances) = old_config.get("instances") {
+            if let Ok(instances_map) = serde_json::from_value::<HashMap<String, InstanceMetadata>>(instances.clone()) {
+                println!("📦 Migrated {} instances", instances_map.len());
+                new_config.instances = instances_map;
+            }
+        }
+        
+        // Migrate settings if they exist
+        if let Some(settings) = old_config.get("settings") {
+            if let Ok(settings_struct) = serde_json::from_value::<LauncherSettings>(settings.clone()) {
+                new_config.settings = settings_struct;
+                println!("⚙️  Migrated launcher settings");
+            }
+        }
+        
+        // Version is now "2.1.0" to indicate migration
+        new_config.version = "2.1.0".to_string();
+        
+        println!("✅ Successfully migrated config from v2.0.0 to v2.1.0");
+        println!("   Added support for Docker connections and server management");
+        
+        Ok(new_config)
     }
 
     async fn save_config(path: &PathBuf, config: &LauncherConfig) -> Result<()> {
@@ -244,6 +295,76 @@ impl StorageManager {
         } else {
             Err(anyhow::anyhow!("Instance not found: {}", instance_id))
         }
+    }
+
+    // Docker connection management
+    pub async fn add_docker_connection(&mut self, connection: DockerConnection) -> Result<()> {
+        self.config.docker_connections.insert(connection.id.clone(), connection);
+        self.save().await
+    }
+
+    pub async fn update_docker_connection(&mut self, connection: DockerConnection) -> Result<()> {
+        if self.config.docker_connections.contains_key(&connection.id) {
+            self.config.docker_connections.insert(connection.id.clone(), connection);
+            self.save().await
+        } else {
+            Err(anyhow::anyhow!("Docker connection not found: {}", connection.id))
+        }
+    }
+
+    pub async fn remove_docker_connection(&mut self, connection_id: &str) -> Result<()> {
+        if self.config.docker_connections.remove(connection_id).is_some() {
+            // Also remove any servers using this connection
+            self.config.servers.retain(|_, server| server.docker_connection_id != connection_id);
+            self.save().await
+        } else {
+            Err(anyhow::anyhow!("Docker connection not found: {}", connection_id))
+        }
+    }
+
+    pub fn get_docker_connection(&self, connection_id: &str) -> Option<&DockerConnection> {
+        self.config.docker_connections.get(connection_id)
+    }
+
+    pub fn get_docker_connections(&self) -> Vec<&DockerConnection> {
+        self.config.docker_connections.values().collect()
+    }
+
+    // Server management
+    pub async fn add_server(&mut self, server: ServerInstance) -> Result<()> {
+        self.config.servers.insert(server.id.clone(), server);
+        self.save().await
+    }
+
+    pub async fn update_server(&mut self, server: ServerInstance) -> Result<()> {
+        if self.config.servers.contains_key(&server.id) {
+            self.config.servers.insert(server.id.clone(), server);
+            self.save().await
+        } else {
+            Err(anyhow::anyhow!("Server not found: {}", server.id))
+        }
+    }
+
+    pub async fn remove_server(&mut self, server_id: &str) -> Result<()> {
+        if self.config.servers.remove(server_id).is_some() {
+            self.save().await
+        } else {
+            Err(anyhow::anyhow!("Server not found: {}", server_id))
+        }
+    }
+
+    pub fn get_server(&self, server_id: &str) -> Option<&ServerInstance> {
+        self.config.servers.get(server_id)
+    }
+
+    pub fn get_servers(&self) -> Vec<&ServerInstance> {
+        self.config.servers.values().collect()
+    }
+
+    pub fn get_servers_for_instance(&self, instance_id: &str) -> Vec<&ServerInstance> {
+        self.config.servers.values()
+            .filter(|s| s.minecraft_instance_id == instance_id)
+            .collect()
     }
 }
 

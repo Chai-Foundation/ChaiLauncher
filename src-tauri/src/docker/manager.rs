@@ -1,5 +1,6 @@
 use super::types::*;
 use crate::minecraft::MinecraftInstance;
+use crate::storage::StorageManager;
 use bollard::{Docker, API_DEFAULT_VERSION};
 use bollard::container::{
     Config, CreateContainerOptions, RemoveContainerOptions, StartContainerOptions, 
@@ -12,44 +13,78 @@ use uuid;
 
 pub struct DockerManager {
     connections: HashMap<String, Docker>,
-    servers: Vec<ServerInstance>,
+    storage: StorageManager,
 }
 
 impl DockerManager {
-    pub fn new() -> Self {
-        Self {
+    pub async fn new() -> Result<Self, String> {
+        let storage = StorageManager::new().await
+            .map_err(|e| format!("Failed to initialize storage: {}", e))?;
+        
+        let mut manager = Self {
             connections: HashMap::new(),
-            servers: Vec::new(),
-        }
+            storage,
+        };
+        
+        // Load and reconnect to saved Docker connections
+        manager.reconnect_saved_connections().await?;
+        
+        Ok(manager)
     }
 
-    /// Test connection to Docker
-    pub async fn test_connection(&self, connection: &DockerConnection) -> Result<bool, String> {
-        let docker = match connection.connection_type {
+    /// Reconnect to all saved Docker connections
+    async fn reconnect_saved_connections(&mut self) -> Result<(), String> {
+        let connections = self.storage.get_docker_connections().iter().cloned().cloned().collect::<Vec<_>>();
+        
+        for connection in connections {
+            if let Ok(docker) = self.create_docker_connection(&connection).await {
+                self.connections.insert(connection.id.clone(), docker);
+                // Update connection status to connected in storage
+                let mut updated_connection = connection;
+                updated_connection.is_connected = true;
+                if let Err(e) = self.storage.update_docker_connection(updated_connection).await {
+                    eprintln!("Failed to update connection status: {}", e);
+                }
+            } else {
+                // Mark connection as disconnected if we can't connect
+                let mut updated_connection = connection;
+                updated_connection.is_connected = false;
+                if let Err(e) = self.storage.update_docker_connection(updated_connection).await {
+                    eprintln!("Failed to update connection status: {}", e);
+                }
+            }
+        }
+        
+        Ok(())
+    }
+
+    /// Create a Docker connection based on the connection type
+    async fn create_docker_connection(&self, connection: &DockerConnection) -> Result<Docker, String> {
+        match connection.connection_type {
             DockerConnectionType::Local => {
                 self.connect_local_docker()
-                    .map_err(|e| format!("Failed to connect to local Docker: {}", e))?
+                    .map_err(|e| format!("Failed to connect to local Docker: {}", e))
             },
             DockerConnectionType::WindowsNamedPipe => {
                 #[cfg(target_os = "windows")]
                 {
                     Docker::connect_with_named_pipe_defaults()
-                        .map_err(|e| format!("Failed to connect via Windows named pipe: {}", e))?
+                        .map_err(|e| format!("Failed to connect via Windows named pipe: {}", e))
                 }
                 #[cfg(not(target_os = "windows"))]
                 {
-                    return Err("Windows named pipe connection is only available on Windows".to_string());
+                    Err("Windows named pipe connection is only available on Windows".to_string())
                 }
             },
             DockerConnectionType::UnixSocket => {
                 #[cfg(not(target_os = "windows"))]
                 {
                     Docker::connect_with_socket_defaults()
-                        .map_err(|e| format!("Failed to connect via Unix socket: {}", e))?
+                        .map_err(|e| format!("Failed to connect via Unix socket: {}", e))
                 }
                 #[cfg(target_os = "windows")]
                 {
-                    return Err("Unix socket connection is not available on Windows".to_string());
+                    Err("Unix socket connection is not available on Windows".to_string())
                 }
             },
             DockerConnectionType::Remote => {
@@ -59,19 +94,23 @@ impl DockerManager {
                     format!("tcp://{}:2376", connection.host)
                 };
                 Docker::connect_with_http(&host, 120, API_DEFAULT_VERSION)
-                    .map_err(|e| format!("Failed to connect to remote Docker: {}", e))?
+                    .map_err(|e| format!("Failed to connect to remote Docker: {}", e))
             },
             DockerConnectionType::Swarm => {
-                // For swarm, we connect to the manager node
                 let host = if let Some(port) = connection.port {
                     format!("tcp://{}:{}", connection.host, port)
                 } else {
                     format!("tcp://{}:2376", connection.host)
                 };
                 Docker::connect_with_http(&host, 120, API_DEFAULT_VERSION)
-                    .map_err(|e| format!("Failed to connect to Docker Swarm: {}", e))?
+                    .map_err(|e| format!("Failed to connect to Docker Swarm: {}", e))
             }
-        };
+        }
+    }
+
+    /// Test connection to Docker
+    pub async fn test_connection(&self, connection: &DockerConnection) -> Result<bool, String> {
+        let docker = self.create_docker_connection(connection).await?;
 
         // Test the connection by pinging
         match docker.ping().await {
@@ -104,59 +143,21 @@ impl DockerManager {
     }
 
     /// Add a Docker connection
-    pub async fn add_connection(&mut self, connection: DockerConnection) -> Result<(), String> {
+    pub async fn add_connection(&mut self, mut connection: DockerConnection) -> Result<(), String> {
         // Test connection first
         if !self.test_connection(&connection).await? {
             return Err("Failed to establish Docker connection".to_string());
         }
 
-        let docker = match connection.connection_type {
-            DockerConnectionType::Local => {
-                self.connect_local_docker()
-                    .map_err(|e| format!("Failed to connect to local Docker: {}", e))?
-            },
-            DockerConnectionType::WindowsNamedPipe => {
-                #[cfg(target_os = "windows")]
-                {
-                    Docker::connect_with_named_pipe_defaults()
-                        .map_err(|e| format!("Failed to connect via Windows named pipe: {}", e))?
-                }
-                #[cfg(not(target_os = "windows"))]
-                {
-                    return Err("Windows named pipe connection is only available on Windows".to_string());
-                }
-            },
-            DockerConnectionType::UnixSocket => {
-                #[cfg(not(target_os = "windows"))]
-                {
-                    Docker::connect_with_socket_defaults()
-                        .map_err(|e| format!("Failed to connect via Unix socket: {}", e))?
-                }
-                #[cfg(target_os = "windows")]
-                {
-                    return Err("Unix socket connection is not available on Windows".to_string());
-                }
-            },
-            DockerConnectionType::Remote => {
-                let host = if let Some(port) = connection.port {
-                    format!("tcp://{}:{}", connection.host, port)
-                } else {
-                    format!("tcp://{}:2376", connection.host)
-                };
-                Docker::connect_with_http(&host, 120, API_DEFAULT_VERSION)
-                    .map_err(|e| format!("Failed to connect to remote Docker: {}", e))?
-            },
-            DockerConnectionType::Swarm => {
-                let host = if let Some(port) = connection.port {
-                    format!("tcp://{}:{}", connection.host, port)
-                } else {
-                    format!("tcp://{}:2376", connection.host)
-                };
-                Docker::connect_with_http(&host, 120, API_DEFAULT_VERSION)
-                    .map_err(|e| format!("Failed to connect to Docker Swarm: {}", e))?
-            }
-        };
+        // Create Docker client
+        let docker = self.create_docker_connection(&connection).await?;
 
+        // Mark as connected and save to storage
+        connection.is_connected = true;
+        self.storage.add_docker_connection(connection.clone()).await
+            .map_err(|e| format!("Failed to save Docker connection: {}", e))?;
+
+        // Store active connection
         self.connections.insert(connection.id.clone(), docker);
         Ok(())
     }
@@ -183,13 +184,21 @@ impl DockerManager {
         // Add logs volume (optional for itzg image)
         binds.push(format!("chai-server-logs-{}:/data/logs", request.name));
 
-        // Create port bindings
+        // Create port bindings (Minecraft server + RCON)
         let mut port_bindings = HashMap::new();
         port_bindings.insert(
             "25565/tcp".to_string(),
             Some(vec![PortBinding {
                 host_ip: Some("0.0.0.0".to_string()),
                 host_port: Some(request.port.to_string()),
+            }]),
+        );
+        // RCON port (25575 is default for itzg's image)
+        port_bindings.insert(
+            "25575/tcp".to_string(),
+            Some(vec![PortBinding {
+                host_ip: Some("127.0.0.1".to_string()), // Only localhost for security
+                host_port: Some((request.port + 10).to_string()), // Offset RCON port
             }]),
         );
 
@@ -214,6 +223,10 @@ impl DockerManager {
             format!("MEMORY={}M", request.memory_limit),
             "TYPE=VANILLA".to_string(),
             "ONLINE_MODE=TRUE".to_string(),
+            // Enable RCON for command execution
+            "ENABLE_RCON=true".to_string(),
+            "RCON_PASSWORD=minecraft".to_string(), // Default password
+            "RCON_PORT=25575".to_string(),
         ];
         
         // Add custom environment variables
@@ -227,7 +240,8 @@ impl DockerManager {
             host_config,
             exposed_ports: Some({
                 let mut ports = HashMap::new();
-                ports.insert("25565/tcp".to_string(), HashMap::new());
+                ports.insert("25565/tcp".to_string(), HashMap::new()); // Minecraft server port
+                ports.insert("25575/tcp".to_string(), HashMap::new()); // RCON port
                 ports
             }),
             ..Default::default()
@@ -267,15 +281,17 @@ impl DockerManager {
             environment_vars: request.environment_vars,
         };
 
-        self.servers.push(server.clone());
+        // Save server to persistent storage
+        self.storage.add_server(server.clone()).await
+            .map_err(|e| format!("Failed to save server: {}", e))?;
+
         Ok(server)
     }
 
     /// Start a server
     pub async fn start_server(&mut self, server_id: &str) -> Result<(), String> {
-        let server = self.servers.iter_mut()
-            .find(|s| s.id == server_id)
-            .ok_or("Server not found")?;
+        let mut server = self.storage.get_server(server_id)
+            .ok_or("Server not found")?.clone();
 
         let docker = self.connections.get(&server.docker_connection_id)
             .ok_or("Docker connection not found")?;
@@ -287,6 +303,10 @@ impl DockerManager {
 
             server.status = ServerStatus::Starting;
             server.last_started = Some(chrono::Utc::now());
+            
+            // Save updated server status
+            self.storage.update_server(server).await
+                .map_err(|e| format!("Failed to update server status: {}", e))?;
         }
 
         Ok(())
@@ -294,9 +314,8 @@ impl DockerManager {
 
     /// Stop a server
     pub async fn stop_server(&mut self, server_id: &str) -> Result<(), String> {
-        let server = self.servers.iter_mut()
-            .find(|s| s.id == server_id)
-            .ok_or("Server not found")?;
+        let mut server = self.storage.get_server(server_id)
+            .ok_or("Server not found")?.clone();
 
         let docker = self.connections.get(&server.docker_connection_id)
             .ok_or("Docker connection not found")?;
@@ -308,15 +327,18 @@ impl DockerManager {
                 .map_err(|e| format!("Failed to stop container: {}", e))?;
 
             server.status = ServerStatus::Stopping;
+            
+            // Save updated server status
+            self.storage.update_server(server).await
+                .map_err(|e| format!("Failed to update server status: {}", e))?;
         }
 
         Ok(())
     }
 
     /// Get server status
-    pub async fn get_server_status(&self, server_id: &str) -> Result<ServerStatus, String> {
-        let server = self.servers.iter()
-            .find(|s| s.id == server_id)
+    pub async fn get_server_status(&mut self, server_id: &str) -> Result<ServerStatus, String> {
+        let server = self.storage.get_server(server_id)
             .ok_or("Server not found")?;
 
         let docker = self.connections.get(&server.docker_connection_id)
@@ -336,13 +358,24 @@ impl DockerManager {
             .map_err(|e| format!("Failed to list containers: {}", e))?;
 
             if let Some(container) = containers.first() {
-                match container.state.as_deref() {
-                    Some("running") => Ok(ServerStatus::Running),
-                    Some("exited") => Ok(ServerStatus::Stopped),
-                    Some("created") => Ok(ServerStatus::Stopped),
-                    Some("restarting") => Ok(ServerStatus::Starting),
-                    _ => Ok(ServerStatus::Unknown),
+                let status = match container.state.as_deref() {
+                    Some("running") => ServerStatus::Running,
+                    Some("exited") => ServerStatus::Stopped,
+                    Some("created") => ServerStatus::Stopped,
+                    Some("restarting") => ServerStatus::Starting,
+                    _ => ServerStatus::Unknown,
+                };
+
+                // Update status in storage if it's different
+                if status != server.status {
+                    let mut updated_server = server.clone();
+                    updated_server.status = status.clone();
+                    if let Err(e) = self.storage.update_server(updated_server).await {
+                        eprintln!("Failed to update server status in storage: {}", e);
+                    }
                 }
+
+                Ok(status)
             } else {
                 Ok(ServerStatus::Unknown)
             }
@@ -353,18 +386,16 @@ impl DockerManager {
 
     /// Remove a server
     pub async fn remove_server(&mut self, server_id: &str) -> Result<(), String> {
-        let server_index = self.servers.iter().position(|s| s.id == server_id)
-            .ok_or("Server not found")?;
+        let server = self.storage.get_server(server_id)
+            .ok_or("Server not found")?.clone();
 
-        // Get the info we need before any async calls
-        let server = self.servers[server_index].clone();
         let container_id = server.container_id.clone();
         let docker_connection_id = server.docker_connection_id.clone();
 
         // Handle Docker container cleanup if needed
         if let Some(container_id) = container_id {
             if let Some(docker) = self.connections.get(&docker_connection_id) {
-                // Stop the server first without calling self.stop_server to avoid borrow issues
+                // Stop the server first
                 let stop_options = StopContainerOptions { t: 30 };
                 let _ = docker.stop_container(&container_id, Some(stop_options)).await;
                 
@@ -384,21 +415,176 @@ impl DockerManager {
             }
         }
 
-        // Remove from our list
-        self.servers.remove(server_index);
+        // Remove from storage
+        self.storage.remove_server(server_id).await
+            .map_err(|e| format!("Failed to remove server from storage: {}", e))?;
+
         Ok(())
     }
 
     /// Get all servers
-    pub fn get_servers(&self) -> &[ServerInstance] {
-        &self.servers
+    pub fn get_servers(&self) -> Vec<&ServerInstance> {
+        self.storage.get_servers()
     }
 
     /// Get servers for a specific Minecraft instance
     pub fn get_servers_for_instance(&self, instance_id: &str) -> Vec<&ServerInstance> {
-        self.servers.iter()
-            .filter(|s| s.minecraft_instance_id == instance_id)
-            .collect()
+        self.storage.get_servers_for_instance(instance_id)
+    }
+
+    /// Get Docker connections
+    pub fn get_docker_connections(&self) -> Vec<&DockerConnection> {
+        self.storage.get_docker_connections()
+    }
+
+    /// Get server logs
+    pub async fn get_server_logs(&self, server_id: &str, lines: Option<u32>) -> Result<Vec<LogEntry>, String> {
+        let server = self.storage.get_server(server_id)
+            .ok_or("Server not found")?;
+
+        let docker = self.connections.get(&server.docker_connection_id)
+            .ok_or("Docker connection not found")?;
+
+        if let Some(container_id) = &server.container_id {
+            use bollard::container::LogsOptions;
+            use futures::stream::StreamExt;
+
+            let options = Some(LogsOptions::<String> {
+                stdout: true,
+                stderr: true,
+                tail: lines.unwrap_or(100).to_string(),
+                timestamps: true,
+                ..Default::default()
+            });
+
+            let mut logs_stream = docker.logs(container_id, options);
+            let mut log_entries = Vec::new();
+
+            while let Some(log) = logs_stream.next().await {
+                match log {
+                    Ok(output) => {
+                        let log_line = output.to_string();
+                        if let Some(parsed_log) = self.parse_log_line(&log_line) {
+                            log_entries.push(parsed_log);
+                        }
+                    }
+                    Err(e) => {
+                        return Err(format!("Failed to read logs: {}", e));
+                    }
+                }
+            }
+
+            Ok(log_entries)
+        } else {
+            Err("Server has no container".to_string())
+        }
+    }
+
+    /// Parse a Docker log line into a LogEntry
+    fn parse_log_line(&self, log_line: &str) -> Option<LogEntry> {
+        // Docker log format with timestamps: "timestamp message"
+        // We'll try to parse common Minecraft server log formats
+        
+        let cleaned_line = log_line.trim();
+        if cleaned_line.is_empty() {
+            return None;
+        }
+
+        // Try to extract timestamp (Docker includes it when timestamps=true)
+        let (timestamp, message) = if let Some(space_pos) = cleaned_line.find(' ') {
+            let potential_timestamp = &cleaned_line[..space_pos];
+            // Check if it looks like an ISO timestamp
+            if potential_timestamp.contains('T') && potential_timestamp.contains('Z') {
+                (potential_timestamp.to_string(), cleaned_line[space_pos + 1..].to_string())
+            } else {
+                // No Docker timestamp, use current time
+                (chrono::Utc::now().to_rfc3339(), cleaned_line.to_string())
+            }
+        } else {
+            (chrono::Utc::now().to_rfc3339(), cleaned_line.to_string())
+        };
+
+        // Determine log level from message content
+        let level = if message.contains("[ERROR]") || message.contains("ERROR") {
+            LogLevel::Error
+        } else if message.contains("[WARN]") || message.contains("WARN") || message.contains("WARNING") {
+            LogLevel::Warn
+        } else if message.contains("[DEBUG]") || message.contains("DEBUG") {
+            LogLevel::Debug
+        } else {
+            LogLevel::Info
+        };
+
+        Some(LogEntry {
+            timestamp,
+            level,
+            message: message.trim().to_string(),
+        })
+    }
+
+    /// Execute RCON command in server container using mc-rcon
+    pub async fn exec_command(&self, server_id: &str, minecraft_command: String) -> Result<String, String> {
+        let server = self.storage.get_server(server_id)
+            .ok_or("Server not found")?;
+
+        let docker = self.connections.get(&server.docker_connection_id)
+            .ok_or("Docker connection not found")?;
+
+        if let Some(container_id) = &server.container_id {
+            use bollard::exec::{CreateExecOptions, StartExecOptions, StartExecResults};
+            use futures::stream::StreamExt;
+
+            // Use rcon-cli command built into itzg's minecraft-server image
+            let exec_options = CreateExecOptions {
+                cmd: Some(vec!["rcon-cli".to_string(), minecraft_command]),
+                attach_stdout: Some(true),
+                attach_stderr: Some(true),
+                ..Default::default()
+            };
+
+            let exec = docker.create_exec(container_id, exec_options)
+                .await
+                .map_err(|e| format!("Failed to create exec: {}", e))?;
+
+            // Start exec
+            let start_options = StartExecOptions { 
+                detach: false,
+                tty: false,
+                output_capacity: None,
+            };
+
+            match docker.start_exec(&exec.id, Some(start_options)).await {
+                Ok(StartExecResults::Attached { mut output, .. }) => {
+                    let mut result = Vec::new();
+                    
+                    while let Some(chunk) = output.next().await {
+                        match chunk {
+                            Ok(output) => {
+                                result.push(output.to_string());
+                            }
+                            Err(e) => {
+                                return Err(format!("Failed to read exec output: {}", e));
+                            }
+                        }
+                    }
+
+                    let output = result.join("");
+                    Ok(if output.trim().is_empty() { 
+                        "Command executed successfully".to_string() 
+                    } else { 
+                        output 
+                    })
+                }
+                Ok(StartExecResults::Detached) => {
+                    Ok("Command executed in detached mode".to_string())
+                }
+                Err(e) => {
+                    Err(format!("Failed to start exec: {}", e))
+                }
+            }
+        } else {
+            Err("Server has no container".to_string())
+        }
     }
 
     /// Ensure itzg's Minecraft server image is available
