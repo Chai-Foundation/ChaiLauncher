@@ -21,6 +21,17 @@ async fn fetch_news() -> Result<String, String> {
     Ok(body)
 }
 
+#[tauri::command]
+async fn fetch_news_page(page: u32) -> Result<String, String> {
+    let url = format!(
+        "https://net-secondary.web.minecraft-services.net/api/v1.0/en-us/search?page={}&pageSize=24&sortType=Recent&category=News&newsOnly=true",
+        page
+    );
+    let resp = reqwest::get(&url).await.map_err(|e| e.to_string())?;
+    let body = resp.text().await.map_err(|e| e.to_string())?;
+    Ok(body)
+}
+
 // Expose the app version as a Tauri command
 #[tauri::command]
 fn get_app_version() -> &'static str {
@@ -93,6 +104,7 @@ fn main() {
             auth::refresh_minecraft_token,
             auth::remove_minecraft_account,
             fetch_news,
+            fetch_news_page,
             get_app_version,
             docker::commands::test_docker_connection,
             docker::commands::add_docker_connection,
