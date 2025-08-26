@@ -25,7 +25,7 @@
 
 - 🎮 **Modern Interface** - Clean, intuitive UI built with React and Tailwind CSS
 - ⚡ **Fast Performance** - Powered by Tauri for native performance
-- 🔐 **Microsoft OAuth (WIP)** - Secure Minecraft account integration
+- 🔐 **Microsoft OAuth** - Secure Minecraft account integration
 - 📦 **Mod Management (WIP)** - Easy installation and management of mods
 - 🌐 **Cross-Platform** - Supports Windows, macOS, and Linux
 - 📊 **Real-time Progress** - Visual feedback for downloads and installations
