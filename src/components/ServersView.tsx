@@ -42,6 +42,16 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
 
   useEffect(() => {
     loadServers();
+    // Load Docker connections from persistent config
+    const loadDockerConnections = async () => {
+      try {
+        const connections = await invoke<DockerConnection[]>("get_docker_connections");
+        setDockerConnections(connections);
+      } catch (error) {
+        console.error("Failed to load Docker connections:", error);
+      }
+    };
+    loadDockerConnections();
   }, []);
 
   // Separate effect for periodic status refresh
