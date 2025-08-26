@@ -109,9 +109,9 @@ We welcome contributions from the community! Here's how you can help:
 ## 📋 Roadmap
 
 - [ ] Advanced mod management features
-- [ ] Multiple Minecraft version support
+- [x] Multiple Minecraft version support
 - [ ] Custom modpack creation
-- [ ] Server browser integration
+- [x] Server integration
 - [ ] Shader pack management
 - [ ] Resource pack management
 - [ ] Performance optimization tools
