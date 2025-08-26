@@ -4,8 +4,6 @@
 
 # Modern Minecraft Launcher
 
-*Inspired by GDLauncher, built with modern technologies*
-
 <p align="">
   <a href="https://github.com/shield/ChaiLauncher">
     <img src="https://img.shields.io/badge/version-0.2.0-blue.svg" alt="Version">
