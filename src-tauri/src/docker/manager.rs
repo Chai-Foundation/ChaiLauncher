@@ -175,10 +175,18 @@ impl DockerManager {
         let image_name = "itzg/minecraft-server:latest".to_string();
         self.ensure_itzg_image(docker, &image_name).await?;
 
-        // Prepare volume mounts for itzg's minecraft-server
-        let game_dir = minecraft_instance.game_dir.to_string_lossy().to_string();
+        // Prepare unique volume mount for this server
+        use std::fs;
+        use std::path::Path;
+        let server_dir = minecraft_instance.game_dir.join(&request.name);
+        if !server_dir.exists() {
+            if let Err(e) = fs::create_dir_all(&server_dir) {
+                return Err(format!("Failed to create server directory: {}", e));
+            }
+        }
+        let server_dir_str = server_dir.to_string_lossy().to_string();
         let mut binds = vec![
-            format!("{}:/data", game_dir),
+            format!("{}:/data", server_dir_str),
         ];
 
         // Add logs volume (optional for itzg image)
