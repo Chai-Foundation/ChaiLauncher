@@ -3,11 +3,9 @@ use crate::mods::types::*;
 use std::path::Path;
 
 pub mod modrinth;
-pub mod curseforge;
 pub mod common;
 
 pub use modrinth::*;
-pub use curseforge::*;
 
 /// Trait that all mod API clients must implement
 #[async_trait]
@@ -53,7 +51,6 @@ pub trait ModApi: Send + Sync {
 #[derive(Debug)]
 pub enum ApiClient {
     Modrinth(ModrinthApi),
-    CurseForge(CurseForgeApi),
 }
 
 #[async_trait]
@@ -68,35 +65,30 @@ impl ModApi for ApiClient {
     ) -> Result<Vec<ModInfo>, ModError> {
         match self {
             ApiClient::Modrinth(api) => api.search_mods(query, game_version, mod_loader, limit, offset).await,
-            ApiClient::CurseForge(api) => api.search_mods(query, game_version, mod_loader, limit, offset).await,
         }
     }
     
     async fn get_mod_details(&self, mod_id: &str) -> Result<ModInfo, ModError> {
         match self {
             ApiClient::Modrinth(api) => api.get_mod_details(mod_id).await,
-            ApiClient::CurseForge(api) => api.get_mod_details(mod_id).await,
         }
     }
     
     async fn get_mod_files(&self, mod_id: &str) -> Result<Vec<ModFile>, ModError> {
         match self {
             ApiClient::Modrinth(api) => api.get_mod_files(mod_id).await,
-            ApiClient::CurseForge(api) => api.get_mod_files(mod_id).await,
         }
     }
     
     async fn get_mod_file(&self, mod_id: &str, file_id: &str) -> Result<ModFile, ModError> {
         match self {
             ApiClient::Modrinth(api) => api.get_mod_file(mod_id, file_id).await,
-            ApiClient::CurseForge(api) => api.get_mod_file(mod_id, file_id).await,
         }
     }
     
     async fn download_mod_file(&self, file: &ModFile, path: &Path, progress_callback: Box<dyn Fn(u64, u64) + Send + Sync>) -> Result<(), ModError> {
         match self {
             ApiClient::Modrinth(api) => api.download_mod_file(file, path, progress_callback).await,
-            ApiClient::CurseForge(api) => api.download_mod_file(file, path, progress_callback).await,
         }
     }
     
@@ -108,21 +100,18 @@ impl ModApi for ApiClient {
     ) -> Result<Vec<ModInfo>, ModError> {
         match self {
             ApiClient::Modrinth(api) => api.get_featured_mods(game_version, mod_loader, limit).await,
-            ApiClient::CurseForge(api) => api.get_featured_mods(game_version, mod_loader, limit).await,
         }
     }
     
     async fn get_categories(&self) -> Result<Vec<String>, ModError> {
         match self {
             ApiClient::Modrinth(api) => api.get_categories().await,
-            ApiClient::CurseForge(api) => api.get_categories().await,
         }
     }
     
     async fn check_updates(&self, installed_mod: &InstalledMod) -> Result<Option<ModFile>, ModError> {
         match self {
             ApiClient::Modrinth(api) => api.check_updates(installed_mod).await,
-            ApiClient::CurseForge(api) => api.check_updates(installed_mod).await,
         }
     }
 }
@@ -135,7 +124,6 @@ impl ApiClientFactory {
     pub fn create_all() -> Vec<ApiClient> {
         vec![
             ApiClient::Modrinth(ModrinthApi::new()),
-            ApiClient::CurseForge(CurseForgeApi::new()),
         ]
     }
     
@@ -143,7 +131,6 @@ impl ApiClientFactory {
     pub fn create_by_name(name: &str) -> Option<ApiClient> {
         match name.to_lowercase().as_str() {
             "modrinth" => Some(ApiClient::Modrinth(ModrinthApi::new())),
-            "curseforge" => Some(ApiClient::CurseForge(CurseForgeApi::new())),
             _ => None,
         }
     }

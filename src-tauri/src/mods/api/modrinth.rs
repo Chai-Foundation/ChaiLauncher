@@ -42,14 +42,37 @@ impl ModrinthApi {
     }
 
     fn convert_modrinth_project_to_mod_info(&self, project: serde_json::Value) -> Result<ModInfo, ModError> {
+        // Handle both search results and project details
+        let author = project["author"].as_str()
+            .or_else(|| project["team"].as_str())
+            .unwrap_or("Unknown")
+            .to_string();
+
+        // For search results, use latest_version. For project details, use first version from versions array
+        let version = project["latest_version"].as_str()
+            .or_else(|| {
+                project["versions"].as_array()
+                    .and_then(|versions| versions.first())
+                    .and_then(|v| v.as_str())
+            })
+            .unwrap_or("Unknown")
+            .to_string();
+
+        // Use project_id for search results, id for project details
+        let id = project["project_id"].as_str()
+            .or_else(|| project["id"].as_str())
+            .unwrap_or_default()
+            .to_string();
+
         Ok(ModInfo {
-            id: project["id"].as_str().unwrap_or_default().to_string(),
+            id,
             name: project["title"].as_str().unwrap_or_default().to_string(),
             description: project["description"].as_str().unwrap_or_default().to_string(),
-            author: project["team"].as_str().unwrap_or("Unknown").to_string(),
-            version: project["latest_version"].as_str().unwrap_or("Unknown").to_string(),
+            author,
+            version,
             game_versions: project["game_versions"]
                 .as_array()
+                .or_else(|| project["versions"].as_array()) // fallback for search results
                 .unwrap_or(&vec![])
                 .iter()
                 .filter_map(|v| v.as_str())
@@ -64,9 +87,16 @@ impl ModrinthApi {
                 .collect(),
             downloads: project["downloads"].as_u64().unwrap_or(0) as u32,
             icon_url: project["icon_url"].as_str().map(String::from),
-            website_url: project["issues_url"].as_str().map(String::from),
+            website_url: project["issues_url"].as_str()
+                .or_else(|| project["project_url"].as_str())
+                .or_else(|| project["website_url"].as_str())
+                .map(String::from),
             source_url: project["source_url"].as_str().map(String::from),
-            license: project["license"]["id"].as_str().map(String::from),
+            license: project["license"]
+                .as_object()
+                .and_then(|l| l["id"].as_str())
+                .or_else(|| project["license"].as_str())
+                .map(String::from),
             categories: project["categories"]
                 .as_array()
                 .unwrap_or(&vec![])
@@ -77,18 +107,26 @@ impl ModrinthApi {
             side: match project["client_side"].as_str().unwrap_or("unknown") {
                 "required" => match project["server_side"].as_str().unwrap_or("unknown") {
                     "required" => ModSide::Both,
+                    "optional" | "unsupported" => ModSide::Client,
                     _ => ModSide::Client,
                 },
-                "optional" => ModSide::Both,
+                "optional" => match project["server_side"].as_str().unwrap_or("unknown") {
+                    "required" => ModSide::Server,
+                    _ => ModSide::Both,
+                },
                 _ => ModSide::Unknown,
             },
             source: ModSource::Modrinth,
             featured: project["featured"].as_bool().unwrap_or(false),
             date_created: DateTime::parse_from_rfc3339(
-                project["published"].as_str().unwrap_or("2020-01-01T00:00:00Z")
+                project["date_created"].as_str()
+                    .or_else(|| project["published"].as_str())
+                    .unwrap_or("2020-01-01T00:00:00Z")
             ).unwrap_or_default().with_timezone(&Utc),
             date_updated: DateTime::parse_from_rfc3339(
-                project["updated"].as_str().unwrap_or("2020-01-01T00:00:00Z")
+                project["date_modified"].as_str()
+                    .or_else(|| project["updated"].as_str())
+                    .unwrap_or("2020-01-01T00:00:00Z")
             ).unwrap_or_default().with_timezone(&Utc),
         })
     }
@@ -96,9 +134,15 @@ impl ModrinthApi {
     fn convert_modrinth_version_to_mod_file(&self, version: serde_json::Value) -> Result<ModFile, ModError> {
         let empty_vec = vec![];
         let files = version["files"].as_array().unwrap_or(&empty_vec);
+        
+        // Skip versions that have no files (this can happen with some Modrinth projects)
+        if files.is_empty() {
+            return Err(ModError::InvalidFile("Version has no downloadable files".to_string()));
+        }
+        
         let primary_file = files.iter().find(|f| f["primary"].as_bool().unwrap_or(false))
             .or_else(|| files.first())
-            .ok_or_else(|| ModError::InvalidFile("No files found in version".to_string()))?;
+            .ok_or_else(|| ModError::InvalidFile("No valid files found in version".to_string()))?;
 
         Ok(ModFile {
             id: version["id"].as_str().unwrap_or_default().to_string(),
@@ -182,6 +226,9 @@ impl ModApi for ModrinthApi {
 
         let mut facets = vec![];
         
+        // Always filter for mods (not modpacks)
+        facets.push("[\"project_type:mod\"]".to_string());
+        
         if let Some(version) = game_version {
             facets.push(format!("[\"versions:{}\"]", version));
         }
@@ -190,15 +237,8 @@ impl ModApi for ModrinthApi {
             facets.push(format!("[\"categories:{}\"]", loader));
         }
         
-        let facets_str = if !facets.is_empty() {
-            Some(format!("[{}]", facets.join(",")))
-        } else {
-            None
-        };
-        
-        if let Some(ref facets_string) = facets_str {
-            params.push(("facets", facets_string.as_str()));
-        }
+        let facets_str = format!("[{}]", facets.join(","));
+        params.push(("facets", facets_str.as_str()));
 
         let query_string = params
             .iter()
@@ -289,8 +329,56 @@ impl ModApi for ModrinthApi {
         mod_loader: Option<&str>,
         limit: u32,
     ) -> Result<Vec<ModInfo>, ModError> {
-        // Search for featured mods by sorting by downloads
-        self.search_mods("", game_version, mod_loader, limit, 0).await
+        let limit_str = limit.to_string();
+        
+        let mut params = vec![
+            ("limit", limit_str.as_str()),
+            ("index", "downloads"), // Sort by downloads for most popular
+        ];
+
+        let mut facets = vec![];
+        
+        // Always filter for mods (not modpacks)
+        facets.push("[\"project_type:mod\"]".to_string());
+        
+        if let Some(version) = game_version {
+            facets.push(format!("[\"versions:{}\"]", version));
+        }
+        
+        if let Some(loader) = mod_loader {
+            facets.push(format!("[\"categories:{}\"]", loader));
+        }
+        
+        let facets_str = format!("[{}]", facets.join(","));
+        params.push(("facets", facets_str.as_str()));
+
+        let query_string = params
+            .iter()
+            .map(|(k, v)| format!("{}={}", k, urlencoding::encode(v)))
+            .collect::<Vec<_>>()
+            .join("&");
+
+        let endpoint = format!("search?{}", query_string);
+        let response: serde_json::Value = self.make_request(&endpoint).await?;
+
+        let empty_vec = vec![];
+        let hits = response["hits"].as_array().unwrap_or(&empty_vec);
+        let mut mods = Vec::new();
+
+        for hit in hits {
+            match self.convert_modrinth_project_to_mod_info(hit.clone()) {
+                Ok(mut mod_info) => {
+                    mod_info.featured = true; // Mark as featured
+                    mods.push(mod_info);
+                },
+                Err(e) => {
+                    eprintln!("Failed to convert Modrinth project: {:?}", e);
+                    continue;
+                }
+            }
+        }
+
+        Ok(mods)
     }
 
     async fn get_categories(&self) -> Result<Vec<String>, ModError> {

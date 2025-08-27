@@ -37,7 +37,7 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ModrinthPack[]>([]);
   const [featuredPacks, setFeaturedPacks] = useState<ModrinthPack[]>([]);
-  const [selectedPlatform, setSelectedPlatform] = useState<string>('modrinth');
+  const selectedPlatform = 'modrinth';
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [loading, setLoading] = useState(false);
   const [featuredLoading, setFeaturedLoading] = useState(false);
@@ -244,7 +244,7 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-white mb-2">Modpack Browser</h1>
-          <p className="text-gray-300">Discover and install modpacks from various platforms</p>
+          <p className="text-gray-300">Discover and install modpacks from Modrinth</p>
         </div>
 
         {/* Controls */}
@@ -271,15 +271,6 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
                 Search
               </button>
             </form>
-
-            <select
-              value={selectedPlatform}
-              onChange={(e) => setSelectedPlatform(e.target.value)}
-              className="px-3 py-2 bg-primary-800/90 border border-secondary-600/30 rounded-lg text-white focus:outline-none focus:border-secondary-500/50"
-            >
-              <option value="modrinth">Modrinth</option>
-              <option value="curseforge">CurseForge</option>
-            </select>
           </div>
 
           {/* Action Buttons and View Controls */}

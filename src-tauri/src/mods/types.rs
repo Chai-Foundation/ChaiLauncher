@@ -88,11 +88,7 @@ pub enum ModSide {
 /// Source of the mod
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ModSource {
-    CurseForge,
     Modrinth,
-    GitHub,
-    Direct(String), // URL
-    Local,
 }
 
 /// Type of mod dependency
@@ -246,11 +242,7 @@ impl ModLoader {
 impl ModSource {
     pub fn api_name(&self) -> &str {
         match self {
-            ModSource::CurseForge => "curseforge",
             ModSource::Modrinth => "modrinth",
-            ModSource::GitHub => "github",
-            ModSource::Direct(_) => "direct",
-            ModSource::Local => "local",
         }
     }
 }

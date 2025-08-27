@@ -15,7 +15,7 @@ export interface ModInfo {
   license?: string;
   categories: string[];
   side: 'Client' | 'Server' | 'Both' | 'Unknown';
-  source: 'CurseForge' | 'Modrinth' | 'GitHub' | { Direct: string } | 'Local';
+  source: 'Modrinth';
   featured: boolean;
   date_created: string;
   date_updated: string;
