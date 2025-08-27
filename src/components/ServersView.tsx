@@ -245,13 +245,6 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
         </div>
         <div className="flex gap-3">
           <button
-            onClick={() => setShowConnectionModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-          >
-            <Container className="w-4 h-4" />
-            Add Docker Connection
-          </button>
-          <button
             onClick={() => refreshServerStatuses()}
             className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 rounded-lg transition-colors"
             title="Refresh server statuses"
@@ -259,36 +252,58 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
             <RefreshCw className="w-4 h-4" />
             Refresh Status
           </button>
-          <button
-            onClick={() => setShowDeployModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-secondary-600 hover:bg-secondary-700 rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Deploy Server
-          </button>
         </div>
       </div>
 
-      {dockerConnections.length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-3 flex items-center gap-2">
-            <Container className="w-5 h-5" />
-            Docker Connections
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {dockerConnections.map((connection) => (
-              <div key={connection.id} className="bg-primary-800/50 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold">{connection.name}</h3>
-                  <div className={`w-3 h-3 rounded-full ${connection.is_connected ? 'bg-green-400' : 'bg-red-400'}`} />
-                </div>
-                <p className="text-sm text-primary-300">{connection.host}</p>
-                <p className="text-xs text-primary-400 mt-1 capitalize">{connection.connection_type}</p>
+      {/* Docker Connections Section */}
+      <div className="mb-6">
+        <div className="bg-primary-800/30 backdrop-blur-sm rounded-xl p-6 border border-secondary-600/20">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-secondary-600/20 rounded-lg flex items-center justify-center">
+                <Container className="w-6 h-6 text-secondary-400" />
               </div>
-            ))}
+              <div>
+                <h2 className="text-xl font-semibold">Docker Connections</h2>
+                <p className="text-primary-300 text-sm">Manage Docker environments for server deployment</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowConnectionModal(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-secondary-600/20 hover:bg-secondary-600/30 rounded-lg transition-colors text-secondary-400"
+            >
+              <Plus className="w-4 h-4" />
+              Add Connection
+            </button>
           </div>
+          
+          {dockerConnections.length === 0 ? (
+            <div className="text-center py-8 text-primary-400">
+              <Container className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p>No Docker connections configured</p>
+              <p className="text-sm mt-1">Add a connection to deploy servers</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {dockerConnections.map((connection) => (
+                <div key={connection.id} className="bg-primary-700/30 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold">{connection.name}</h3>
+                    <div className={`w-3 h-3 rounded-full ${connection.is_connected ? 'bg-secondary-400' : 'bg-secondary-500/50'}`} />
+                  </div>
+                  <p className="text-sm text-primary-300">{connection.host}</p>
+                  <p className="text-xs text-primary-400 mt-1 capitalize">{connection.connection_type}</p>
+                  <div className="mt-2 text-xs">
+                    <span className={`${connection.is_connected ? 'text-secondary-400' : 'text-secondary-500/70'}`}>
+                      {connection.is_connected ? 'Connected' : 'Disconnected'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       <div className="space-y-6">
         {instances.map((instance) => {
