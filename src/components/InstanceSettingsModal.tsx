@@ -339,10 +339,10 @@ export default function InstanceSettingsModal({
       const platformColors = {
         'CurseForge': 'bg-orange-600 text-white',
         'Modrinth': 'bg-green-600 text-white',
-        'GitHub': 'bg-gray-600 text-white',
-        'Direct': 'bg-blue-600 text-white',
+        'GitHub': 'bg-primary-600 text-white',
+        'Direct': 'bg-secondary-600 text-white',
         'Local': 'bg-purple-600 text-white',
-        'Unknown': 'bg-gray-500 text-white'
+        'Unknown': 'bg-primary-500 text-white'
       };
 
       return (
