@@ -38,9 +38,9 @@ const InstanceCard: React.FC<InstanceCardProps> = React.memo(({ instance, onPlay
 
   const getStatusColor = () => {
     switch (instance.status) {
-      case 'installing': return 'border-blue-500/50';
-      case 'failed': return 'border-red-500/50';
-      case 'invalid': return 'border-red-600/50';
+      case 'installing': return 'border-secondary-500/50';
+      case 'failed': return 'border-secondary-500/50';
+      case 'invalid': return 'border-secondary-600/50';
       default: return 'border-secondary-600/30';
     }
   };
@@ -178,23 +178,23 @@ const InstanceCard: React.FC<InstanceCardProps> = React.memo(({ instance, onPlay
               </div>
             </div>
             <div className="flex items-center gap-2 text-white mb-2">
-              <Download size={18} className="animate-pulse text-blue-400" />
+              <Download size={18} className="animate-pulse text-secondary-400" />
               <span className="text-sm font-medium">Installing...</span>
             </div>
           </motion.div>
         )}
 
         {instance.status === 'failed' && (
-          <div className="absolute inset-0 bg-red-900 bg-opacity-80 flex items-center justify-center flex-col">
-            <X size={32} className="text-red-300 mb-2" />
-            <span className="text-red-300 text-sm">Installation Failed</span>
+          <div className="absolute inset-0 bg-secondary-900/80 flex items-center justify-center flex-col">
+            <X size={32} className="text-secondary-300 mb-2" />
+            <span className="text-secondary-300 text-sm">Installation Failed</span>
           </div>
         )}
 
         {instance.status === 'invalid' && (
-          <div className="absolute inset-0 bg-red-900 bg-opacity-80 flex items-center justify-center flex-col">
-            <AlertTriangle size={32} className="text-red-300 mb-2" />
-            <span className="text-red-300 text-sm">Invalid Instance</span>
+          <div className="absolute inset-0 bg-secondary-900/80 flex items-center justify-center flex-col">
+            <AlertTriangle size={32} className="text-secondary-300 mb-2" />
+            <span className="text-secondary-300 text-sm">Invalid Instance</span>
           </div>
         )}
 
@@ -227,14 +227,14 @@ const InstanceCard: React.FC<InstanceCardProps> = React.memo(({ instance, onPlay
               {onOpenFolder && (
                 <button
                   onClick={() => { onOpenFolder(instance); setShowMenu(false); }}
-                  className="flex items-center gap-2 px-3 py-2 hover:bg-blue-700 rounded text-white text-sm"
+                  className="flex items-center gap-2 px-3 py-2 hover:bg-secondary-700 rounded text-white text-sm"
                 >
                   <Folder size={16} /> Open Folder
                 </button>
               )}
               <button
                 onClick={() => { onDelete(instance); setShowMenu(false); }}
-                className="flex items-center gap-2 px-3 py-2 hover:bg-red-700 rounded text-white text-sm"
+                className="flex items-center gap-2 px-3 py-2 hover:bg-secondary-700 rounded text-white text-sm"
               >
                 <Trash2 size={16} /> Delete
               </button>
@@ -251,7 +251,7 @@ const InstanceCard: React.FC<InstanceCardProps> = React.memo(({ instance, onPlay
               Minecraft {instance.version}
               {instance.modpack && ` • ${instance.modpack}`}
             </p>
-            <p className="text-sm text-red-400 bg-red-900/20 px-2 py-1 rounded">
+            <p className="text-sm text-secondary-400 bg-secondary-900/20 px-2 py-1 rounded">
               <AlertTriangle size={12} className="inline mr-1" />
               {instance.errorMessage || (instance.status === 'failed' ? 'Installation failed' : 'Invalid instance')}
             </p>
@@ -266,11 +266,11 @@ const InstanceCard: React.FC<InstanceCardProps> = React.memo(({ instance, onPlay
               <div className="flex items-center gap-2 mt-2">
                 <div className="flex-1 bg-primary-700 rounded-full h-2 overflow-hidden">
                   <div 
-                    className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full transition-all duration-500 ease-out"
+                    className="h-full bg-gradient-to-r from-secondary-500 to-secondary-400 rounded-full transition-all duration-500 ease-out"
                     style={{ width: `${Math.min(100, Math.max(0, instance.installProgress || 0))}%` }}
                   />
                 </div>
-                <span className="text-xs text-blue-400 font-medium min-w-[3rem] text-right">
+                <span className="text-xs text-secondary-400 font-medium min-w-[3rem] text-right">
                   {Math.round(instance.installProgress || 0)}%
                 </span>
               </div>
