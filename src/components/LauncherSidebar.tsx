@@ -28,7 +28,7 @@ const LauncherSidebar: React.FC<LauncherSidebarProps> = ({ activeView, onViewCha
 
   return (
     <div className="w-64 bg-primary-900/60 backdrop-blur-sm flex flex-col" style={{ WebkitAppRegion: 'drag' } as CSSProperties}>
-      <div className="flex flex-row items-center p-2">
+      <div className="flex flex-row items-center p-2" style={{ WebkitAppRegion: 'drag' } as CSSProperties}>
         <img src="Square310x310Logo.png" className="w-16 h-16 mr-3" alt="ChaiLauncher Logo" />
         <div>
           <h1 className="text-xl font-bold bg-gradient-to-r from-secondary-200 via-white to-secondary-200 bg-clip-text text-transparent">
@@ -38,7 +38,7 @@ const LauncherSidebar: React.FC<LauncherSidebarProps> = ({ activeView, onViewCha
         </div>
       </div>
       
-      <nav className="flex-1 p-4">
+      <nav className="flex-1 p-4" style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}>
       <ul className="space-y-2">
         {menuItems.map((item) => {
         const Icon = item.icon;
@@ -75,7 +75,7 @@ const LauncherSidebar: React.FC<LauncherSidebarProps> = ({ activeView, onViewCha
       </ul>
       </nav>
       
-      <div className="p-4 border-t border-secondary-600/30">
+      <div className="p-4 border-t border-secondary-600/30" style={{ WebkitAppRegion: 'drag' } as CSSProperties}>
         <div className="text-sm text-primary-300">
           <p>Version {appVersion || "..."}</p>
           <p className="text-secondary-300">Ready to launch</p>

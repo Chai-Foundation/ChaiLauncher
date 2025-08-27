@@ -139,6 +139,28 @@ export function applyColorScheme(settings: LauncherSettings): void {
     css += `.bg-secondary-${shade}\\/50 { background-color: ${secondaryPalette[shade]}80 !important; }\n`;
   });
   
+  // Add hover state overrides for secondary colors
+  shades.forEach(shade => {
+    css += `.hover\\:bg-secondary-${shade}:hover { background-color: ${secondaryPalette[shade]} !important; }\n`;
+    css += `.hover\\:text-secondary-${shade}:hover { color: ${secondaryPalette[shade]} !important; }\n`;
+    css += `.hover\\:border-secondary-${shade}:hover { border-color: ${secondaryPalette[shade]} !important; }\n`;
+    css += `.hover\\:from-secondary-${shade}:hover { --tw-gradient-from: ${secondaryPalette[shade]} !important; }\n`;
+    css += `.hover\\:to-secondary-${shade}:hover { --tw-gradient-to: ${secondaryPalette[shade]} !important; }\n`;
+  });
+  
+  // Add gradient color overrides
+  shades.forEach(shade => {
+    css += `.from-secondary-${shade} { --tw-gradient-from: ${secondaryPalette[shade]} !important; --tw-gradient-to: transparent !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important; }\n`;
+    css += `.to-secondary-${shade} { --tw-gradient-to: ${secondaryPalette[shade]} !important; }\n`;
+    css += `.via-secondary-${shade} { --tw-gradient-to: transparent !important; --tw-gradient-stops: var(--tw-gradient-from), ${secondaryPalette[shade]}, var(--tw-gradient-to) !important; }\n`;
+    
+    // Add more opacity variants
+    css += `.bg-secondary-${shade}\/20 { background-color: ${secondaryPalette[shade]}33 !important; }\n`;
+    css += `.bg-secondary-${shade}\/80 { background-color: ${secondaryPalette[shade]}CC !important; }\n`;
+    css += `.border-secondary-${shade}\/30 { border-color: ${secondaryPalette[shade]}4D !important; }\n`;
+    css += `.border-secondary-${shade}\/50 { border-color: ${secondaryPalette[shade]}80 !important; }\n`;
+  });
+  
   // Inject the CSS into the document
   const styleElement = document.createElement('style');
   styleElement.id = 'dynamic-colors';
