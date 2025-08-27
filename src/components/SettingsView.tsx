@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Save, Folder, HardDrive, Coffee, Palette, Shield } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { LauncherSettings } from '../types/minecraft';
-import { getCurrentPrimaryColor, getCurrentAccentColor } from '../utils/colors';
+import { getCurrentPrimaryColor, getCurrentSecondaryColor } from '../utils/colors';
 
 interface SettingsViewProps {
   settings: LauncherSettings;
@@ -45,13 +45,13 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white mb-1">Settings</h1>
-          <p className="text-stone-400">Customize your launcher experience</p>
+          <p className="text-primary-400">Customize your launcher experience</p>
         </div>
         {hasChanges && (
           <div className="flex gap-2">
             <button
               onClick={handleReset}
-              className="px-4 py-2 text-stone-400 hover:text-white transition-colors"
+              className="px-4 py-2 text-primary-400 hover:text-white transition-colors"
             >
               Reset
             </button>
@@ -77,8 +77,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                   onClick={() => setActiveTab(tab.id as SettingsTab)}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-left ${
                     activeTab === tab.id
-                      ? 'bg-amber-600 text-white'
-                      : 'text-stone-400 hover:bg-stone-800 hover:text-white'
+                      ? 'bg-secondary-600 text-white'
+                      : 'text-primary-400 hover:bg-primary-800 hover:text-white'
                   }`}
                 >
                   <Icon size={20} />
@@ -90,7 +90,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
         </div>
 
         <div className="lg:col-span-3">
-          <div className="bg-stone-800 border border-stone-700 rounded-lg p-6">
+          <div className="bg-primary-800 border border-primary-700 rounded-lg p-6">
             {activeTab === 'general' && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -100,7 +100,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                 <h3 className="text-lg font-semibold text-white mb-4">General Settings</h3>
                 
                 <div>
-                  <label className="block text-sm font-medium text-stone-300 mb-2">
+                  <label className="block text-sm font-medium text-primary-300 mb-2">
                     Instances Directory
                   </label>
                   <div className="flex gap-2">
@@ -108,22 +108,22 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                       type="text"
                       value={localSettings.instances_dir}
                       onChange={(e) => handleSettingChange('instances_dir', e.target.value)}
-                      className="flex-1 px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      className="flex-1 px-3 py-2 bg-primary-700 border border-primary-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-secondary-500"
                     />
                     <button 
                       onClick={() => onOpenFolder && onOpenFolder(localSettings.instances_dir)}
-                      className="bg-stone-600 hover:bg-stone-700 text-white px-3 py-2 rounded-lg transition-colors"
+                      className="bg-primary-600 hover:bg-primary-700 text-white px-3 py-2 rounded-lg transition-colors"
                     >
                       <Folder size={18} />
                     </button>
                   </div>
-                  <p className="text-sm text-stone-400 mt-1">
+                  <p className="text-sm text-primary-400 mt-1">
                     Directory where Minecraft instances will be stored
                   </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-stone-300 mb-2">
+                  <label className="block text-sm font-medium text-primary-300 mb-2">
                     Downloads Directory
                   </label>
                   <div className="flex gap-2">
@@ -131,26 +131,26 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                       type="text"
                       value={localSettings.downloads_dir}
                       onChange={(e) => handleSettingChange('downloads_dir', e.target.value)}
-                      className="flex-1 px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      className="flex-1 px-3 py-2 bg-primary-700 border border-primary-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-secondary-500"
                     />
                     <button 
                       onClick={() => onOpenFolder && onOpenFolder(localSettings.downloads_dir)}
-                      className="bg-stone-600 hover:bg-stone-700 text-white px-3 py-2 rounded-lg transition-colors"
+                      className="bg-primary-600 hover:bg-primary-700 text-white px-3 py-2 rounded-lg transition-colors"
                     >
                       <Folder size={18} />
                     </button>
                   </div>
-                  <p className="text-sm text-stone-400 mt-1">
+                  <p className="text-sm text-primary-400 mt-1">
                     Directory where downloads will be stored
                   </p>
                 </div>
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <label className="text-sm font-medium text-stone-300">
+                    <label className="text-sm font-medium text-primary-300">
                       Keep launcher open after game starts
                     </label>
-                    <p className="text-sm text-stone-400">
+                    <p className="text-sm text-primary-400">
                       Launcher will stay open while playing
                     </p>
                   </div>
@@ -158,16 +158,16 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                     type="checkbox"
                     checked={localSettings.keepLauncherOpen}
                     onChange={(e) => handleSettingChange('keepLauncherOpen', e.target.checked)}
-                    className="rounded border-stone-600 bg-stone-700"
+                    className="rounded border-primary-600 bg-primary-700"
                   />
                 </div>
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <label className="text-sm font-medium text-stone-300">
+                    <label className="text-sm font-medium text-primary-300">
                       Show snapshot versions
                     </label>
-                    <p className="text-sm text-stone-400">
+                    <p className="text-sm text-primary-400">
                       Include development versions in version list
                     </p>
                   </div>
@@ -175,16 +175,16 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                     type="checkbox"
                     checked={localSettings.showSnapshots}
                     onChange={(e) => handleSettingChange('showSnapshots', e.target.checked)}
-                    className="rounded border-stone-600 bg-stone-700"
+                    className="rounded border-primary-600 bg-primary-700"
                   />
                 </div>
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <label className="text-sm font-medium text-stone-300">
+                    <label className="text-sm font-medium text-primary-300">
                       Auto-update launcher
                     </label>
-                    <p className="text-sm text-stone-400">
+                    <p className="text-sm text-primary-400">
                       Automatically check for and install updates
                     </p>
                   </div>
@@ -192,7 +192,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                     type="checkbox"
                     checked={localSettings.auto_update}
                     onChange={(e) => handleSettingChange('auto_update', e.target.checked)}
-                    className="rounded border-stone-600 bg-stone-700"
+                    className="rounded border-primary-600 bg-primary-700"
                   />
                 </div>
               </motion.div>
@@ -207,7 +207,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                 <h3 className="text-lg font-semibold text-white mb-4">Java Settings</h3>
                 
                 <div>
-                  <label className="block text-sm font-medium text-stone-300 mb-2">
+                  <label className="block text-sm font-medium text-primary-300 mb-2">
                     Java Executable Path
                   </label>
                   <div className="flex gap-2">
@@ -216,16 +216,16 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                       value={localSettings.default_java_path || ''}
                       onChange={(e) => handleSettingChange('default_java_path', e.target.value || undefined)}
                       placeholder="Auto-detect"
-                      className="flex-1 px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      className="flex-1 px-3 py-2 bg-primary-700 border border-primary-600 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-secondary-500"
                     />
-                    <button className="bg-stone-600 hover:bg-stone-700 text-white px-3 py-2 rounded-lg transition-colors">
+                    <button className="bg-primary-600 hover:bg-primary-700 text-white px-3 py-2 rounded-lg transition-colors">
                       <Folder size={18} />
                     </button>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-stone-300 mb-2">
+                  <label className="block text-sm font-medium text-primary-300 mb-2">
                     Default Memory (MB)
                   </label>
                   <input
@@ -234,21 +234,21 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                     onChange={(e) => handleSettingChange('default_memory', parseInt(e.target.value))}
                     min="1024"
                     max="16384"
-                    className="w-full px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2 bg-primary-700 border border-primary-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-secondary-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-stone-300 mb-2">
+                  <label className="block text-sm font-medium text-primary-300 mb-2">
                     Default JVM Arguments
                   </label>
                   <textarea
                     value={localSettings.default_jvm_args.join(' ')}
                     onChange={(e) => handleSettingChange('default_jvm_args', e.target.value.split(' ').filter(arg => arg.trim()))}
                     placeholder="-XX:+UnlockExperimentalVMOptions -XX:+UseG1GC"
-                    className="w-full px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500 h-24 resize-none"
+                    className="w-full px-3 py-2 bg-primary-700 border border-primary-600 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-secondary-500 h-24 resize-none"
                   />
-                  <p className="text-sm text-stone-400 mt-1">
+                  <p className="text-sm text-primary-400 mt-1">
                     Default JVM arguments for new instances
                   </p>
                 </div>
@@ -265,7 +265,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                 
                 {/* Background Image Selection */}
                 <div>
-                  <label className="block text-sm font-medium text-stone-300 mb-3">
+                  <label className="block text-sm font-medium text-primary-300 mb-3">
                     Background Image
                   </label>
                   <div className="flex gap-3">
@@ -274,99 +274,99 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                       value={localSettings.background_image || ''}
                       onChange={(e) => handleSettingChange('background_image', e.target.value || undefined)}
                       placeholder="Path to background image (optional)"
-                      className="flex-1 px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      className="flex-1 px-3 py-2 bg-primary-700 border border-primary-600 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-secondary-500"
                     />
                     <button
                       onClick={() => onOpenFolder && onOpenFolder('images')}
-                      className="px-3 py-2 bg-stone-600 hover:bg-stone-500 text-white rounded-lg transition-colors"
+                      className="px-3 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition-colors"
                       title="Browse for image"
                     >
                       <Folder size={18} />
                     </button>
                   </div>
-                  <p className="text-sm text-stone-400 mt-1">
+                  <p className="text-sm text-primary-400 mt-1">
                     Leave empty to use default background
                   </p>
                 </div>
 
                 {/* Color Scheme Selection */}
                 <div>
-                  <label className="block text-sm font-medium text-stone-300 mb-3">
+                  <label className="block text-sm font-medium text-primary-300 mb-3">
                     Color Scheme
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     <button
-                      onClick={() => handleSettingChange('color_scheme', 'stone')}
+                      onClick={() => handleSettingChange('color_scheme', 'primary')}
                       className={`p-4 rounded-lg border-2 transition-colors ${
-                        localSettings.color_scheme === 'stone'
+                        localSettings.color_scheme === 'primary'
                           ? 'border-accent-600 bg-accent-600 bg-opacity-20'
                           : 'border-primary-600 hover:border-primary-500'
                       }`}
                     >
                       <div 
                         className="w-full h-16 rounded mb-2"
-                        style={{ backgroundColor: localSettings.stone_base_color || '#78716c' }}
+                        style={{ backgroundColor: localSettings.primary_base_color || '#78716c' }}
                       ></div>
-                      <p className="text-white font-medium">Stone</p>
+                      <p className="text-white font-medium">Primary</p>
                     </button>
                     
                     <button
-                      onClick={() => handleSettingChange('color_scheme', 'amber')}
+                      onClick={() => handleSettingChange('color_scheme', 'secondary')}
                       className={`p-4 rounded-lg border-2 transition-colors ${
-                        localSettings.color_scheme === 'amber'
+                        localSettings.color_scheme === 'secondary'
                           ? 'border-accent-600 bg-accent-600 bg-opacity-20'
                           : 'border-primary-600 hover:border-primary-500'
                       }`}
                     >
                       <div 
                         className="w-full h-16 rounded mb-2"
-                        style={{ backgroundColor: localSettings.amber_base_color || '#d97706' }}
+                        style={{ backgroundColor: localSettings.secondary_base_color || '#d97706' }}
                       ></div>
-                      <p className="text-white font-medium">Amber</p>
+                      <p className="text-white font-medium">Secondary</p>
                     </button>
                   </div>
                 </div>
 
                 {/* Base Color Customization */}
                 <div>
-                  <label className="block text-sm font-medium text-stone-300 mb-3">
+                  <label className="block text-sm font-medium text-primary-300 mb-3">
                     Base Color Customization
                   </label>
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
-                      <label className="w-20 text-sm text-stone-400">Stone:</label>
+                      <label className="w-20 text-sm text-primary-400">Primary:</label>
                       <input
                         type="color"
-                        value={localSettings.stone_base_color || '#78716c'}
-                        onChange={(e) => handleSettingChange('stone_base_color', e.target.value)}
-                        className="w-12 h-8 rounded border border-stone-600 bg-stone-700"
+                        value={localSettings.primary_base_color || '#78716c'}
+                        onChange={(e) => handleSettingChange('primary_base_color', e.target.value)}
+                        className="w-12 h-8 rounded border border-primary-600 bg-primary-700"
                       />
                       <input
                         type="text"
-                        value={localSettings.stone_base_color || '#78716c'}
-                        onChange={(e) => handleSettingChange('stone_base_color', e.target.value)}
-                        className="flex-1 px-3 py-1 bg-stone-700 border border-stone-600 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        value={localSettings.primary_base_color || '#78716c'}
+                        onChange={(e) => handleSettingChange('primary_base_color', e.target.value)}
+                        className="flex-1 px-3 py-1 bg-primary-700 border border-primary-600 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-secondary-500"
                         placeholder="#78716c"
                       />
                     </div>
                     <div className="flex items-center gap-3">
-                      <label className="w-20 text-sm text-stone-400">Amber:</label>
+                      <label className="w-20 text-sm text-primary-400">Secondary:</label>
                       <input
                         type="color"
-                        value={localSettings.amber_base_color || '#d97706'}
-                        onChange={(e) => handleSettingChange('amber_base_color', e.target.value)}
-                        className="w-12 h-8 rounded border border-stone-600 bg-stone-700"
+                        value={localSettings.secondary_base_color || '#d97706'}
+                        onChange={(e) => handleSettingChange('secondary_base_color', e.target.value)}
+                        className="w-12 h-8 rounded border border-primary-600 bg-primary-700"
                       />
                       <input
                         type="text"
-                        value={localSettings.amber_base_color || '#d97706'}
-                        onChange={(e) => handleSettingChange('amber_base_color', e.target.value)}
-                        className="flex-1 px-3 py-1 bg-stone-700 border border-stone-600 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        value={localSettings.secondary_base_color || '#d97706'}
+                        onChange={(e) => handleSettingChange('secondary_base_color', e.target.value)}
+                        className="flex-1 px-3 py-1 bg-primary-700 border border-primary-600 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-secondary-500"
                         placeholder="#d97706"
                       />
                     </div>
                   </div>
-                  <p className="text-sm text-stone-400 mt-2">
+                  <p className="text-sm text-primary-400 mt-2">
                     Customize the base colors for dynamic theming throughout the app
                   </p>
                 </div>
@@ -400,7 +400,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                     Reset Launcher Settings
                   </button>
                   
-                  <button className="w-full bg-amber-600 hover:bg-amber-700 text-white py-2 px-4 rounded-lg transition-colors">
+                  <button className="w-full bg-secondary-600 hover:bg-secondary-700 text-white py-2 px-4 rounded-lg transition-colors">
                     Export Settings
                   </button>
                   

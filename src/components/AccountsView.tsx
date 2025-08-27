@@ -199,12 +199,12 @@ const AccountsView: React.FC<AccountsViewProps> = ({
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white mb-1">Accounts</h1>
-          <p className="text-stone-400">Manage your Minecraft accounts</p>
+          <p className="text-primary-400">Manage your Minecraft accounts</p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => setShowAuthModal(true)}
-            className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+            className="bg-secondary-600 hover:bg-secondary-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
           >
             <Key size={18} />
             Auth Token
@@ -220,11 +220,11 @@ const AccountsView: React.FC<AccountsViewProps> = ({
       </div>
 
       {/* Auth Token Status */}
-      <div className="mb-6 bg-stone-800 border border-stone-700 rounded-lg p-4">
+      <div className="mb-6 bg-primary-800 border border-primary-700 rounded-lg p-4">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-semibold text-white mb-1">Authentication Token</h3>
-            <p className="text-stone-400 text-sm">
+            <p className="text-primary-400 text-sm">
               {currentAuthToken 
                 ? `Token configured (${currentAuthToken.substring(0, 8)}...)`
                 : 'No authentication token configured'
@@ -234,7 +234,7 @@ const AccountsView: React.FC<AccountsViewProps> = ({
           <div className="flex gap-2">
             <button
               onClick={() => setShowAuthModal(true)}
-              className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1 rounded text-sm transition-colors"
+              className="bg-secondary-600 hover:bg-secondary-700 text-white px-3 py-1 rounded text-sm transition-colors"
             >
               {currentAuthToken ? 'Update' : 'Set Token'}
             </button>
@@ -257,12 +257,12 @@ const AccountsView: React.FC<AccountsViewProps> = ({
               key={account.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`bg-stone-800 border rounded-lg p-4 transition-colors ${
-                activeAccountId === account.id ? 'border-green-500' : 'border-stone-700 hover:border-stone-600'
+              className={`bg-primary-800 border rounded-lg p-4 transition-colors ${
+                activeAccountId === account.id ? 'border-green-500' : 'border-primary-700 hover:border-primary-600'
               }`}
             >
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-stone-700 rounded-lg flex items-center justify-center">
+                <div className="w-16 h-16 bg-primary-700 rounded-lg flex items-center justify-center">
                   {account.skin_url ? (
                     <img 
                       src={account.skin_url} 
@@ -270,7 +270,7 @@ const AccountsView: React.FC<AccountsViewProps> = ({
                       className="w-full h-full rounded-lg object-cover"
                     />
                   ) : (
-                    <User size={32} className="text-stone-400" />
+                    <User size={32} className="text-primary-400" />
                   )}
                 </div>
                 
@@ -284,9 +284,9 @@ const AccountsView: React.FC<AccountsViewProps> = ({
                       </span>
                     )}
                   </div>
-                  <p className="text-stone-400 text-sm">{account.uuid}</p>
-                  <p className="text-stone-500 text-xs">Microsoft Account</p>
-                  <p className="text-stone-500 text-xs">
+                  <p className="text-primary-400 text-sm">{account.uuid}</p>
+                  <p className="text-primary-500 text-xs">Microsoft Account</p>
+                  <p className="text-primary-500 text-xs">
                     Token expires: {new Date(account.expires_at * 1000).toLocaleString()}
                   </p>
                 </div>
@@ -295,7 +295,7 @@ const AccountsView: React.FC<AccountsViewProps> = ({
                   {activeAccountId !== account.id && (
                     <button
                       onClick={() => handleSetActiveAccount(account.id)}
-                      className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1 rounded text-sm transition-colors"
+                      className="bg-secondary-600 hover:bg-secondary-700 text-white px-3 py-1 rounded text-sm transition-colors"
                     >
                       Set Active
                     </button>
@@ -312,12 +312,12 @@ const AccountsView: React.FC<AccountsViewProps> = ({
           ))
         ) : (
           <div className="text-center py-12">
-            <User size={64} className="mx-auto text-stone-600 mb-4" />
+            <User size={64} className="mx-auto text-primary-600 mb-4" />
             <h3 className="text-lg font-semibold text-white mb-2">No accounts added</h3>
-            <p className="text-stone-400 mb-4">Add an account to start playing Minecraft</p>
+            <p className="text-primary-400 mb-4">Add an account to start playing Minecraft</p>
             <button
               onClick={() => setShowAddModal(true)}
-              className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-2 rounded-lg transition-colors"
+              className="bg-secondary-600 hover:bg-secondary-700 text-white px-6 py-2 rounded-lg transition-colors"
             >
               Add Your First Account
             </button>
@@ -330,7 +330,7 @@ const AccountsView: React.FC<AccountsViewProps> = ({
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-stone-800 rounded-lg border border-stone-700 p-6 w-full max-w-md"
+            className="bg-primary-800 rounded-lg border border-primary-700 p-6 w-full max-w-md"
           >
             <h3 className="text-lg font-semibold text-white mb-4">Add Account</h3>
             
@@ -352,7 +352,7 @@ const AccountsView: React.FC<AccountsViewProps> = ({
                 
                 <button
                   onClick={() => setShowOfflineForm(true)}
-                  className="w-full bg-stone-600 hover:bg-stone-700 text-white p-3 rounded-lg flex items-center gap-3 transition-colors"
+                  className="w-full bg-primary-600 hover:bg-primary-700 text-white p-3 rounded-lg flex items-center gap-3 transition-colors"
                 >
                   <EyeOff size={20} />
                   <div className="text-left">
@@ -364,7 +364,7 @@ const AccountsView: React.FC<AccountsViewProps> = ({
             ) : (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-stone-300 mb-2">
+                  <label className="block text-sm font-medium text-primary-300 mb-2">
                     Username
                   </label>
                   <input
@@ -372,14 +372,14 @@ const AccountsView: React.FC<AccountsViewProps> = ({
                     value={offlineUsername}
                     onChange={(e) => setOfflineUsername(e.target.value)}
                     placeholder="Enter username"
-                    className="w-full px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2 bg-primary-700 border border-primary-600 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-secondary-500"
                   />
                 </div>
                 
                 <div className="flex gap-2">
                   <button
                     onClick={() => setShowOfflineForm(false)}
-                    className="flex-1 bg-stone-600 hover:bg-stone-700 text-white py-2 rounded-lg transition-colors"
+                    className="flex-1 bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-lg transition-colors"
                   >
                     Back
                   </button>
@@ -401,7 +401,7 @@ const AccountsView: React.FC<AccountsViewProps> = ({
                   setShowOfflineForm(false);
                   setOfflineUsername('');
                 }}
-                className="text-stone-400 hover:text-white transition-colors"
+                className="text-primary-400 hover:text-white transition-colors"
               >
                 Cancel
               </button>
@@ -416,13 +416,13 @@ const AccountsView: React.FC<AccountsViewProps> = ({
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-stone-800 rounded-lg border border-stone-700 p-6 w-full max-w-md"
+            className="bg-primary-800 rounded-lg border border-primary-700 p-6 w-full max-w-md"
           >
             <h3 className="text-lg font-semibold text-white mb-4">Set Authentication Token</h3>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-stone-300 mb-2">
+                <label className="block text-sm font-medium text-primary-300 mb-2">
                   Authentication Token
                 </label>
                 <input
@@ -430,9 +430,9 @@ const AccountsView: React.FC<AccountsViewProps> = ({
                   value={authToken}
                   onChange={(e) => setAuthToken(e.target.value)}
                   placeholder="Enter your authentication token"
-                  className="w-full px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 bg-primary-700 border border-primary-600 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-secondary-500"
                 />
-                <p className="text-xs text-stone-500 mt-1">
+                <p className="text-xs text-primary-500 mt-1">
                   This token will be passed to the game when launching instances.
                 </p>
               </div>
@@ -443,14 +443,14 @@ const AccountsView: React.FC<AccountsViewProps> = ({
                     setShowAuthModal(false);
                     setAuthToken('');
                   }}
-                  className="flex-1 bg-stone-600 hover:bg-stone-700 text-white py-2 rounded-lg transition-colors"
+                  className="flex-1 bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveAuthToken}
                   disabled={!authToken.trim()}
-                  className="flex-1 bg-amber-600 hover:bg-amber-700 text-white py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 bg-secondary-600 hover:bg-secondary-700 text-white py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Save Token
                 </button>

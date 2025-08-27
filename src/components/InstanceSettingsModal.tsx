@@ -205,7 +205,7 @@ export default function InstanceSettingsModal({
       
       const loaderColors = {
         'forge': 'bg-red-600 text-white',
-        'fabric': 'bg-amber-600 text-white',
+        'fabric': 'bg-secondary-600 text-white',
         'quilt': 'bg-purple-600 text-white',
         'neoforge': 'bg-orange-700 text-white',
         'optifine': 'bg-blue-700 text-white'
@@ -241,7 +241,7 @@ export default function InstanceSettingsModal({
           <span className={`px-2 py-1 rounded-full ${isCompatible ? 'bg-green-900 text-green-200' : 'bg-yellow-900 text-yellow-200'}`}>
             {isCompatible ? '✓ Compatible' : '⚠ Check Version'}
           </span>
-          <span className="text-stone-400">
+          <span className="text-primary-400">
             {displayVersions.join(', ')}
             {mod.game_versions.length > 3 && ` +${mod.game_versions.length - 3}`}
           </span>
@@ -253,7 +253,7 @@ export default function InstanceSettingsModal({
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-stone-800 border border-stone-700 rounded-lg p-4 hover:border-stone-600 transition-colors"
+        className="bg-primary-800 border border-primary-700 rounded-lg p-4 hover:border-primary-600 transition-colors"
       >
         <div className="flex items-start gap-3">
           {mod.icon_url ? (
@@ -263,8 +263,8 @@ export default function InstanceSettingsModal({
               className="w-12 h-12 rounded-lg object-cover"
             />
           ) : (
-            <div className="w-12 h-12 bg-stone-700 rounded-lg flex items-center justify-center">
-              <Package size={24} className="text-stone-400" />
+            <div className="w-12 h-12 bg-primary-700 rounded-lg flex items-center justify-center">
+              <Package size={24} className="text-primary-400" />
             </div>
           )}
           
@@ -277,7 +277,7 @@ export default function InstanceSettingsModal({
               {getPlatformBadge()}
             </div>
             
-            <p className="text-stone-400 text-sm mb-3 line-clamp-2">
+            <p className="text-primary-400 text-sm mb-3 line-clamp-2">
               {mod.description}
             </p>
             
@@ -291,7 +291,7 @@ export default function InstanceSettingsModal({
               {getLoaderBadges()}
             </div>
             
-            <div className="flex items-center justify-between text-xs text-stone-500 mb-3">
+            <div className="flex items-center justify-between text-xs text-primary-500 mb-3">
               <div className="flex items-center gap-3">
                 <span className="flex items-center gap-1">
                   <User size={12} />
@@ -313,13 +313,13 @@ export default function InstanceSettingsModal({
                 {mod.categories.slice(0, 2).map((category: string) => (
                   <span
                     key={category}
-                    className="px-2 py-1 bg-stone-700 text-stone-300 text-xs rounded"
+                    className="px-2 py-1 bg-primary-700 text-primary-300 text-xs rounded"
                   >
                     {category}
                   </span>
                 ))}
                 {mod.categories.length > 2 && (
-                  <span className="px-2 py-1 bg-stone-700 text-stone-300 text-xs rounded">
+                  <span className="px-2 py-1 bg-primary-700 text-primary-300 text-xs rounded">
                     +{mod.categories.length - 2}
                   </span>
                 )}
@@ -329,7 +329,7 @@ export default function InstanceSettingsModal({
                 {mod.website_url && (
                   <button
                     onClick={() => window.open(mod.website_url, '_blank')}
-                    className="p-1 text-stone-400 hover:text-white transition-colors"
+                    className="p-1 text-primary-400 hover:text-white transition-colors"
                     title="Visit website"
                   >
                     <ExternalLink size={16} />
@@ -361,52 +361,52 @@ export default function InstanceSettingsModal({
   const renderGeneralTab = () => (
     <div className="space-y-6">
       <div>
-        <label className="block text-sm font-medium text-stone-300 mb-2">
+        <label className="block text-sm font-medium text-primary-300 mb-2">
           Instance Name
         </label>
         <input
           type="text"
           value={instance.name}
-          className="w-full px-3 py-2 bg-stone-800 border border-stone-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+          className="w-full px-3 py-2 bg-primary-800 border border-primary-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-secondary-500"
           readOnly
         />
       </div>
       
       <div>
-        <label className="block text-sm font-medium text-stone-300 mb-2">
+        <label className="block text-sm font-medium text-primary-300 mb-2">
           Minecraft Version
         </label>
         <input
           type="text"
           value={instance.version}
-          className="w-full px-3 py-2 bg-stone-800 border border-stone-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+          className="w-full px-3 py-2 bg-primary-800 border border-primary-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-secondary-500"
           readOnly
         />
       </div>
 
       {instance.modpack && (
         <div>
-          <label className="block text-sm font-medium text-stone-300 mb-2">
+          <label className="block text-sm font-medium text-primary-300 mb-2">
             Modpack
           </label>
           <input
             type="text"
             value={`${instance.modpack} (${instance.modpackVersion || 'Unknown version'})`}
-            className="w-full px-3 py-2 bg-stone-800 border border-stone-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="w-full px-3 py-2 bg-primary-800 border border-primary-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-secondary-500"
             readOnly
           />
         </div>
       )}
 
       <div>
-        <label className="block text-sm font-medium text-stone-300 mb-2">
+        <label className="block text-sm font-medium text-primary-300 mb-2">
           Game Directory
         </label>
         <div className="flex gap-2">
           <input
             type="text"
             value={instance.gameDir}
-            className="flex-1 px-3 py-2 bg-stone-800 border border-stone-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="flex-1 px-3 py-2 bg-primary-800 border border-primary-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-secondary-500"
             readOnly
           />
           <button
@@ -415,7 +415,7 @@ export default function InstanceSettingsModal({
                 invoke('open_folder', { path: instance.gameDir });
               }
             }}
-            className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors flex items-center gap-2"
+            className="px-3 py-2 bg-secondary-600 hover:bg-secondary-700 text-white rounded-lg transition-colors flex items-center gap-2"
           >
             <Folder size={16} />
             Open
@@ -430,20 +430,20 @@ export default function InstanceSettingsModal({
       {/* Search Bar */}
       <form onSubmit={handleSearch} className="flex gap-4">
         <div className="flex-1 relative">
-          <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-stone-400" />
+          <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={`Search mods compatible with ${instance.version}...`}
-            className="w-full pl-10 pr-4 py-2 bg-stone-800 border border-stone-700 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="w-full pl-10 pr-4 py-2 bg-primary-800 border border-primary-700 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-secondary-500"
           />
         </div>
         
         <button
           type="submit"
           disabled={loading}
-          className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-stone-600 text-white rounded-lg transition-colors flex items-center gap-2"
+          className="px-4 py-2 bg-secondary-600 hover:bg-secondary-700 disabled:bg-primary-600 text-white rounded-lg transition-colors flex items-center gap-2"
         >
           {loading ? (
             <Loader size={16} className="animate-spin" />
@@ -465,7 +465,7 @@ export default function InstanceSettingsModal({
           <button
             onClick={() => setViewMode('grid')}
             className={`p-2 rounded transition-colors ${
-              viewMode === 'grid' ? 'bg-amber-600 text-white' : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
+              viewMode === 'grid' ? 'bg-secondary-600 text-white' : 'bg-primary-700 text-primary-300 hover:bg-primary-600'
             }`}
           >
             <Grid size={18} />
@@ -473,7 +473,7 @@ export default function InstanceSettingsModal({
           <button
             onClick={() => setViewMode('list')}
             className={`p-2 rounded transition-colors ${
-              viewMode === 'list' ? 'bg-amber-600 text-white' : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
+              viewMode === 'list' ? 'bg-secondary-600 text-white' : 'bg-primary-700 text-primary-300 hover:bg-primary-600'
             }`}
           >
             <List size={18} />
@@ -505,7 +505,7 @@ export default function InstanceSettingsModal({
                 <button
                   onClick={loadMoreResults}
                   disabled={isLoadingMore}
-                  className="px-6 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-stone-600 text-white rounded-lg transition-colors flex items-center gap-2 mx-auto"
+                  className="px-6 py-2 bg-secondary-600 hover:bg-secondary-700 disabled:bg-primary-600 text-white rounded-lg transition-colors flex items-center gap-2 mx-auto"
                 >
                   {isLoadingMore ? (
                     <Loader size={16} className="animate-spin" />
@@ -524,13 +524,13 @@ export default function InstanceSettingsModal({
             ))}
           </div>
         ) : searchQuery.trim() && !loading ? (
-          <div className="text-center py-8 text-stone-400">
+          <div className="text-center py-8 text-primary-400">
             <Package size={48} className="mx-auto mb-2" />
             <p>No compatible mods found for "{searchQuery}"</p>
             <p className="text-sm">Try searching for mods that support {instance.version}</p>
           </div>
         ) : !searchQuery.trim() ? (
-          <div className="text-center py-8 text-stone-400">
+          <div className="text-center py-8 text-primary-400">
             <Package size={48} className="mx-auto mb-2" />
             <p>Search for mods to install</p>
             <p className="text-sm">Only mods compatible with {instance.version} will be shown</p>
@@ -541,7 +541,7 @@ export default function InstanceSettingsModal({
   );
 
   const renderResourcePacksTab = () => (
-    <div className="text-center py-8 text-stone-400">
+    <div className="text-center py-8 text-primary-400">
       <Package size={48} className="mx-auto mb-2" />
       <p>Resource Pack management coming soon</p>
     </div>
@@ -562,27 +562,27 @@ export default function InstanceSettingsModal({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
             onClick={(e) => e.stopPropagation()}
-            className="bg-stone-900 border border-stone-700 rounded-lg w-full max-w-4xl max-h-[80vh] overflow-hidden"
+            className="bg-primary-900 border border-primary-700 rounded-lg w-full max-w-4xl max-h-[80vh] overflow-hidden"
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-stone-700">
+            <div className="flex items-center justify-between p-6 border-b border-primary-700">
               <div className="flex items-center gap-3">
-                <Settings size={24} className="text-amber-500" />
+                <Settings size={24} className="text-secondary-500" />
                 <div>
                   <h2 className="text-xl font-bold text-white">Instance Settings</h2>
-                  <p className="text-stone-400 text-sm">{instance.name}</p>
+                  <p className="text-primary-400 text-sm">{instance.name}</p>
                 </div>
               </div>
               <button
                 onClick={onClose}
-                className="p-2 text-stone-400 hover:text-white transition-colors"
+                className="p-2 text-primary-400 hover:text-white transition-colors"
               >
                 <X size={20} />
               </button>
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-stone-700">
+            <div className="flex border-b border-primary-700">
               {[
                 { id: 'general' as const, label: 'General', icon: Settings },
                 { id: 'mods' as const, label: 'Mods', icon: Package },
@@ -595,8 +595,8 @@ export default function InstanceSettingsModal({
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex items-center gap-2 px-6 py-3 text-sm font-medium transition-colors ${
                       activeTab === tab.id
-                        ? 'bg-amber-600 text-white border-b-2 border-amber-400'
-                        : 'text-stone-300 hover:text-white hover:bg-stone-800'
+                        ? 'bg-secondary-600 text-white border-b-2 border-secondary-400'
+                        : 'text-primary-300 hover:text-white hover:bg-primary-800'
                     }`}
                   >
                     <Icon size={16} />

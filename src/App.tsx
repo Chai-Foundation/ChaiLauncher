@@ -747,7 +747,7 @@ function App() {
   }, []);
 
   return (
-  <div className="min-h-screen h-full w-full bg-stone-950 flex flex-col">
+  <div className="min-h-screen h-full w-full bg-primary-950 flex flex-col">
     {/* Hero Background Image */}
     <div className="absolute inset-0">
       <img
@@ -769,7 +769,7 @@ function App() {
         {/* Titlebar */}
         <div className="flex flex-col flex-1 min-h-0">
         <div
-          className="bg-stone-900/60 backdrop-blur-sm border-r border-amber-600/30 h-9 flex items-center justify-between"
+          className="bg-primary-900/60 backdrop-blur-sm border-r border-secondary-600/30 h-9 flex items-center justify-between"
           style={{ WebkitAppRegion: 'drag' } as CSSProperties}
         >
           <div className="flex-1"></div>
@@ -779,7 +779,7 @@ function App() {
             style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
           >
           <button
-            className="w-6 h-6 flex items-center justify-center hover:bg-stone-800 rounded"
+            className="w-6 h-6 flex items-center justify-center hover:bg-primary-800 rounded"
             title="Minimize"
             onClick={async (e) => {
               e.stopPropagation();
@@ -793,7 +793,7 @@ function App() {
             </svg>
           </button>
           <button
-            className="w-6 h-6 flex items-center justify-center hover:bg-stone-800 rounded"
+            className="w-6 h-6 flex items-center justify-center hover:bg-primary-800 rounded"
             title="Maximize"
             onClick={async (e) => {
               e.stopPropagation();

@@ -88,9 +88,9 @@ export function applyColorScheme(settings: LauncherSettings): void {
   const root = document.documentElement;
   
   // Determine which color scheme to use as primary
-  const primaryColor = settings.color_scheme === 'amber' 
-    ? settings.amber_base_color || '#d97706'
-    : settings.stone_base_color || '#78716c';
+  const primaryColor = settings.color_scheme === 'secondary' 
+    ? settings.secondary_base_color || '#d97706'
+    : settings.primary_base_color || '#78716c';
     
   // Generate primary palette
   const primaryPalette = generateColorPalette(primaryColor);
@@ -100,12 +100,13 @@ export function applyColorScheme(settings: LauncherSettings): void {
     root.style.setProperty(`--primary-${shade}`, color);
   });
   
-  // Always use amber as accent color (but allow customization)
-  const accentColor = settings.amber_base_color || '#d97706';
+  // Always use secondary as accent color (but allow customization)
+  const accentColor = settings.secondary_base_color || '#d97706';
   const accentPalette = generateColorPalette(accentColor);
   
-  // Apply accent colors
+  // Apply secondary/accent colors
   Object.entries(accentPalette).forEach(([shade, color]) => {
+    root.style.setProperty(`--secondary-${shade}`, color);
     root.style.setProperty(`--accent-${shade}`, color);
   });
   
@@ -119,11 +120,11 @@ export function applyColorScheme(settings: LauncherSettings): void {
 
 // Function to get the current color for display purposes
 export function getCurrentPrimaryColor(settings: LauncherSettings): string {
-  return settings.color_scheme === 'amber' 
-    ? settings.amber_base_color || '#d97706'
-    : settings.stone_base_color || '#78716c';
+  return settings.color_scheme === 'secondary' 
+    ? settings.secondary_base_color || '#d97706'
+    : settings.primary_base_color || '#78716c';
 }
 
-export function getCurrentAccentColor(settings: LauncherSettings): string {
-  return settings.amber_base_color || '#d97706';
+export function getCurrentSecondaryColor(settings: LauncherSettings): string {
+  return settings.secondary_base_color || '#d97706';
 }

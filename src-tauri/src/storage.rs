@@ -46,8 +46,8 @@ pub struct LauncherSettings {
     pub theme: String,
     pub background_image: Option<String>,
     pub color_scheme: String,
-    pub stone_base_color: Option<String>,
-    pub amber_base_color: Option<String>,
+    pub primary_base_color: Option<String>,
+    pub secondary_base_color: Option<String>,
     pub auto_update: bool,
     pub auth_token: Option<String>,
 }
@@ -70,9 +70,9 @@ impl Default for LauncherSettings {
             downloads_dir: launcher_dir.join("downloads"),
             theme: "dark".to_string(),
             background_image: None,
-            color_scheme: "stone".to_string(),
-            stone_base_color: Some("#78716c".to_string()),
-            amber_base_color: Some("#d97706".to_string()),
+            color_scheme: "primary".to_string(),
+            primary_base_color: Some("#78716c".to_string()),
+            secondary_base_color: Some("#d97706".to_string()),
             auto_update: true,
             auth_token: None,
         }

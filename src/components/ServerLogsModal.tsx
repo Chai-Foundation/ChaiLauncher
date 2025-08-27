@@ -179,7 +179,7 @@ const ServerLogsModal: React.FC<ServerLogsModalProps> = ({ isOpen, onClose, serv
       case 'warn': return 'text-yellow-400';
       case 'debug': return 'text-blue-400';
       case 'info':
-      default: return 'text-stone-300';
+      default: return 'text-primary-300';
     }
   };
 
@@ -187,7 +187,7 @@ const ServerLogsModal: React.FC<ServerLogsModalProps> = ({ isOpen, onClose, serv
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-stone-800 rounded-xl p-6 max-w-4xl w-full h-[80vh] flex flex-col">
+      <div className="bg-primary-800 rounded-xl p-6 max-w-4xl w-full h-[80vh] flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center">
@@ -195,27 +195,27 @@ const ServerLogsModal: React.FC<ServerLogsModalProps> = ({ isOpen, onClose, serv
             </div>
             <div>
               <h2 className="text-xl font-bold text-white">Server Logs</h2>
-              <p className="text-sm text-stone-300">{server.name}</p>
+              <p className="text-sm text-primary-300">{server.name}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handleDownloadLogs}
-              className="p-2 text-stone-400 hover:text-white hover:bg-stone-600/50 rounded transition-colors"
+              className="p-2 text-primary-400 hover:text-white hover:bg-primary-600/50 rounded transition-colors"
               title="Download logs"
             >
               <Download className="w-4 h-4" />
             </button>
             <button
               onClick={handleClearLogs}
-              className="p-2 text-stone-400 hover:text-white hover:bg-stone-600/50 rounded transition-colors"
+              className="p-2 text-primary-400 hover:text-white hover:bg-primary-600/50 rounded transition-colors"
               title="Clear logs display"
             >
               <Trash2 className="w-4 h-4" />
             </button>
             <button
               onClick={onClose}
-              className="text-stone-400 hover:text-white transition-colors"
+              className="text-primary-400 hover:text-white transition-colors"
             >
               <X className="w-6 h-6" />
             </button>
@@ -223,24 +223,24 @@ const ServerLogsModal: React.FC<ServerLogsModalProps> = ({ isOpen, onClose, serv
         </div>
 
         {/* Server Status Bar */}
-        <div className="bg-stone-700/30 rounded-lg p-3 mb-4 flex items-center justify-between text-sm">
+        <div className="bg-primary-700/30 rounded-lg p-3 mb-4 flex items-center justify-between text-sm">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${
                 server.status === 'running' ? 'bg-green-400' : 
                 server.status === 'starting' ? 'bg-yellow-400' : 'bg-red-400'
               }`} />
-              <span className="text-stone-300 capitalize">{server.status}</span>
+              <span className="text-primary-300 capitalize">{server.status}</span>
             </div>
-            <span className="text-stone-300">Port: {server.port}</span>
-            <span className="text-stone-300">Max Players: {server.max_players}</span>
+            <span className="text-primary-300">Port: {server.port}</span>
+            <span className="text-primary-300">Max Players: {server.max_players}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-stone-400">Auto-scroll:</span>
+            <span className="text-primary-400">Auto-scroll:</span>
             <button
               onClick={() => setAutoScroll(!autoScroll)}
               className={`px-2 py-1 rounded text-xs transition-colors ${
-                autoScroll ? 'bg-green-600 text-white' : 'bg-stone-600 text-stone-300'
+                autoScroll ? 'bg-green-600 text-white' : 'bg-primary-600 text-primary-300'
               }`}
             >
               {autoScroll ? 'ON' : 'OFF'}
@@ -256,25 +256,25 @@ const ServerLogsModal: React.FC<ServerLogsModalProps> = ({ isOpen, onClose, serv
           style={{ scrollbarWidth: 'thin' }}
         >
           {loading && logs.length === 0 ? (
-            <div className="text-center text-stone-400 py-8">
+            <div className="text-center text-primary-400 py-8">
               <div className="animate-spin w-6 h-6 border-2 border-current border-t-transparent rounded-full mx-auto mb-2" />
               Loading logs...
             </div>
           ) : logs.length === 0 ? (
-            <div className="text-center text-stone-400 py-8">
+            <div className="text-center text-primary-400 py-8">
               No logs available
             </div>
           ) : (
             <div className="space-y-1">
               {logs.map((log, index) => (
                 <div key={index} className="flex gap-3">
-                  <span className="text-stone-500 shrink-0 w-20">
+                  <span className="text-primary-500 shrink-0 w-20">
                     {new Date(log.timestamp).toLocaleTimeString()}
                   </span>
                   <span className={`shrink-0 w-12 text-xs uppercase font-bold ${getLevelColor(log.level)}`}>
                     [{log.level}]
                   </span>
-                  <span className="text-stone-200 break-all">
+                  <span className="text-primary-200 break-all">
                     {log.message}
                   </span>
                 </div>
@@ -292,11 +292,11 @@ const ServerLogsModal: React.FC<ServerLogsModalProps> = ({ isOpen, onClose, serv
               value={command}
               onChange={(e) => setCommand(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSendCommand()}
-              className="w-full px-3 py-2 pr-10 bg-stone-700 text-white rounded-lg border border-stone-600 focus:border-green-500 focus:outline-none font-mono"
+              className="w-full px-3 py-2 pr-10 bg-primary-700 text-white rounded-lg border border-primary-600 focus:border-green-500 focus:outline-none font-mono"
               placeholder="Enter server command..."
               disabled={server.status !== 'running'}
             />
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-stone-500 text-xs">
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-primary-500 text-xs">
               /
             </div>
           </div>
@@ -311,7 +311,7 @@ const ServerLogsModal: React.FC<ServerLogsModalProps> = ({ isOpen, onClose, serv
         </div>
         
         {server.status !== 'running' && (
-          <p className="text-xs text-stone-400 mt-1 text-center">
+          <p className="text-xs text-primary-400 mt-1 text-center">
             Server must be running to send commands
           </p>
         )}

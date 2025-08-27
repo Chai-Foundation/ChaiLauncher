@@ -241,7 +241,7 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-200 via-white to-amber-200 bg-clip-text text-transparent mb-2">
             Server Management
           </h1>
-          <p className="text-stone-300">Deploy and manage Minecraft servers with Docker</p>
+          <p className="text-primary-300">Deploy and manage Minecraft servers with Docker</p>
         </div>
         <div className="flex gap-3">
           <button
@@ -253,7 +253,7 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
           </button>
           <button
             onClick={() => refreshServerStatuses()}
-            className="flex items-center gap-2 px-4 py-2 bg-stone-600 hover:bg-stone-500 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 rounded-lg transition-colors"
             title="Refresh server statuses"
           >
             <RefreshCw className="w-4 h-4" />
@@ -261,7 +261,7 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
           </button>
           <button
             onClick={() => setShowDeployModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-secondary-600 hover:bg-secondary-700 rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" />
             Deploy Server
@@ -277,13 +277,13 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {dockerConnections.map((connection) => (
-              <div key={connection.id} className="bg-stone-800/50 rounded-lg p-4">
+              <div key={connection.id} className="bg-primary-800/50 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="font-semibold">{connection.name}</h3>
                   <div className={`w-3 h-3 rounded-full ${connection.is_connected ? 'bg-green-400' : 'bg-red-400'}`} />
                 </div>
-                <p className="text-sm text-stone-300">{connection.host}</p>
-                <p className="text-xs text-stone-400 mt-1 capitalize">{connection.connection_type}</p>
+                <p className="text-sm text-primary-300">{connection.host}</p>
+                <p className="text-xs text-primary-400 mt-1 capitalize">{connection.connection_type}</p>
               </div>
             ))}
           </div>
@@ -295,15 +295,15 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
           const instanceServers = serversByInstance[instance.id] || [];
           
           return (
-            <div key={instance.id} className="bg-stone-800/30 backdrop-blur-sm rounded-xl p-6 border border-amber-600/20">
+            <div key={instance.id} className="bg-primary-800/30 backdrop-blur-sm rounded-xl p-6 border border-secondary-600/20">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-amber-600/20 rounded-lg flex items-center justify-center">
-                    <Server className="w-6 h-6 text-amber-400" />
+                  <div className="w-12 h-12 bg-secondary-600/20 rounded-lg flex items-center justify-center">
+                    <Server className="w-6 h-6 text-secondary-400" />
                   </div>
                   <div>
                     <h2 className="text-xl font-semibold">{instance.name}</h2>
-                    <p className="text-stone-300 text-sm">Minecraft {instance.version}</p>
+                    <p className="text-primary-300 text-sm">Minecraft {instance.version}</p>
                   </div>
                 </div>
                 <button
@@ -311,7 +311,7 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
                     setSelectedInstance(instance);
                     setShowDeployModal(true);
                   }}
-                  className="flex items-center gap-2 px-3 py-2 bg-amber-600/20 hover:bg-amber-600/30 rounded-lg transition-colors text-amber-400"
+                  className="flex items-center gap-2 px-3 py-2 bg-secondary-600/20 hover:bg-secondary-600/30 rounded-lg transition-colors text-secondary-400"
                 >
                   <Plus className="w-4 h-4" />
                   Deploy Server
@@ -319,7 +319,7 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
               </div>
 
               {instanceServers.length === 0 ? (
-                <div className="text-center py-8 text-stone-400">
+                <div className="text-center py-8 text-primary-400">
                   <Server className="w-12 h-12 mx-auto mb-3 opacity-50" />
                   <p>No servers deployed for this instance</p>
                   <p className="text-sm mt-1">Click "Deploy Server" to create one</p>
@@ -327,7 +327,7 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {instanceServers.map((server) => (
-                    <div key={server.id} className="bg-stone-700/30 rounded-lg p-4">
+                    <div key={server.id} className="bg-primary-700/30 rounded-lg p-4">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                           <div className={`${getStatusColor(server.status)}`}>
@@ -342,7 +342,7 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
                                 setSelectedServer(server);
                                 setShowLogsModal(true);
                               }}
-                              className="p-2 text-stone-400 hover:text-white hover:bg-stone-600/50 rounded transition-colors"
+                              className="p-2 text-primary-400 hover:text-white hover:bg-primary-600/50 rounded transition-colors"
                               title="View Logs"
                             >
                               <Terminal className="w-4 h-4" />
@@ -376,21 +376,21 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
 
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                          <div className="flex items-center gap-2 text-stone-300 mb-1">
+                          <div className="flex items-center gap-2 text-primary-300 mb-1">
                             <Monitor className="w-4 h-4" />
                             Port: {server.port}
                           </div>
-                          <div className="flex items-center gap-2 text-stone-300">
+                          <div className="flex items-center gap-2 text-primary-300">
                             <Users className="w-4 h-4" />
                             Max Players: {server.max_players}
                           </div>
                         </div>
                         <div>
-                          <div className="flex items-center gap-2 text-stone-300 mb-1">
+                          <div className="flex items-center gap-2 text-primary-300 mb-1">
                             <HardDrive className="w-4 h-4" />
                             RAM: {server.memory_limit} MB
                           </div>
-                          <div className="text-xs text-stone-400">
+                          <div className="text-xs text-primary-400">
                             {server.last_started ? 
                               `Last started: ${new Date(server.last_started).toLocaleString()}` : 
                               'Never started'
@@ -407,7 +407,7 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
         })}
 
         {instances.length === 0 && (
-          <div className="text-center py-12 text-stone-400">
+          <div className="text-center py-12 text-primary-400">
             <Server className="w-16 h-16 mx-auto mb-4 opacity-50" />
             <h3 className="text-xl font-semibold mb-2">No Minecraft Instances</h3>
             <p>You need to create Minecraft instances before you can deploy servers.</p>

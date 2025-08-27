@@ -168,12 +168,12 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.1 }}
-        className={`bg-stone-800/90 backdrop-blur-sm border border-amber-600/30 rounded-lg overflow-hidden hover:border-amber-500/50 transition-all duration-200 ${
+        className={`bg-primary-800/90 backdrop-blur-sm border border-secondary-600/30 rounded-lg overflow-hidden hover:border-secondary-500/50 transition-all duration-200 ${
           viewMode === 'list' ? 'flex' : ''
         }`}
       >
         {pack.icon_url && (
-          <div className={`${viewMode === 'list' ? 'w-20 h-20 flex-shrink-0' : 'w-full h-32'} bg-stone-700 flex items-center justify-center overflow-hidden`}>
+          <div className={`${viewMode === 'list' ? 'w-20 h-20 flex-shrink-0' : 'w-full h-32'} bg-primary-700 flex items-center justify-center overflow-hidden`}>
             <img 
               src={pack.icon_url} 
               alt={pack.name}
@@ -181,7 +181,7 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.style.display = 'none';
-                target.parentElement!.innerHTML = '<Package class="w-8 h-8 text-amber-500" />';
+                target.parentElement!.innerHTML = '<Package class="w-8 h-8 text-secondary-500" />';
               }}
             />
           </div>
@@ -190,7 +190,7 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
         <div className="p-4 flex-1">
           <div className="flex items-start justify-between mb-2">
             <h3 className="font-semibold text-white truncate">{pack.name}</h3>
-            <div className="flex items-center gap-1 text-sm text-amber-400 ml-2">
+            <div className="flex items-center gap-1 text-sm text-secondary-400 ml-2">
               <Download className="w-4 h-4" />
               {pack.downloads.toLocaleString()}
             </div>
@@ -212,18 +212,18 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
             
             {progress ? (
               <div className="flex items-center gap-2">
-                <div className="w-24 h-2 bg-stone-700 rounded-full overflow-hidden">
+                <div className="w-24 h-2 bg-primary-700 rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-amber-500 transition-all duration-300"
+                    className="h-full bg-secondary-500 transition-all duration-300"
                     style={{ width: `${progress.progress}%` }}
                   />
                 </div>
-                <span className="text-xs text-amber-400">{Math.round(progress.progress)}%</span>
+                <span className="text-xs text-secondary-400">{Math.round(progress.progress)}%</span>
               </div>
             ) : (
               <button
                 onClick={() => installModpack(pack)}
-                className="flex items-center gap-1 px-3 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-sm transition-colors"
+                className="flex items-center gap-1 px-3 py-1 bg-secondary-600 hover:bg-secondary-500 text-white rounded text-sm transition-colors"
               >
                 <Download className="w-3 h-3" />
                 Install
@@ -259,13 +259,13 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
                   placeholder="Search modpacks..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-stone-800/90 border border-amber-600/30 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-amber-500/50"
+                  className="w-full pl-10 pr-4 py-2 bg-primary-800/90 border border-secondary-600/30 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-secondary-500/50"
                 />
               </div>
               <button
                 type="submit"
                 disabled={isLoading}
-                className="px-4 py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-stone-600 text-white rounded-lg transition-colors flex items-center gap-2"
+                className="px-4 py-2 bg-secondary-600 hover:bg-secondary-500 disabled:bg-primary-600 text-white rounded-lg transition-colors flex items-center gap-2"
               >
                 {isLoading ? <Loader className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                 Search
@@ -275,7 +275,7 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
             <select
               value={selectedPlatform}
               onChange={(e) => setSelectedPlatform(e.target.value)}
-              className="px-3 py-2 bg-stone-800/90 border border-amber-600/30 rounded-lg text-white focus:outline-none focus:border-amber-500/50"
+              className="px-3 py-2 bg-primary-800/90 border border-secondary-600/30 rounded-lg text-white focus:outline-none focus:border-secondary-500/50"
             >
               <option value="modrinth">Modrinth</option>
               <option value="curseforge">CurseForge</option>
@@ -287,7 +287,7 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
             <div className="flex items-center gap-2">
               <button
                 onClick={openModpackFile}
-                className="flex items-center gap-2 px-3 py-2 bg-stone-700 hover:bg-stone-600 text-white rounded-lg transition-colors"
+                className="flex items-center gap-2 px-3 py-2 bg-primary-700 hover:bg-primary-600 text-white rounded-lg transition-colors"
               >
                 <FileDown className="w-4 h-4" />
                 Import File
@@ -295,7 +295,7 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
               <button
                 onClick={loadFeaturedPacks}
                 disabled={isLoading}
-                className="flex items-center gap-2 px-3 py-2 bg-stone-700 hover:bg-stone-600 disabled:bg-stone-600 text-white rounded-lg transition-colors"
+                className="flex items-center gap-2 px-3 py-2 bg-primary-700 hover:bg-primary-600 disabled:bg-primary-600 text-white rounded-lg transition-colors"
               >
                 <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
                 Refresh
@@ -306,7 +306,7 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
               <button
                 onClick={() => setViewMode('grid')}
                 className={`p-2 rounded-lg transition-colors ${
-                  viewMode === 'grid' ? 'bg-amber-600 text-white' : 'bg-stone-700 text-gray-300 hover:bg-stone-600'
+                  viewMode === 'grid' ? 'bg-secondary-600 text-white' : 'bg-primary-700 text-gray-300 hover:bg-primary-600'
                 }`}
               >
                 <Grid className="w-4 h-4" />
@@ -314,7 +314,7 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
               <button
                 onClick={() => setViewMode('list')}
                 className={`p-2 rounded-lg transition-colors ${
-                  viewMode === 'list' ? 'bg-amber-600 text-white' : 'bg-stone-700 text-gray-300 hover:bg-stone-600'
+                  viewMode === 'list' ? 'bg-secondary-600 text-white' : 'bg-primary-700 text-gray-300 hover:bg-primary-600'
                 }`}
               >
                 <List className="w-4 h-4" />
@@ -346,7 +346,7 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader className="w-8 h-8 animate-spin text-amber-500" />
+            <Loader className="w-8 h-8 animate-spin text-secondary-500" />
             <span className="ml-3 text-gray-300">Loading modpacks...</span>
           </div>
         ) : displayPacks.length === 0 ? (
