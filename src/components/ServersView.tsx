@@ -389,27 +389,48 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <div className="flex items-center gap-2 text-primary-300 mb-1">
-                            <Monitor className="w-4 h-4" />
-                            Port: {server.port}
+                      <div className="space-y-3 text-sm">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <div className="flex items-center gap-2 text-primary-300 mb-1">
+                              <Monitor className="w-4 h-4" />
+                              Port: {server.port}
+                            </div>
+                            <div className="flex items-center gap-2 text-primary-300">
+                              <Users className="w-4 h-4" />
+                              Max Players: {server.max_players}
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2 text-primary-300">
-                            <Users className="w-4 h-4" />
-                            Max Players: {server.max_players}
+                          <div>
+                            <div className="flex items-center gap-2 text-primary-300 mb-1">
+                              <HardDrive className="w-4 h-4" />
+                              RAM: {server.memory_limit} MB
+                            </div>
+                            <div className="text-xs text-primary-400">
+                              {server.last_started ? 
+                                `Last started: ${new Date(server.last_started).toLocaleString()}` : 
+                                'Never started'
+                              }
+                            </div>
                           </div>
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2 text-primary-300 mb-1">
-                            <HardDrive className="w-4 h-4" />
-                            RAM: {server.memory_limit} MB
-                          </div>
-                          <div className="text-xs text-primary-400">
-                            {server.last_started ? 
-                              `Last started: ${new Date(server.last_started).toLocaleString()}` : 
-                              'Never started'
-                            }
+                        
+                        {/* Docker Connection Info */}
+                        <div className="pt-2 border-t border-primary-600/30">
+                          <div className="flex items-center gap-2 text-primary-300">
+                            <Container className="w-4 h-4" />
+                            <span>Docker: </span>
+                            {(() => {
+                              const connection = dockerConnections.find(c => c.id === server.docker_connection_id);
+                              return connection ? (
+                                <span className="flex items-center gap-2">
+                                  <span>{connection.name}</span>
+                                  <div className={`w-2 h-2 rounded-full ${connection.is_connected ? 'bg-secondary-400' : 'bg-secondary-500/50'}`} />
+                                </span>
+                              ) : (
+                                <span className="text-secondary-500/70">Connection not found</span>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
