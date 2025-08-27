@@ -870,7 +870,7 @@ export default function InstanceSettingsModal({
           <button
             onClick={() => setViewMode('grid')}
             className={`p-2 rounded transition-colors backdrop-blur-sm ${
-              viewMode === 'grid' ? 'bg-secondary-600/80 text-white' : 'bg-primary-700/50 text-primary-300 hover:bg-primary-600/50'
+              viewMode === 'grid' ? 'bg-secondary-600/60 text-white border border-secondary-500/30' : 'bg-primary-800/30 text-primary-300 hover:bg-primary-700/40 hover:text-white border border-primary-700/30'
             }`}
           >
             <Grid size={18} />
@@ -878,7 +878,7 @@ export default function InstanceSettingsModal({
           <button
             onClick={() => setViewMode('list')}
             className={`p-2 rounded transition-colors backdrop-blur-sm ${
-              viewMode === 'list' ? 'bg-secondary-600/80 text-white' : 'bg-primary-700/50 text-primary-300 hover:bg-primary-600/50'
+              viewMode === 'list' ? 'bg-secondary-600/60 text-white border border-secondary-500/30' : 'bg-primary-800/30 text-primary-300 hover:bg-primary-700/40 hover:text-white border border-primary-700/30'
             }`}
           >
             <List size={18} />
