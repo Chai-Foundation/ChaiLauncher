@@ -124,7 +124,7 @@ const JavaInstallModal: React.FC<JavaInstallModalProps> = ({ isOpen, onClose, on
                   <div className="mb-2">
                     <div className="bg-primary-700 rounded-full h-3 overflow-hidden">
                       <motion.div
-                        className="bg-gradient-to-r from-amber-500 to-amber-400 h-3 rounded-full"
+                        className="bg-gradient-to-r from-secondary-500 to-secondary-400 h-3 rounded-full"
                         initial={{ width: '0%' }}
                         animate={{ width: `${installProgress.progress}%` }}
                         transition={{ duration: 0.3 }}

@@ -61,7 +61,7 @@ const HomeView: React.FC<HomeViewProps> = ({
   return (
     <div className="flex-1 p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-200 via-white to-amber-200 bg-clip-text text-transparent mb-2">
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-secondary-200 via-white to-secondary-200 bg-clip-text text-transparent mb-2">
           Welcome back!
         </h1>
         <p className="text-primary-300">Ready to dive into Minecraft?</p>
@@ -72,7 +72,7 @@ const HomeView: React.FC<HomeViewProps> = ({
           onClick={onCreateInstance}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          className="bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 p-6 rounded-xl text-white flex items-center gap-4 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-amber-500/25"
+          className="bg-gradient-to-r from-secondary-600 to-secondary-500 hover:from-secondary-500 hover:to-secondary-400 p-6 rounded-xl text-white flex items-center gap-4 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-secondary-500/25"
         >
           <Plus size={32} />
           <div className="text-left">
@@ -90,7 +90,7 @@ const HomeView: React.FC<HomeViewProps> = ({
           {recentInstances[0] && (
             <button
               onClick={() => onPlayInstance(recentInstances[0])}
-              className="mt-3 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white px-4 py-2 rounded-lg transition-all duration-300 w-full"
+              className="mt-3 bg-gradient-to-r from-secondary-600 to-secondary-500 hover:from-secondary-500 hover:to-secondary-400 text-white px-4 py-2 rounded-lg transition-all duration-300 w-full"
             >
               Play {recentInstances[0].name}
             </button>
@@ -143,7 +143,7 @@ const HomeView: React.FC<HomeViewProps> = ({
             <p className="text-primary-300 mb-4">No instances yet</p>
             <button
               onClick={onCreateInstance}
-              className="bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white px-6 py-2 rounded-xl transition-all duration-300 transform hover:scale-105"
+              className="bg-gradient-to-r from-secondary-600 to-secondary-500 hover:from-secondary-500 hover:to-secondary-400 text-white px-6 py-2 rounded-xl transition-all duration-300 transform hover:scale-105"
             >
               Create Your First Instance
             </button>
@@ -172,7 +172,7 @@ const HomeView: React.FC<HomeViewProps> = ({
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-900/50 border border-red-600/30 rounded-lg text-red-200 text-sm">
+          <div className="mb-4 p-3 bg-secondary-900/30 border border-secondary-600/30 rounded-lg text-secondary-200 text-sm">
             Failed to load news: {error}
           </div>
         )}

@@ -33,6 +33,29 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
     setHasChanges(false);
   };
 
+  const handleBackgroundImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      // For web file inputs, we need to read the file content directly
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        if (dataUrl) {
+          // Store the data URL directly - this works across all platforms
+          handleSettingChange('background_image', dataUrl);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Failed to read background image:', error);
+      // Fallback to original path if reading fails
+      const path = (file as any).path || file.name;
+      handleSettingChange('background_image', path.includes(' ') ? `"${path}"` : path);
+    }
+  };
+
   const tabs = [
     { id: 'general', label: 'General', icon: HardDrive },
     { id: 'java', label: 'Java', icon: Coffee },
@@ -57,7 +80,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
             </button>
             <button
               onClick={handleSave}
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+              className="bg-secondary-600 hover:bg-secondary-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
             >
               <Save size={18} />
               Save Changes
@@ -216,7 +239,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                       value={localSettings.default_java_path || ''}
                       onChange={(e) => handleSettingChange('default_java_path', e.target.value || undefined)}
                       placeholder="Auto-detect"
-                      className="flex-1 px-3 py-2 bg-primary-700 border border-primary-600 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-secondary-500"
+                      className="flex-1 px-3 py-2 bg-primary-700 border border-primary-600 rounded-lg text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-secondary-500"
                     />
                     <button className="bg-primary-600 hover:bg-primary-700 text-white px-3 py-2 rounded-lg transition-colors">
                       <Folder size={18} />
@@ -246,7 +269,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                     value={localSettings.default_jvm_args.join(' ')}
                     onChange={(e) => handleSettingChange('default_jvm_args', e.target.value.split(' ').filter(arg => arg.trim()))}
                     placeholder="-XX:+UnlockExperimentalVMOptions -XX:+UseG1GC"
-                    className="w-full px-3 py-2 bg-primary-700 border border-primary-600 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-secondary-500 h-24 resize-none"
+                    className="w-full px-3 py-2 bg-primary-700 border border-primary-600 rounded-lg text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-secondary-500 h-24 resize-none"
                   />
                   <p className="text-sm text-primary-400 mt-1">
                     Default JVM arguments for new instances
@@ -268,24 +291,31 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                   <label className="block text-sm font-medium text-primary-300 mb-3">
                     Background Image
                   </label>
-                  <div className="flex gap-3">
+                  <div className="flex gap-2">
                     <input
                       type="text"
                       value={localSettings.background_image || ''}
                       onChange={(e) => handleSettingChange('background_image', e.target.value || undefined)}
                       placeholder="Path to background image (optional)"
-                      className="flex-1 px-3 py-2 bg-primary-700 border border-primary-600 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-secondary-500"
+                      className="flex-1 px-3 py-2 bg-primary-700 border border-primary-600 rounded-lg text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-secondary-500"
                     />
-                    <button
-                      onClick={() => onOpenFolder && onOpenFolder('images')}
-                      className="px-3 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition-colors"
-                      title="Browse for image"
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleBackgroundImageSelect}
+                      className="hidden"
+                      id="bg-image-picker"
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => document.getElementById('bg-image-picker')?.click()}
+                      className="bg-primary-600 hover:bg-primary-700 text-white px-3 py-2 rounded-lg transition-colors"
                     >
                       <Folder size={18} />
                     </button>
                   </div>
                   <p className="text-sm text-primary-400 mt-1">
-                    Leave empty to use default background
+                    Leave empty to use default background. Paths with spaces will be automatically quoted.
                   </p>
                 </div>
 
@@ -369,22 +399,22 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
               >
                 <h3 className="text-lg font-semibold text-white mb-4">Advanced Settings</h3>
                 
-                <div className="bg-yellow-900 bg-opacity-50 border border-yellow-700 rounded-lg p-4">
+                <div className="bg-secondary-900/30 border border-secondary-700/50 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <Shield className="text-yellow-500" size={20} />
-                    <h4 className="font-semibold text-yellow-300">Warning</h4>
+                    <Shield className="text-secondary-500" size={20} />
+                    <h4 className="font-semibold text-secondary-300">Warning</h4>
                   </div>
-                  <p className="text-yellow-200 text-sm">
+                  <p className="text-secondary-200 text-sm">
                     These settings are for advanced users only. Changing these values may cause instability.
                   </p>
                 </div>
 
                 <div className="space-y-4">
-                  <button className="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition-colors">
+                  <button className="w-full bg-secondary-600 hover:bg-secondary-700 text-white py-2 px-4 rounded-lg transition-colors">
                     Clear All Instance Data
                   </button>
                   
-                  <button className="w-full bg-orange-600 hover:bg-orange-700 text-white py-2 px-4 rounded-lg transition-colors">
+                  <button className="w-full bg-secondary-600 hover:bg-secondary-700 text-white py-2 px-4 rounded-lg transition-colors">
                     Reset Launcher Settings
                   </button>
                   
@@ -392,7 +422,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                     Export Settings
                   </button>
                   
-                  <button className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg transition-colors">
+                  <button className="w-full bg-secondary-600 hover:bg-secondary-700 text-white py-2 px-4 rounded-lg transition-colors">
                     Import Settings
                   </button>
                 </div>

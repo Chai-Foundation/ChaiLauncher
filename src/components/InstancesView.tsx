@@ -92,7 +92,7 @@ const InstancesView: React.FC<InstancesViewProps> = ({
           </button>
           <button
             onClick={onCreateInstance}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+            className="bg-secondary-600 hover:bg-secondary-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
           >
             <Plus size={18} />
             Create Instance
@@ -109,7 +109,7 @@ const InstancesView: React.FC<InstancesViewProps> = ({
               placeholder="Search instances..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-primary-700 border border-primary-600 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-secondary-500"
+              className="w-full pl-10 pr-4 py-2 bg-primary-700 border border-primary-600 rounded-lg text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-secondary-500"
             />
           </div>
           
@@ -188,7 +188,7 @@ const InstancesView: React.FC<InstancesViewProps> = ({
                   exit={{ opacity: 0, x: 20 }}
                   className="bg-primary-800 border border-primary-700 rounded-lg p-4 flex items-center gap-4 hover:border-primary-600 transition-colors group"
                 >
-                  <div className="w-16 h-16 bg-gradient-to-br from-green-600 to-amber-600 rounded-lg flex-shrink-0"></div>
+                  <div className="w-16 h-16 bg-gradient-to-br from-secondary-600 to-secondary-700 rounded-lg flex-shrink-0"></div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-white truncate">{instance.name}</h3>
                     <p className="text-sm text-primary-400">
@@ -202,7 +202,7 @@ const InstancesView: React.FC<InstancesViewProps> = ({
                   <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => onPlayInstance(instance)}
-                      className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-lg transition-colors"
+                      className="bg-secondary-600 hover:bg-secondary-700 text-white p-2 rounded-lg transition-colors"
                     >
                       <Play size={16} />
                     </button>
@@ -215,7 +215,7 @@ const InstancesView: React.FC<InstancesViewProps> = ({
                     {onOpenFolder && (
                       <button
                         onClick={() => onOpenFolder(instance)}
-                        className="bg-orange-600 hover:bg-orange-700 text-white p-2 rounded-lg transition-colors"
+                        className="bg-secondary-600 hover:bg-secondary-700 text-white p-2 rounded-lg transition-colors"
                       >
                         <Folder size={16} />
                       </button>

@@ -83,35 +83,67 @@ function generateColorPalette(baseColor: string): Record<string, string> {
   };
 }
 
-// Function to apply color scheme to CSS custom properties
+// Function to apply color scheme by injecting custom CSS
 export function applyColorScheme(settings: LauncherSettings): void {
-  const root = document.documentElement;
-  
-  // Primary colors are always used for backgrounds, structure (Stone replacement)
+  // Remove existing dynamic styles
+  const existingStyle = document.getElementById('dynamic-colors');
+  if (existingStyle) {
+    existingStyle.remove();
+  }
+
+  // Generate primary and secondary palettes
   const primaryColor = settings.primary_base_color || '#78716c';
-  const primaryPalette = generateColorPalette(primaryColor);
-  
-  // Apply primary colors
-  Object.entries(primaryPalette).forEach(([shade, color]) => {
-    root.style.setProperty(`--primary-${shade}`, color);
-  });
-  
-  // Secondary colors are always used for buttons, highlights, borders (Amber replacement)
   const secondaryColor = settings.secondary_base_color || '#d97706';
+  
+  const primaryPalette = generateColorPalette(primaryColor);
   const secondaryPalette = generateColorPalette(secondaryColor);
   
-  // Apply secondary/accent colors
-  Object.entries(secondaryPalette).forEach(([shade, color]) => {
-    root.style.setProperty(`--secondary-${shade}`, color);
-    root.style.setProperty(`--accent-${shade}`, color);
+  // Create CSS with dynamic color overrides
+  let css = ':root {\n';
+  
+  // Add primary colors
+  Object.entries(primaryPalette).forEach(([shade, color]) => {
+    css += `  --primary-${shade}: ${color};\n`;
   });
   
-  // Apply background image if specified
-  if (settings.background_image) {
-    root.style.setProperty('--bg-image', `url("${settings.background_image}")`);
-  } else {
-    root.style.removeProperty('--bg-image');
-  }
+  // Add secondary colors
+  Object.entries(secondaryPalette).forEach(([shade, color]) => {
+    css += `  --secondary-${shade}: ${color};\n`;
+    css += `  --accent-${shade}: ${color};\n`;
+  });
+  
+  css += '}\n\n';
+  
+  // Override Tailwind classes with dynamic colors
+  const shades = ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900', '950'];
+  
+  shades.forEach(shade => {
+    css += `.bg-primary-${shade} { background-color: ${primaryPalette[shade]} !important; }\n`;
+    css += `.text-primary-${shade} { color: ${primaryPalette[shade]} !important; }\n`;
+    css += `.border-primary-${shade} { border-color: ${primaryPalette[shade]} !important; }\n`;
+    css += `.ring-primary-${shade} { --tw-ring-color: ${primaryPalette[shade]} !important; }\n`;
+    
+    css += `.bg-secondary-${shade} { background-color: ${secondaryPalette[shade]} !important; }\n`;
+    css += `.text-secondary-${shade} { color: ${secondaryPalette[shade]} !important; }\n`;
+    css += `.border-secondary-${shade} { border-color: ${secondaryPalette[shade]} !important; }\n`;
+    css += `.ring-secondary-${shade} { --tw-ring-color: ${secondaryPalette[shade]} !important; }\n`;
+    
+    // Handle opacity variants like bg-primary-800/60
+    css += `.bg-primary-${shade}\\/60 { background-color: ${primaryPalette[shade]}99 !important; }\n`;
+    css += `.bg-secondary-${shade}\\/60 { background-color: ${secondaryPalette[shade]}99 !important; }\n`;
+    css += `.bg-primary-${shade}\\/30 { background-color: ${primaryPalette[shade]}4D !important; }\n`;
+    css += `.bg-secondary-${shade}\\/30 { background-color: ${secondaryPalette[shade]}4D !important; }\n`;
+    css += `.bg-primary-${shade}\\/90 { background-color: ${primaryPalette[shade]}E6 !important; }\n`;
+    css += `.bg-secondary-${shade}\\/90 { background-color: ${secondaryPalette[shade]}E6 !important; }\n`;
+    css += `.bg-primary-${shade}\\/50 { background-color: ${primaryPalette[shade]}80 !important; }\n`;
+    css += `.bg-secondary-${shade}\\/50 { background-color: ${secondaryPalette[shade]}80 !important; }\n`;
+  });
+  
+  // Inject the CSS into the document
+  const styleElement = document.createElement('style');
+  styleElement.id = 'dynamic-colors';
+  styleElement.textContent = css;
+  document.head.appendChild(styleElement);
 }
 
 // Function to get the current color for display purposes

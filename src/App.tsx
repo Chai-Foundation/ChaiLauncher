@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import LauncherSidebar from './components/LauncherSidebar';
 import HomeView from './components/HomeView';
 import InstancesView from './components/InstancesView';
@@ -374,9 +375,8 @@ function App() {
     instances_dir: '/minecraft/instances',
     downloads_dir: '/minecraft/downloads',
     theme: 'dark',
-    color_scheme: 'primary',
     primary_base_color: '#78716c',
-    secondary_base_color: '#d97706',
+    secondary_base_color: '#eb9109',
     auto_update: true,
     keepLauncherOpen: true,
     showSnapshots: false,
@@ -386,6 +386,12 @@ function App() {
     jvmArgs: ['-XX:+UnlockExperimentalVMOptions', '-XX:+UseG1GC'],
     gameDir: '/minecraft',
   });
+
+  // Apply default color scheme immediately on mount
+  useEffect(() => {
+    // Apply default colors before settings are loaded to prevent white borders
+    applyColorScheme(settings);
+  }, []);
 
   // Apply color scheme when settings change
   useEffect(() => {
@@ -746,14 +752,43 @@ function App() {
     };
   }, []);
 
+  // Helper function to get proper background image src
+  const getBackgroundImageSrc = () => {
+    if (!launcherSettings?.background_image) {
+      return heroImage;
+    }
+
+    const imagePath = launcherSettings.background_image.replace(/^["']|["']$/g, '');
+    
+    // If it's already a data URL or HTTP URL, use it directly
+    if (imagePath.startsWith('data:') || 
+        imagePath.startsWith('http://') || 
+        imagePath.startsWith('https://')) {
+      return imagePath;
+    }
+    
+    // For local file paths, try to convert using Tauri's convertFileSrc
+    // If this fails, the onError handler will fall back to heroImage
+    try {
+      return convertFileSrc(imagePath);
+    } catch (error) {
+      console.warn('Failed to convert background image path:', error);
+      return heroImage;
+    }
+  };
+
   return (
   <div className="min-h-screen h-full w-full bg-primary-950 flex flex-col">
     {/* Hero Background Image */}
     <div className="absolute inset-0">
       <img
-        src={heroImage}
+        src={getBackgroundImageSrc()}
         alt="Hero Background"
         className="w-full h-full object-cover blur-sm"
+        onError={(e) => {
+          // Fallback to default hero image if custom background fails to load
+          (e.target as HTMLImageElement).src = heroImage;
+        }}
       />
       {/* Dark overlay for UI readability */}
       <div className="absolute inset-0 bg-black/60"></div>
@@ -789,7 +824,7 @@ function App() {
             }}
           >
             <svg width="14" height="14" viewBox="0 0 14 14">
-            <rect x="3" y="10" width="8" height="1.5" fill="#eab308" />
+            <rect x="3" y="10" width="8" height="1.5" fill="var(--secondary-500)" />
             </svg>
           </button>
           <button
@@ -808,7 +843,7 @@ function App() {
             }}
           >
             <svg width="14" height="14" viewBox="0 0 14 14">
-            <rect x="3" y="3" width="8" height="8" stroke="#eab308" strokeWidth="1.5" fill="none" />
+            <rect x="3" y="3" width="8" height="8" stroke="var(--secondary-500)" strokeWidth="1.5" fill="none" />
             </svg>
           </button>
           <button
@@ -822,8 +857,8 @@ function App() {
             }}
           >
             <svg width="14" height="14" viewBox="0 0 14 14">
-            <line x1="4" y1="4" x2="10" y2="10" stroke="#fff" strokeWidth="1.5" />
-            <line x1="10" y1="4" x2="4" y2="10" stroke="#fff" strokeWidth="1.5" />
+            <line x1="4" y1="4" x2="10" y2="10" stroke="white" strokeWidth="1.5" />
+            <line x1="10" y1="4" x2="4" y2="10" stroke="white" strokeWidth="1.5" />
             </svg>
           </button>
           </div>

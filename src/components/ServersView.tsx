@@ -238,7 +238,7 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
     <div className="flex-1 p-6 text-white">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-200 via-white to-amber-200 bg-clip-text text-transparent mb-2">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-secondary-200 via-white to-secondary-200 bg-clip-text text-transparent mb-2">
             Server Management
           </h1>
           <p className="text-primary-300">Deploy and manage Minecraft servers with Docker</p>

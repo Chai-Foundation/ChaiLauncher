@@ -91,7 +91,7 @@ const InstanceCard: React.FC<InstanceCardProps> = React.memo(({ instance, onPlay
       tabIndex={0}
     >
       <div
-        className="group aspect-video bg-gradient-to-br from-amber-600 to-amber-500 relative"
+        className="group aspect-video bg-gradient-to-br from-secondary-600 to-secondary-500 relative"
         ref={iconAreaRef}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -164,12 +164,12 @@ const InstanceCard: React.FC<InstanceCardProps> = React.memo(({ instance, onPlay
                   strokeLinecap="round"
                   strokeDasharray={`${2 * Math.PI * 42}`}
                   strokeDashoffset={`${2 * Math.PI * 42 * (1 - (Math.min(100, Math.max(0, instance.installProgress || 0)) / 100))}`}
-                  className="transition-all duration-500 ease-out drop-shadow-[0_0_8px_rgba(59,130,246,0.7)]"
+                  className="transition-all duration-500 ease-out"
                 />
                 <defs>
                   <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#38bdf8" />
-                    <stop offset="100%" stopColor="#fbbf24" />
+                    <stop offset="0%" stopColor="var(--secondary-400)" />
+                    <stop offset="100%" stopColor="var(--secondary-600)" />
                   </linearGradient>
                 </defs>
               </svg>

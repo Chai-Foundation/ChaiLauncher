@@ -134,7 +134,7 @@ const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({
                           : 'border-primary-600 hover:border-primary-500'
                       }`}
                     >
-                      <Package className="mx-auto mb-2 text-green-500" size={32} />
+                      <Package className="mx-auto mb-2 text-secondary-500" size={32} />
                       <h4 className="font-semibold text-white">Vanilla</h4>
                       <p className="text-sm text-primary-400">Pure Minecraft experience</p>
                     </button>
@@ -147,7 +147,7 @@ const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({
                           : 'border-primary-600 hover:border-primary-500'
                       }`}
                     >
-                      <Download className="mx-auto mb-2 text-purple-500" size={32} />
+                      <Download className="mx-auto mb-2 text-secondary-500" size={32} />
                       <h4 className="font-semibold text-white">Modpack</h4>
                       <p className="text-sm text-primary-400">Pre-configured mod collection</p>
                     </button>
@@ -160,7 +160,7 @@ const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({
                           : 'border-primary-600 hover:border-primary-500'
                       }`}
                     >
-                      <Settings className="mx-auto mb-2 text-orange-500" size={32} />
+                      <Settings className="mx-auto mb-2 text-secondary-500" size={32} />
                       <h4 className="font-semibold text-white">Custom</h4>
                       <p className="text-sm text-primary-400">Build your own setup</p>
                     </button>
@@ -235,17 +235,17 @@ const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({
 
                       {/* Version loading error */}
                       {versionsError && (
-                        <div className="bg-red-900/20 border border-red-600/30 rounded-lg p-4 mb-4">
+                        <div className="bg-secondary-900/30 border border-secondary-600/30 rounded-lg p-4 mb-4">
                           <div className="flex items-start gap-3">
-                            <div className="flex-shrink-0 w-5 h-5 text-red-400 mt-0.5">
+                            <div className="flex-shrink-0 w-5 h-5 text-secondary-400 mt-0.5">
                               <svg fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                               </svg>
                             </div>
                             <div className="flex-1">
-                              <h4 className="text-red-300 font-medium mb-1">Version Loading Failed</h4>
-                              <p className="text-red-200 text-sm leading-relaxed">{versionsError}</p>
-                              <p className="text-red-300 text-sm mt-2">
+                              <h4 className="text-secondary-300 font-medium mb-1">Version Loading Failed</h4>
+                              <p className="text-secondary-200 text-sm leading-relaxed">{versionsError}</p>
+                              <p className="text-secondary-300 text-sm mt-2">
                                 Using fallback versions. Please check your internet connection or report this issue for debugging.
                               </p>
                             </div>
@@ -296,7 +296,7 @@ const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({
                       value={instanceName}
                       onChange={(e) => setInstanceName(e.target.value)}
                       placeholder="My Awesome Instance"
-                      className="w-full px-3 py-2 bg-primary-700 border border-primary-600 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-secondary-500"
+                      className="w-full px-3 py-2 bg-primary-700 border border-primary-600 rounded-lg text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-secondary-500"
                     />
                   </div>
 
@@ -348,7 +348,7 @@ const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({
                   <button
                     onClick={handleCreate}
                     disabled={!canProceed()}
-                    className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-6 py-2 bg-secondary-600 hover:bg-secondary-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Create Instance
                   </button>

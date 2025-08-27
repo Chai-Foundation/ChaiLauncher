@@ -259,7 +259,7 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
                   placeholder="Search modpacks..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-primary-800/90 border border-secondary-600/30 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-secondary-500/50"
+                  className="w-full pl-10 pr-4 py-2 bg-primary-800/90 border border-secondary-600/30 rounded-lg text-white placeholder-primary-400 focus:outline-none focus:border-secondary-500/50"
                 />
               </div>
               <button
