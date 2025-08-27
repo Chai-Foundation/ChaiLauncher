@@ -5,6 +5,7 @@ import { MinecraftInstance } from '../types/minecraft';
 import InstanceCard from './InstanceCard';
 import { useInfiniteNews } from '../hooks/useInfiniteNews';
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
+import { open } from '@tauri-apps/plugin-shell';
 
 interface HomeViewProps {
   recentInstances: MinecraftInstance[];
@@ -185,37 +186,35 @@ const HomeView: React.FC<HomeViewProps> = ({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: (index % 24) * 0.05 }}
               className="relative bg-primary-900/50 backdrop-blur-sm rounded-xl border border-secondary-600/30 overflow-hidden hover:border-secondary-500/50 transition-all duration-300 hover:scale-105"
+              onClick={() => {
+              console.log(article.url);
+
+              open(article.url);
+              }}
             >
-              <a
-                href={article.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="absolute inset-0 z-10"
-                onClick={() => console.log('News link:', article.url)}
-              ></a>
               <div className="relative z-20">
-                {article.imageUrl && (
-                  <img
-                    src={article.imageUrl}
-                    alt={article.title}
-                    className="w-full h-32 object-cover"
-                    loading="lazy"
-                  />
-                )}
-                <div className="p-4">
-                  <h3 className="font-semibold text-white mb-2 line-clamp-2">
-                    {renderWithInlineCode(article.title)}
-                  </h3>
-                  <p className="text-primary-300 text-sm mb-3 line-clamp-3">
-                    {renderWithInlineCode(article.summary)}
-                  </p>
-                  <div className="flex items-center justify-between text-xs text-primary-400">
-                    <span className="capitalize">{article.category}</span>
-                    <span>
-                      {new Date(article.publishedAt).toLocaleDateString()}
-                    </span>
-                  </div>
+              {article.imageUrl && (
+                <img
+                src={article.imageUrl}
+                alt={article.title}
+                className="w-full h-32 object-cover"
+                loading="lazy"
+                />
+              )}
+              <div className="p-4">
+                <h3 className="font-semibold text-white mb-2 line-clamp-2">
+                {renderWithInlineCode(article.title)}
+                </h3>
+                <p className="text-primary-300 text-sm mb-3 line-clamp-3">
+                {renderWithInlineCode(article.summary)}
+                </p>
+                <div className="flex items-center justify-between text-xs text-primary-400">
+                <span className="capitalize">{article.category}</span>
+                <span>
+                  {new Date(article.publishedAt).toLocaleDateString()}
+                </span>
                 </div>
+              </div>
               </div>
             </motion.div>
           ))}
