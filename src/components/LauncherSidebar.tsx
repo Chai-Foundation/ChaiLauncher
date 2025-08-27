@@ -14,7 +14,6 @@ const LauncherSidebar: React.FC<LauncherSidebarProps> = ({ activeView, onViewCha
     { id: 'instances', label: 'Instances', icon: Package },
     { id: 'servers', label: 'Servers', icon: Server },
     { id: 'browse', label: 'Browse Modpacks', icon: Plus },
-    { id: 'downloads', label: 'Downloads', icon: Download },
     { id: 'accounts', label: 'Accounts', icon: User },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
