@@ -197,12 +197,12 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
 
   const getStatusColor = (status: ServerStatus): string => {
     switch (status) {
-      case 'running': return 'text-green-400';
-      case 'starting': return 'text-yellow-400';
-      case 'stopping': return 'text-orange-400';
-      case 'stopped': return 'text-gray-400';
-      case 'failed': return 'text-red-400';
-      default: return 'text-gray-400';
+      case 'running': return 'text-secondary-400';
+      case 'starting': return 'text-secondary-500';
+      case 'stopping': return 'text-secondary-500';
+      case 'stopped': return 'text-primary-400';
+      case 'failed': return 'text-secondary-600';
+      default: return 'text-primary-400';
     }
   };
 
@@ -366,7 +366,7 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
                           <button
                             onClick={() => handleStartServer(server)}
                             disabled={server.status === 'running' || server.status === 'starting'}
-                            className="p-2 text-green-400 hover:text-green-300 hover:bg-green-600/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="p-2 text-secondary-400 hover:text-secondary-300 hover:bg-secondary-600/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             title="Start Server"
                           >
                             <Play className="w-4 h-4" />
@@ -374,14 +374,14 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
                           <button
                             onClick={() => handleStopServer(server)}
                             disabled={server.status === 'stopped' || server.status === 'stopping'}
-                            className="p-2 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-600/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="p-2 text-secondary-500 hover:text-secondary-400 hover:bg-secondary-600/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             title="Stop Server"
                           >
                             <Square className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleRemoveServer(server)}
-                            className="p-2 text-red-400 hover:text-red-300 hover:bg-red-600/20 rounded transition-colors"
+                            className="p-2 text-secondary-600 hover:text-secondary-500 hover:bg-secondary-600/20 rounded transition-colors"
                             title="Remove Server"
                           >
                             <Trash2 className="w-4 h-4" />
