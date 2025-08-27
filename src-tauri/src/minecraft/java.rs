@@ -308,6 +308,14 @@ fn find_java_executable(java_dir: &PathBuf) -> Result<PathBuf, String> {
         return Ok(direct_path);
     }
     
+    // Check for macOS Contents/Home/bin/java path at the java directory level
+    if cfg!(target_os = "macos") {
+        let macos_java_path = java_dir.join("Contents").join("Home").join("bin").join(java_exe_name);
+        if macos_java_path.exists() {
+            return Ok(macos_java_path);
+        }
+    }
+    
     // Search for nested JDK directories
     let entries = fs::read_dir(java_dir)
         .map_err(|e| format!("Failed to read Java directory: {}", e))?;

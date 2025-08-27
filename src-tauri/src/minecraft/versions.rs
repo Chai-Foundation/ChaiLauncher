@@ -62,6 +62,15 @@ pub async fn get_java_for_version(java_version: u32) -> Result<String, String> {
         return Ok(java_exe.to_string_lossy().to_string());
     }
 
+    // Check for macOS Contents/Home/bin/java path at the java version directory level
+    if cfg!(target_os = "macos") {
+        let macos_java_path = java_dir.join("Contents").join("Home").join("bin").join("java");
+        checked_paths.push(macos_java_path.to_string_lossy().to_string());
+        if macos_java_path.exists() {
+            return Ok(macos_java_path.to_string_lossy().to_string());
+        }
+    }
+
     // Look for nested JDK directories (from ChaiLauncher's own Java installations)
     if let Ok(entries) = std::fs::read_dir(&java_dir) {
         for entry in entries {
