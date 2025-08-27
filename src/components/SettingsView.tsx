@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Save, Folder, HardDrive, Coffee, Palette, Shield } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { LauncherSettings } from '../types/minecraft';
+import { getCurrentPrimaryColor, getCurrentAccentColor } from '../utils/colors';
 
 interface SettingsViewProps {
   settings: LauncherSettings;
@@ -298,11 +299,14 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                       onClick={() => handleSettingChange('color_scheme', 'stone')}
                       className={`p-4 rounded-lg border-2 transition-colors ${
                         localSettings.color_scheme === 'stone'
-                          ? 'border-amber-600 bg-amber-600 bg-opacity-20'
-                          : 'border-stone-600 hover:border-stone-500'
+                          ? 'border-accent-600 bg-accent-600 bg-opacity-20'
+                          : 'border-primary-600 hover:border-primary-500'
                       }`}
                     >
-                      <div className="w-full h-16 bg-stone-600 rounded mb-2"></div>
+                      <div 
+                        className="w-full h-16 rounded mb-2"
+                        style={{ backgroundColor: localSettings.stone_base_color || '#78716c' }}
+                      ></div>
                       <p className="text-white font-medium">Stone</p>
                     </button>
                     
@@ -310,11 +314,14 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                       onClick={() => handleSettingChange('color_scheme', 'amber')}
                       className={`p-4 rounded-lg border-2 transition-colors ${
                         localSettings.color_scheme === 'amber'
-                          ? 'border-amber-600 bg-amber-600 bg-opacity-20'
-                          : 'border-stone-600 hover:border-stone-500'
+                          ? 'border-accent-600 bg-accent-600 bg-opacity-20'
+                          : 'border-primary-600 hover:border-primary-500'
                       }`}
                     >
-                      <div className="w-full h-16 bg-amber-600 rounded mb-2"></div>
+                      <div 
+                        className="w-full h-16 rounded mb-2"
+                        style={{ backgroundColor: localSettings.amber_base_color || '#d97706' }}
+                      ></div>
                       <p className="text-white font-medium">Amber</p>
                     </button>
                   </div>

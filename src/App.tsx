@@ -10,6 +10,7 @@ import CreateInstanceModal from './components/CreateInstanceModal';
 import JavaInstallModal from './components/JavaInstallModal';
 import InstanceSettingsModal from './components/InstanceSettingsModal';
 import { MinecraftInstance, MinecraftVersion, ModpackInfo, LauncherSettings, NewsItem, InstallProgressEvent, InstallCompleteEvent } from './types/minecraft';
+import { applyColorScheme } from './utils/colors';
 import heroImage from './assets/hero.png';
 import type { CSSProperties } from 'react';
 import './index.css';
@@ -386,6 +387,14 @@ function App() {
     gameDir: '/minecraft',
   });
 
+  // Apply color scheme when settings change
+  useEffect(() => {
+    if (settings || launcherSettings) {
+      const activeSettings = launcherSettings || settings;
+      applyColorScheme(activeSettings);
+    }
+  }, [settings, launcherSettings]);
+
 
   const mockModpacks: ModpackInfo[] = [
     {
@@ -622,6 +631,9 @@ function App() {
       await invoke('update_launcher_settings', { settings: newSettings });
       setSettings(newSettings);
       setLauncherSettings(newSettings);
+      
+      // Apply the new color scheme immediately
+      applyColorScheme(newSettings);
     } catch (error) {
       console.error('Failed to update settings:', error);
     }
