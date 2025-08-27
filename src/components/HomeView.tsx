@@ -185,11 +185,13 @@ const HomeView: React.FC<HomeViewProps> = ({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: (index % 24) * 0.05 }}
-              className="relative bg-primary-900/50 backdrop-blur-sm rounded-xl border border-secondary-600/30 overflow-hidden hover:border-secondary-500/50 transition-all duration-300 hover:scale-105"
+              className="relative bg-primary-900/50 backdrop-blur-sm rounded-xl border border-secondary-600/30 overflow-hidden hover:border-secondary-500/50 transition-all duration-300 hover:scale-105 hover:cursor-pointer"
               onClick={() => {
               console.log(article.url);
 
-              open(article.url);
+              if (article.url) {
+                open(article.url);
+              }
               }}
             >
               <div className="relative z-20">
