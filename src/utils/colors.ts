@@ -146,6 +146,7 @@ export function applyColorScheme(settings: LauncherSettings): void {
     css += `.hover\\:border-secondary-${shade}:hover { border-color: ${secondaryPalette[shade]} !important; }\n`;
     css += `.hover\\:from-secondary-${shade}:hover { --tw-gradient-from: ${secondaryPalette[shade]} !important; }\n`;
     css += `.hover\\:to-secondary-${shade}:hover { --tw-gradient-to: ${secondaryPalette[shade]} !important; }\n`;
+    css += `.hover\\:shadow-secondary-${shade}:hover { --tw-shadow-color: ${secondaryPalette[shade]} !important; }\n`;
   });
   
   // Add gradient color overrides
@@ -159,6 +160,13 @@ export function applyColorScheme(settings: LauncherSettings): void {
     css += `.bg-secondary-${shade}\/80 { background-color: ${secondaryPalette[shade]}CC !important; }\n`;
     css += `.border-secondary-${shade}\/30 { border-color: ${secondaryPalette[shade]}4D !important; }\n`;
     css += `.border-secondary-${shade}\/50 { border-color: ${secondaryPalette[shade]}80 !important; }\n`;
+    
+    // Add shadow color overrides
+    css += `.shadow-secondary-${shade} { --tw-shadow-color: ${secondaryPalette[shade]} !important; }\n`;
+    css += `.shadow-secondary-${shade}\/25 { --tw-shadow-color: ${secondaryPalette[shade]}40 !important; }\n`;
+    css += `.shadow-secondary-${shade}\/50 { --tw-shadow-color: ${secondaryPalette[shade]}80 !important; }\n`;
+    css += `.shadow-lg { box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1) !important; }\n`;
+    css += `.shadow-secondary-500\/25 { box-shadow: 0 10px 15px -3px ${secondaryPalette['500']}40, 0 4px 6px -4px ${secondaryPalette['500']}40 !important; }\n`;
   });
   
   // Inject the CSS into the document
