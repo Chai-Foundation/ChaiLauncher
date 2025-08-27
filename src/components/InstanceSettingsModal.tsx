@@ -96,6 +96,7 @@ export default function InstanceSettingsModal({
       setScreenshots(screenshots);
     } catch (err) {
       console.error('Failed to load screenshots:', err);
+      // If the command doesn't exist, just show empty state
       setScreenshots([]);
     } finally {
       setScreenshotLoading(false);
@@ -142,8 +143,9 @@ export default function InstanceSettingsModal({
 
   const deleteScreenshot = async (screenshot: ScreenshotInfo) => {
     try {
-      await invoke('delete_screenshot', {
-        screenshotPath: screenshot.path
+      // Try to delete the file using a generic file deletion command
+      await invoke('delete_file', {
+        path: screenshot.path
       });
       setScreenshots(prev => prev.filter(s => s.id !== screenshot.id));
       if (selectedScreenshot?.id === screenshot.id) {
@@ -157,11 +159,17 @@ export default function InstanceSettingsModal({
 
   const openScreenshotFolder = async () => {
     try {
-      await invoke('open_screenshots_folder', {
-        instanceId: instance.id
-      });
+      // Try to open the screenshots folder within the instance directory
+      const screenshotsPath = `${instance.gameDir}/screenshots`;
+      await invoke('open_folder', { path: screenshotsPath });
     } catch (err) {
-      console.error('Failed to open screenshots folder:', err);
+      // Fallback to opening the main instance directory
+      try {
+        await invoke('open_folder', { path: instance.gameDir });
+      } catch (fallbackErr) {
+        console.error('Failed to open screenshots folder:', err);
+        console.error('Failed to open instance directory:', fallbackErr);
+      }
     }
   };
 
