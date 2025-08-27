@@ -166,7 +166,16 @@ export function applyColorScheme(settings: LauncherSettings): void {
     css += `.shadow-secondary-${shade}\/25 { --tw-shadow-color: ${secondaryPalette[shade]}40 !important; }\n`;
     css += `.shadow-secondary-${shade}\/50 { --tw-shadow-color: ${secondaryPalette[shade]}80 !important; }\n`;
     css += `.shadow-lg { box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1) !important; }\n`;
+    
+    // Fix specific shadow patterns used in components
     css += `.shadow-secondary-500\/25 { box-shadow: 0 10px 15px -3px ${secondaryPalette['500']}40, 0 4px 6px -4px ${secondaryPalette['500']}40 !important; }\n`;
+    css += `.hover\\:shadow-secondary-500\/25:hover { box-shadow: 0 10px 15px -3px ${secondaryPalette['500']}40, 0 4px 6px -4px ${secondaryPalette['500']}40 !important; }\n`;
+    
+    // Add focus ring colors
+    css += `.focus\\:ring-secondary-${shade}:focus { --tw-ring-color: ${secondaryPalette[shade]} !important; }\n`;
+    css += `.focus\\:ring-2:focus { --tw-ring-offset-width: 2px !important; }\n`;
+    css += `.focus\\:border-secondary-${shade}:focus { border-color: ${secondaryPalette[shade]} !important; }\n`;
+    css += `.focus\\:outline-none:focus { outline: 2px solid transparent !important; outline-offset: 2px !important; }\n`;
   });
   
   // Inject the CSS into the document
@@ -174,6 +183,13 @@ export function applyColorScheme(settings: LauncherSettings): void {
   styleElement.id = 'dynamic-colors';
   styleElement.textContent = css;
   document.head.appendChild(styleElement);
+  
+  // Debug: Log that colors have been applied
+  console.log('Applied color scheme:', {
+    primary: primaryColor,
+    secondary: secondaryColor,
+    cssRulesCount: css.split('\n').filter(line => line.trim().length > 0).length
+  });
 }
 
 // Function to get the current color for display purposes
