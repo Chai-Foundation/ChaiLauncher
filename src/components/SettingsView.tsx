@@ -262,35 +262,106 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
               >
                 <h3 className="text-lg font-semibold text-white mb-4">Appearance</h3>
                 
+                {/* Background Image Selection */}
                 <div>
                   <label className="block text-sm font-medium text-stone-300 mb-3">
-                    Theme
+                    Background Image
+                  </label>
+                  <div className="flex gap-3">
+                    <input
+                      type="text"
+                      value={localSettings.background_image || ''}
+                      onChange={(e) => handleSettingChange('background_image', e.target.value || undefined)}
+                      placeholder="Path to background image (optional)"
+                      className="flex-1 px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                    <button
+                      onClick={() => onOpenFolder && onOpenFolder('images')}
+                      className="px-3 py-2 bg-stone-600 hover:bg-stone-500 text-white rounded-lg transition-colors"
+                      title="Browse for image"
+                    >
+                      <Folder size={18} />
+                    </button>
+                  </div>
+                  <p className="text-sm text-stone-400 mt-1">
+                    Leave empty to use default background
+                  </p>
+                </div>
+
+                {/* Color Scheme Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-stone-300 mb-3">
+                    Color Scheme
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     <button
-                      onClick={() => handleSettingChange('theme', 'dark')}
+                      onClick={() => handleSettingChange('color_scheme', 'stone')}
                       className={`p-4 rounded-lg border-2 transition-colors ${
-                        localSettings.theme === 'dark'
+                        localSettings.color_scheme === 'stone'
                           ? 'border-amber-600 bg-amber-600 bg-opacity-20'
                           : 'border-stone-600 hover:border-stone-500'
                       }`}
                     >
-                      <div className="w-full h-16 bg-stone-900 rounded mb-2"></div>
-                      <p className="text-white font-medium">Dark</p>
+                      <div className="w-full h-16 bg-stone-600 rounded mb-2"></div>
+                      <p className="text-white font-medium">Stone</p>
                     </button>
                     
                     <button
-                      onClick={() => handleSettingChange('theme', 'light')}
+                      onClick={() => handleSettingChange('color_scheme', 'amber')}
                       className={`p-4 rounded-lg border-2 transition-colors ${
-                        localSettings.theme === 'light'
+                        localSettings.color_scheme === 'amber'
                           ? 'border-amber-600 bg-amber-600 bg-opacity-20'
                           : 'border-stone-600 hover:border-stone-500'
                       }`}
                     >
-                      <div className="w-full h-16 bg-stone-200 rounded mb-2"></div>
-                      <p className="text-white font-medium">Light</p>
+                      <div className="w-full h-16 bg-amber-600 rounded mb-2"></div>
+                      <p className="text-white font-medium">Amber</p>
                     </button>
                   </div>
+                </div>
+
+                {/* Base Color Customization */}
+                <div>
+                  <label className="block text-sm font-medium text-stone-300 mb-3">
+                    Base Color Customization
+                  </label>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <label className="w-20 text-sm text-stone-400">Stone:</label>
+                      <input
+                        type="color"
+                        value={localSettings.stone_base_color || '#78716c'}
+                        onChange={(e) => handleSettingChange('stone_base_color', e.target.value)}
+                        className="w-12 h-8 rounded border border-stone-600 bg-stone-700"
+                      />
+                      <input
+                        type="text"
+                        value={localSettings.stone_base_color || '#78716c'}
+                        onChange={(e) => handleSettingChange('stone_base_color', e.target.value)}
+                        className="flex-1 px-3 py-1 bg-stone-700 border border-stone-600 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        placeholder="#78716c"
+                      />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <label className="w-20 text-sm text-stone-400">Amber:</label>
+                      <input
+                        type="color"
+                        value={localSettings.amber_base_color || '#d97706'}
+                        onChange={(e) => handleSettingChange('amber_base_color', e.target.value)}
+                        className="w-12 h-8 rounded border border-stone-600 bg-stone-700"
+                      />
+                      <input
+                        type="text"
+                        value={localSettings.amber_base_color || '#d97706'}
+                        onChange={(e) => handleSettingChange('amber_base_color', e.target.value)}
+                        className="flex-1 px-3 py-1 bg-stone-700 border border-stone-600 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        placeholder="#d97706"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-sm text-stone-400 mt-2">
+                    Customize the base colors for dynamic theming throughout the app
+                  </p>
                 </div>
               </motion.div>
             )}
