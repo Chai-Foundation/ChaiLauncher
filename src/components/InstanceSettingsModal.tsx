@@ -670,7 +670,7 @@ export default function InstanceSettingsModal({
             
             <div>
               <label className="block text-sm font-medium text-primary-300 mb-2">
-                <Memory size={16} className="inline mr-1" />
+                <MemoryStick size={16} className="inline mr-1" />
                 Maximum Memory (MB)
               </label>
               <input
