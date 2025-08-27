@@ -359,8 +359,8 @@ export default function InstanceSettingsModal({
         'forge': 'bg-red-600 text-white',
         'fabric': 'bg-secondary-600 text-white',
         'quilt': 'bg-purple-600 text-white',
-        'neoforge': 'bg-orange-700 text-white',
-        'optifine': 'bg-blue-700 text-white'
+        'neoforge': 'bg-orange-600 text-white',
+        'optifine': 'bg-secondary-700 text-white'
       };
 
       return (
@@ -368,13 +368,13 @@ export default function InstanceSettingsModal({
           {mod.loaders.slice(0, 3).map((loader: string) => (
             <span
               key={loader}
-              className={`px-2 py-1 text-xs rounded ${loaderColors[loader.toLowerCase() as keyof typeof loaderColors] || 'bg-gray-600 text-white'}`}
+              className={`px-2 py-1 text-xs rounded ${loaderColors[loader.toLowerCase() as keyof typeof loaderColors] || 'bg-primary-600 text-white'}`}
             >
               {loader.charAt(0).toUpperCase() + loader.slice(1)}
             </span>
           ))}
           {mod.loaders.length > 3 && (
-            <span className="px-2 py-1 bg-gray-600 text-white text-xs rounded">
+            <span className="px-2 py-1 bg-primary-600 text-white text-xs rounded">
               +{mod.loaders.length - 3}
             </span>
           )}
@@ -390,7 +390,7 @@ export default function InstanceSettingsModal({
       
       return (
         <div className="flex items-center gap-2 text-xs">
-          <span className={`px-2 py-1 rounded-full ${isCompatible ? 'bg-green-900 text-green-200' : 'bg-yellow-900 text-yellow-200'}`}>
+          <span className={`px-2 py-1 rounded-full ${isCompatible ? 'bg-green-900/50 text-green-300 border border-green-700' : 'bg-yellow-900/50 text-yellow-300 border border-yellow-700'}`}>
             {isCompatible ? '✓ Compatible' : '⚠ Check Version'}
           </span>
           <span className="text-primary-400">
@@ -405,7 +405,7 @@ export default function InstanceSettingsModal({
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-primary-800/30 border border-primary-700 rounded-lg p-4 hover:border-primary-600 transition-colors backdrop-blur-sm"
+        className="bg-primary-800/30 border border-primary-700 rounded-lg p-4 hover:border-primary-600/50 transition-colors backdrop-blur-sm"
       >
         <div className="flex items-start gap-3">
           {mod.icon_url ? (
@@ -415,7 +415,7 @@ export default function InstanceSettingsModal({
               className="w-12 h-12 rounded-lg object-cover"
             />
           ) : (
-            <div className="w-12 h-12 bg-primary-700/50 rounded-lg flex items-center justify-center backdrop-blur-sm">
+            <div className="w-12 h-12 bg-primary-800/30 rounded-lg flex items-center justify-center backdrop-blur-sm">
               <Package size={24} className="text-primary-400" />
             </div>
           )}
@@ -465,13 +465,13 @@ export default function InstanceSettingsModal({
                 {mod.categories.slice(0, 2).map((category: string) => (
                   <span
                     key={category}
-                    className="px-2 py-1 bg-primary-700 text-primary-300 text-xs rounded"
+                    className="px-2 py-1 bg-primary-700/50 text-primary-300 text-xs rounded border border-primary-600"
                   >
                     {category}
                   </span>
                 ))}
                 {mod.categories.length > 2 && (
-                  <span className="px-2 py-1 bg-primary-700 text-primary-300 text-xs rounded">
+                  <span className="px-2 py-1 bg-primary-700/50 text-primary-300 text-xs rounded border border-primary-600">
                     +{mod.categories.length - 2}
                   </span>
                 )}
@@ -490,14 +490,14 @@ export default function InstanceSettingsModal({
                 {installed ? (
                   <button
                     onClick={() => uninstallMod(mod)}
-                    className="px-3 py-1 bg-red-600/80 hover:bg-red-700 text-white text-sm rounded transition-colors backdrop-blur-sm"
+                    className="px-3 py-1 bg-red-600/80 hover:bg-red-700/90 text-white text-sm rounded transition-colors backdrop-blur-sm border border-red-500/30"
                   >
                     Uninstall
                   </button>
                 ) : (
                   <button
                     onClick={() => installMod(mod)}
-                    className="px-3 py-1 bg-green-600/80 hover:bg-green-700 text-white text-sm rounded transition-colors backdrop-blur-sm"
+                    className="px-3 py-1 bg-green-600/80 hover:bg-green-700/90 text-white text-sm rounded transition-colors backdrop-blur-sm border border-green-500/30"
                   >
                     Install
                   </button>
@@ -520,7 +520,7 @@ export default function InstanceSettingsModal({
           <input
             type="text"
             value={instance.name}
-            className="w-full px-3 py-2 bg-primary-800/50 border border-primary-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-secondary-500 backdrop-blur-sm"
+            className="w-full px-3 py-2 bg-primary-900/30 border border-primary-700/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-secondary-500/50 backdrop-blur-sm"
             readOnly
           />
         </div>
@@ -532,7 +532,7 @@ export default function InstanceSettingsModal({
           <input
             type="text"
             value={instance.version}
-            className="w-full px-3 py-2 bg-primary-800/50 border border-primary-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-secondary-500 backdrop-blur-sm"
+            className="w-full px-3 py-2 bg-primary-900/30 border border-primary-700/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-secondary-500/50 backdrop-blur-sm"
             readOnly
           />
         </div>
@@ -546,7 +546,7 @@ export default function InstanceSettingsModal({
           <input
             type="text"
             value={`${instance.modpack} (${instance.modpackVersion || 'Unknown version'})`}
-            className="w-full px-3 py-2 bg-primary-800/50 border border-primary-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-secondary-500 backdrop-blur-sm"
+            className="w-full px-3 py-2 bg-primary-900/30 border border-primary-700/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-secondary-500/50 backdrop-blur-sm"
             readOnly
           />
         </div>
@@ -560,7 +560,7 @@ export default function InstanceSettingsModal({
           <input
             type="text"
             value={instance.gameDir}
-            className="flex-1 px-3 py-2 bg-primary-800/50 border border-primary-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-secondary-500 backdrop-blur-sm"
+            className="flex-1 px-3 py-2 bg-primary-900/30 border border-primary-700/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-secondary-500/50 backdrop-blur-sm"
             readOnly
           />
           <button
@@ -569,7 +569,7 @@ export default function InstanceSettingsModal({
                 invoke('open_folder', { path: instance.gameDir });
               }
             }}
-            className="px-3 py-2 bg-secondary-600/80 hover:bg-secondary-700 text-white rounded-lg transition-colors flex items-center gap-2 backdrop-blur-sm"
+            className="px-3 py-2 bg-secondary-600/60 hover:bg-secondary-700/80 text-white rounded-lg transition-colors flex items-center gap-2 backdrop-blur-sm border border-secondary-500/30"
           >
             <Folder size={16} />
             Open
@@ -578,7 +578,7 @@ export default function InstanceSettingsModal({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-primary-800/30 border border-primary-700 rounded-lg p-4 backdrop-blur-sm">
+        <div className="bg-primary-900/20 border border-primary-700/30 rounded-lg p-4 backdrop-blur-sm">
           <div className="flex items-center gap-2 mb-2">
             <HardDrive size={16} className="text-secondary-400" />
             <span className="text-sm font-medium text-primary-300">Storage</span>
@@ -588,7 +588,7 @@ export default function InstanceSettingsModal({
           </div>
         </div>
         
-        <div className="bg-primary-800/30 border border-primary-700 rounded-lg p-4 backdrop-blur-sm">
+        <div className="bg-primary-900/20 border border-primary-700/30 rounded-lg p-4 backdrop-blur-sm">
           <div className="flex items-center gap-2 mb-2">
             <Package size={16} className="text-secondary-400" />
             <span className="text-sm font-medium text-primary-300">Mods</span>
@@ -598,7 +598,7 @@ export default function InstanceSettingsModal({
           </div>
         </div>
         
-        <div className="bg-primary-800/30 border border-primary-700 rounded-lg p-4 backdrop-blur-sm">
+        <div className="bg-primary-900/20 border border-primary-700/30 rounded-lg p-4 backdrop-blur-sm">
           <div className="flex items-center gap-2 mb-2">
             <Calendar size={16} className="text-secondary-400" />
             <span className="text-sm font-medium text-primary-300">Last Played</span>
@@ -613,7 +613,7 @@ export default function InstanceSettingsModal({
 
   const renderJvmTab = () => (
     <div className="space-y-6">
-      <div className="bg-primary-800/30 border border-primary-700 rounded-lg p-4 backdrop-blur-sm">
+      <div className="bg-primary-900/20 border border-primary-700/30 rounded-lg p-4 backdrop-blur-sm">
         <div className="flex items-center gap-2 mb-4">
           <Cpu size={20} className="text-secondary-400" />
           <h3 className="text-lg font-semibold text-white">Java Virtual Machine Settings</h3>
@@ -638,7 +638,7 @@ export default function InstanceSettingsModal({
                   value={jvmSettings.javaPath}
                   onChange={(e) => setJvmSettings(prev => ({ ...prev, javaPath: e.target.value }))}
                   placeholder="/path/to/java"
-                  className="flex-1 px-3 py-2 bg-primary-800/50 border border-primary-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-secondary-500 backdrop-blur-sm"
+                  className="flex-1 px-3 py-2 bg-primary-900/30 border border-primary-700/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-secondary-500/50 backdrop-blur-sm"
                 />
                 <button
                   onClick={async () => {
@@ -651,7 +651,7 @@ export default function InstanceSettingsModal({
                       console.error('Failed to select Java path:', err);
                     }
                   }}
-                  className="px-3 py-2 bg-secondary-600/80 hover:bg-secondary-700 text-white rounded-lg transition-colors backdrop-blur-sm"
+                  className="px-3 py-2 bg-secondary-600/60 hover:bg-secondary-700/80 text-white rounded-lg transition-colors backdrop-blur-sm border border-secondary-500/30"
                 >
                   Browse
                 </button>
@@ -672,7 +672,7 @@ export default function InstanceSettingsModal({
                 min="512"
                 max="32768"
                 step="256"
-                className="w-full px-3 py-2 bg-primary-800/50 border border-primary-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-secondary-500 backdrop-blur-sm"
+                className="w-full px-3 py-2 bg-primary-900/30 border border-primary-700/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-secondary-500/50 backdrop-blur-sm"
               />
             </div>
             
@@ -688,7 +688,7 @@ export default function InstanceSettingsModal({
                 min="1024"
                 max="32768"
                 step="256"
-                className="w-full px-3 py-2 bg-primary-800/50 border border-primary-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-secondary-500 backdrop-blur-sm"
+                className="w-full px-3 py-2 bg-primary-900/30 border border-primary-700/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-secondary-500/50 backdrop-blur-sm"
               />
             </div>
           </div>
@@ -717,14 +717,14 @@ export default function InstanceSettingsModal({
                         setJvmSettings(prev => ({ ...prev, jvmArgs: newArgs }));
                       }}
                       placeholder="-Xmx4G"
-                      className="flex-1 px-3 py-2 bg-primary-800/50 border border-primary-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-secondary-500 backdrop-blur-sm"
+                      className="flex-1 px-3 py-2 bg-primary-900/30 border border-primary-700/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-secondary-500/50 backdrop-blur-sm"
                     />
                     <button
                       onClick={() => {
                         const newArgs = jvmSettings.jvmArgs.filter((_, i) => i !== index);
                         setJvmSettings(prev => ({ ...prev, jvmArgs: newArgs }));
                       }}
-                      className="px-2 py-2 bg-red-600/80 hover:bg-red-700 text-white rounded-lg transition-colors backdrop-blur-sm"
+                      className="px-2 py-2 bg-red-600/80 hover:bg-red-700/90 text-white rounded-lg transition-colors backdrop-blur-sm border border-secondary-500/30 border border-red-500/30"
                     >
                       <Minus size={16} />
                     </button>
@@ -734,7 +734,7 @@ export default function InstanceSettingsModal({
                   onClick={() => {
                     setJvmSettings(prev => ({ ...prev, jvmArgs: [...prev.jvmArgs, ''] }));
                   }}
-                  className="px-3 py-2 bg-green-600/80 hover:bg-green-700 text-white rounded-lg transition-colors flex items-center gap-2 backdrop-blur-sm"
+                  className="px-3 py-2 bg-green-600/80 hover:bg-green-700/90 text-white rounded-lg transition-colors flex items-center gap-2 backdrop-blur-sm border border-secondary-500/30 border border-green-500/30"
                 >
                   <Plus size={16} />
                   Add Argument
@@ -746,7 +746,7 @@ export default function InstanceSettingsModal({
           <div className="flex justify-end">
             <button
               onClick={saveJvmSettings}
-              className="px-6 py-2 bg-secondary-600/80 hover:bg-secondary-700 text-white rounded-lg transition-colors backdrop-blur-sm"
+              className="px-6 py-2 bg-secondary-600/60 hover:bg-secondary-700/80 text-white rounded-lg transition-colors backdrop-blur-sm border border-secondary-500/30"
             >
               Save JVM Settings
             </button>
@@ -765,7 +765,7 @@ export default function InstanceSettingsModal({
         </div>
         <button
           onClick={openScreenshotFolder}
-          className="px-3 py-2 bg-secondary-600/80 hover:bg-secondary-700 text-white rounded-lg transition-colors flex items-center gap-2 backdrop-blur-sm"
+          className="px-3 py-2 bg-secondary-600/60 hover:bg-secondary-700/80 text-white rounded-lg transition-colors flex items-center gap-2 backdrop-blur-sm border border-secondary-500/30"
         >
           <FolderOpen size={16} />
           Open Folder
@@ -800,7 +800,7 @@ export default function InstanceSettingsModal({
                       e.stopPropagation();
                       invoke('open_file', { path: screenshot.path });
                     }}
-                    className="p-1 bg-secondary-600 hover:bg-secondary-700 text-white rounded transition-colors"
+                    className="p-1 bg-secondary-600/60 hover:bg-secondary-700/80/90 text-white rounded transition-colors backdrop-blur-sm border border-secondary-500/30"
                     title="Open"
                   >
                     <ExternalLink size={16} />
@@ -810,7 +810,7 @@ export default function InstanceSettingsModal({
                       e.stopPropagation();
                       deleteScreenshot(screenshot);
                     }}
-                    className="p-1 bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
+                    className="p-1 bg-red-600/80 hover:bg-red-700/90 text-white rounded transition-colors backdrop-blur-sm border border-red-500/30"
                     title="Delete"
                   >
                     <Trash2 size={16} />
@@ -841,14 +841,14 @@ export default function InstanceSettingsModal({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={`Search mods compatible with ${instance.version}...`}
-            className="w-full pl-10 pr-4 py-2 bg-primary-800/50 border border-primary-700 rounded-lg text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-secondary-500 backdrop-blur-sm"
+            className="w-full pl-10 pr-4 py-2 bg-primary-900/30 border border-primary-700/30 rounded-lg text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-secondary-500/50 backdrop-blur-sm"
           />
         </div>
         
         <button
           type="submit"
           disabled={loading}
-          className="px-4 py-2 bg-secondary-600/80 hover:bg-secondary-700 disabled:bg-primary-600/50 text-white rounded-lg transition-colors flex items-center gap-2 backdrop-blur-sm"
+          className="px-4 py-2 bg-secondary-600/60 hover:bg-secondary-700/80 disabled:bg-primary-600/50 text-white rounded-lg transition-colors flex items-center gap-2 backdrop-blur-sm border border-secondary-500/30"
         >
           {loading ? (
             <Loader size={16} className="animate-spin" />
@@ -910,7 +910,7 @@ export default function InstanceSettingsModal({
                 <button
                   onClick={loadMoreResults}
                   disabled={isLoadingMore}
-                  className="px-6 py-2 bg-secondary-600/80 hover:bg-secondary-700 disabled:bg-primary-600/50 text-white rounded-lg transition-colors flex items-center gap-2 mx-auto backdrop-blur-sm"
+                  className="px-6 py-2 bg-secondary-600/60 hover:bg-secondary-700/80 disabled:bg-primary-600/50 text-white rounded-lg transition-colors flex items-center gap-2 mx-auto backdrop-blur-sm"
                 >
                   {isLoadingMore ? (
                     <Loader size={16} className="animate-spin" />
@@ -954,7 +954,7 @@ export default function InstanceSettingsModal({
         </div>
         <button
           onClick={installResourcePack}
-          className="px-3 py-2 bg-secondary-600/80 hover:bg-secondary-700 text-white rounded-lg transition-colors flex items-center gap-2 backdrop-blur-sm"
+          className="px-3 py-2 bg-secondary-600/60 hover:bg-secondary-700/80 text-white rounded-lg transition-colors flex items-center gap-2 backdrop-blur-sm border border-secondary-500/30"
         >
           <Plus size={16} />
           Install Pack
@@ -983,7 +983,7 @@ export default function InstanceSettingsModal({
               </div>
               <button
                 onClick={() => uninstallResourcePack(pack)}
-                className="px-3 py-1 bg-red-600/80 hover:bg-red-700 text-white text-sm rounded transition-colors backdrop-blur-sm"
+                className="px-3 py-1 bg-red-600/80 hover:bg-red-700/90 text-white text-sm rounded transition-colors backdrop-blur-sm border border-red-500/30"
               >
                 Remove
               </button>
@@ -1015,12 +1015,12 @@ export default function InstanceSettingsModal({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
             onClick={(e) => e.stopPropagation()}
-            className="bg-primary-900/80 backdrop-blur-md border border-primary-700/50 rounded-lg w-full max-w-6xl max-h-[85vh] overflow-hidden flex"
+            className="bg-primary-900/60 backdrop-blur-md border border-primary-700/30 rounded-lg w-full max-w-6xl h-[75vh] overflow-hidden flex"
           >
             {/* Sidebar Navigation */}
-            <div className="w-64 bg-primary-800/50 backdrop-blur-sm border-r border-primary-700/50 flex flex-col">
+            <div className="w-64 bg-primary-900/30 backdrop-blur-sm border-r border-primary-700/30 flex flex-col">
               {/* Header */}
-              <div className="p-6 border-b border-primary-700/50">
+              <div className="p-6 border-b border-primary-700/30">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-gradient-to-br from-secondary-600 to-secondary-700 rounded-lg flex items-center justify-center">
                     <Settings size={20} className="text-white" />
@@ -1048,17 +1048,17 @@ export default function InstanceSettingsModal({
                       onClick={() => setActiveTab(tab.id)}
                       className={`w-full flex items-start gap-3 p-3 rounded-lg text-left transition-all duration-200 group ${
                         activeTab === tab.id
-                          ? 'bg-secondary-600/80 text-white backdrop-blur-sm shadow-md'
-                          : 'text-primary-300 hover:text-white hover:bg-primary-700/50'
+                          ? 'bg-secondary-600/20 text-secondary-200 backdrop-blur-sm border border-secondary-500/30 shadow-md'
+                          : 'text-primary-300 hover:text-white hover:bg-primary-700/30 hover:border hover:border-primary-600/50/50'
                       }`}
                     >
                       <Icon size={18} className={`mt-0.5 ${
-                        activeTab === tab.id ? 'text-white' : 'text-primary-400 group-hover:text-secondary-400'
+                        activeTab === tab.id ? 'text-secondary-400' : 'text-primary-400 group-hover:text-secondary-400'
                       }`} />
                       <div className="flex-1">
                         <div className="font-medium text-sm">{tab.label}</div>
                         <div className={`text-xs mt-0.5 ${
-                          activeTab === tab.id ? 'text-secondary-100' : 'text-primary-500'
+                          activeTab === tab.id ? 'text-secondary-300' : 'text-primary-500'
                         }`}>
                           {tab.description}
                         </div>
@@ -1073,7 +1073,7 @@ export default function InstanceSettingsModal({
             {/* Main Content */}
             <div className="flex-1 flex flex-col">
               {/* Content Header */}
-              <div className="p-6 border-b border-primary-700/50 bg-primary-800/30 backdrop-blur-sm">
+              <div className="p-6 border-b border-primary-700/30 bg-primary-900/20 backdrop-blur-sm">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     {(() => {
