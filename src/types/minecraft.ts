@@ -96,6 +96,9 @@ export interface LauncherSettings {
   instances_dir: string;
   downloads_dir: string;
   theme: string;
+  background_image?: string;
+  primary_base_color?: string;
+  secondary_base_color?: string;
   auto_update: boolean;
   keepLauncherOpen?: boolean;
   showSnapshots?: boolean;

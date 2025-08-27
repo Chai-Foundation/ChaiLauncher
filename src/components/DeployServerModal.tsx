@@ -124,17 +124,17 @@ const DeployServerModal: React.FC<DeployServerModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-stone-800 rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-primary-800 rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-amber-600/20 rounded-lg flex items-center justify-center">
-              <Server className="w-5 h-5 text-amber-400" />
+            <div className="w-10 h-10 bg-secondary-600/20 rounded-lg flex items-center justify-center">
+              <Server className="w-5 h-5 text-secondary-400" />
             </div>
             <h2 className="text-xl font-bold text-white">Deploy Minecraft Server</h2>
           </div>
           <button
             onClick={onClose}
-            className="text-stone-400 hover:text-white transition-colors"
+            className="text-primary-400 hover:text-white transition-colors"
           >
             <X className="w-6 h-6" />
           </button>
@@ -146,27 +146,27 @@ const DeployServerModal: React.FC<DeployServerModalProps> = ({
             <h3 className="text-lg font-semibold text-white mb-3">Basic Settings</h3>
             
             <div>
-              <label className="block text-sm font-medium text-stone-300 mb-2">
+              <label className="block text-sm font-medium text-primary-300 mb-2">
                 Server Name
               </label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                className="w-full px-3 py-2 bg-stone-700 text-white rounded-lg border border-stone-600 focus:border-amber-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-primary-700 text-white rounded-lg border border-primary-600 focus:border-secondary-500 focus:outline-none"
                 placeholder="Enter server name"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-stone-300 mb-2">
+              <label className="block text-sm font-medium text-primary-300 mb-2">
                 Minecraft Instance
               </label>
               <select
                 value={formData.minecraft_instance_id}
                 onChange={(e) => setFormData(prev => ({ ...prev, minecraft_instance_id: e.target.value }))}
-                className="w-full px-3 py-2 bg-stone-700 text-white rounded-lg border border-stone-600 focus:border-amber-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-primary-700 text-white rounded-lg border border-primary-600 focus:border-secondary-500 focus:outline-none"
                 required
                 disabled={!!selectedInstance}
               >
@@ -178,20 +178,20 @@ const DeployServerModal: React.FC<DeployServerModalProps> = ({
                 ))}
               </select>
               {selectedInstanceData && (
-                <p className="text-xs text-stone-400 mt-1">
+                <p className="text-xs text-primary-400 mt-1">
                   Game directory: {selectedInstanceData.gameDir}
                 </p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-stone-300 mb-2">
+              <label className="block text-sm font-medium text-primary-300 mb-2">
                 Docker Connection
               </label>
               <select
                 value={formData.docker_connection_id}
                 onChange={(e) => setFormData(prev => ({ ...prev, docker_connection_id: e.target.value }))}
-                className="w-full px-3 py-2 bg-stone-700 text-white rounded-lg border border-stone-600 focus:border-amber-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-primary-700 text-white rounded-lg border border-primary-600 focus:border-secondary-500 focus:outline-none"
                 required
               >
                 <option value="">Select a Docker connection</option>
@@ -210,7 +210,7 @@ const DeployServerModal: React.FC<DeployServerModalProps> = ({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-stone-300 mb-2">
+                <label className="block text-sm font-medium text-primary-300 mb-2">
                   Server Port
                 </label>
                 <input
@@ -219,12 +219,12 @@ const DeployServerModal: React.FC<DeployServerModalProps> = ({
                   max="65535"
                   value={formData.port}
                   onChange={(e) => setFormData(prev => ({ ...prev, port: parseInt(e.target.value) || 25565 }))}
-                  className="w-full px-3 py-2 bg-stone-700 text-white rounded-lg border border-stone-600 focus:border-amber-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-primary-700 text-white rounded-lg border border-primary-600 focus:border-secondary-500 focus:outline-none"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-stone-300 mb-2">
+                <label className="block text-sm font-medium text-primary-300 mb-2">
                   Max Players
                 </label>
                 <input
@@ -233,13 +233,13 @@ const DeployServerModal: React.FC<DeployServerModalProps> = ({
                   max="200"
                   value={formData.max_players}
                   onChange={(e) => setFormData(prev => ({ ...prev, max_players: parseInt(e.target.value) || 20 }))}
-                  className="w-full px-3 py-2 bg-stone-700 text-white rounded-lg border border-stone-600 focus:border-amber-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-primary-700 text-white rounded-lg border border-primary-600 focus:border-secondary-500 focus:outline-none"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-stone-300 mb-2">
+              <label className="block text-sm font-medium text-primary-300 mb-2">
                 Memory Limit (MB)
               </label>
               <input
@@ -249,9 +249,9 @@ const DeployServerModal: React.FC<DeployServerModalProps> = ({
                 step="512"
                 value={formData.memory_limit}
                 onChange={(e) => setFormData(prev => ({ ...prev, memory_limit: parseInt(e.target.value) || 2048 }))}
-                className="w-full px-3 py-2 bg-stone-700 text-white rounded-lg border border-stone-600 focus:border-amber-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-primary-700 text-white rounded-lg border border-primary-600 focus:border-secondary-500 focus:outline-none"
               />
-              <p className="text-xs text-stone-400 mt-1">
+              <p className="text-xs text-primary-400 mt-1">
                 Recommended: 2048MB for vanilla, 4096MB+ for modded servers
               </p>
             </div>
@@ -264,7 +264,7 @@ const DeployServerModal: React.FC<DeployServerModalProps> = ({
                 onChange={(e) => setFormData(prev => ({ ...prev, auto_start: e.target.checked }))}
                 className="mr-2"
               />
-              <label htmlFor="auto_start" className="text-sm text-stone-300">
+              <label htmlFor="auto_start" className="text-sm text-primary-300">
                 Start server automatically after deployment
               </label>
             </div>
@@ -275,7 +275,7 @@ const DeployServerModal: React.FC<DeployServerModalProps> = ({
             <button
               type="button"
               onClick={() => setShowAdvanced(!showAdvanced)}
-              className="flex items-center gap-2 text-amber-400 hover:text-amber-300 transition-colors"
+              className="flex items-center gap-2 text-secondary-400 hover:text-secondary-300 transition-colors"
             >
               <Settings className="w-4 h-4" />
               Advanced Settings
@@ -284,7 +284,7 @@ const DeployServerModal: React.FC<DeployServerModalProps> = ({
             {showAdvanced && (
               <div className="mt-4 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-stone-300 mb-2">
+                  <label className="block text-sm font-medium text-primary-300 mb-2">
                     Environment Variables
                   </label>
                   <div className="space-y-2">
@@ -294,26 +294,26 @@ const DeployServerModal: React.FC<DeployServerModalProps> = ({
                         placeholder="Variable name"
                         value={envVarInput.key}
                         onChange={(e) => setEnvVarInput(prev => ({ ...prev, key: e.target.value }))}
-                        className="flex-1 px-3 py-2 bg-stone-700 text-white rounded-lg border border-stone-600 focus:border-amber-500 focus:outline-none"
+                        className="flex-1 px-3 py-2 bg-primary-700 text-white rounded-lg border border-primary-600 focus:border-secondary-500 focus:outline-none"
                       />
                       <input
                         type="text"
                         placeholder="Value"
                         value={envVarInput.value}
                         onChange={(e) => setEnvVarInput(prev => ({ ...prev, value: e.target.value }))}
-                        className="flex-1 px-3 py-2 bg-stone-700 text-white rounded-lg border border-stone-600 focus:border-amber-500 focus:outline-none"
+                        className="flex-1 px-3 py-2 bg-primary-700 text-white rounded-lg border border-primary-600 focus:border-secondary-500 focus:outline-none"
                       />
                       <button
                         type="button"
                         onClick={handleAddEnvVar}
-                        className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors"
+                        className="px-3 py-2 bg-secondary-600 hover:bg-secondary-700 text-white rounded-lg transition-colors"
                       >
                         Add
                       </button>
                     </div>
                     
                     {Object.entries(formData.environment_vars).map(([key, value]) => (
-                      <div key={key} className="flex items-center justify-between bg-stone-700/50 px-3 py-2 rounded-lg">
+                      <div key={key} className="flex items-center justify-between bg-primary-700/50 px-3 py-2 rounded-lg">
                         <span className="text-sm text-white">{key} = {value}</span>
                         <button
                           type="button"
@@ -330,18 +330,18 @@ const DeployServerModal: React.FC<DeployServerModalProps> = ({
             )}
           </div>
 
-          <div className="flex justify-end gap-3 pt-6 border-t border-stone-600">
+          <div className="flex justify-end gap-3 pt-6 border-t border-primary-600">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-stone-300 hover:text-white transition-colors"
+              className="px-4 py-2 text-primary-300 hover:text-white transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={dockerConnections.filter(c => c.is_connected).length === 0 || instances.length === 0}
-              className="px-6 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-600/50 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+              className="px-6 py-2 bg-secondary-600 hover:bg-secondary-700 disabled:bg-secondary-600/50 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
             >
               Deploy Server
             </button>

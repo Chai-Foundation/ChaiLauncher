@@ -98,7 +98,7 @@ const JavaInstallModal: React.FC<JavaInstallModalProps> = ({ isOpen, onClose, on
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-stone-900 rounded-xl border border-amber-600/30 p-6 max-w-md w-full mx-4"
+            className="bg-primary-900 rounded-xl border border-secondary-600/30 p-6 max-w-md w-full mx-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-center">
@@ -106,12 +106,12 @@ const JavaInstallModal: React.FC<JavaInstallModalProps> = ({ isOpen, onClose, on
                 {isComplete ? (
                   <CheckCircle size={48} className="text-green-400 mx-auto mb-2" />
                 ) : (
-                  <Download size={48} className="text-amber-400 mx-auto mb-2" />
+                  <Download size={48} className="text-secondary-400 mx-auto mb-2" />
                 )}
                 <h2 className="text-xl font-bold text-white mb-2">
                   {isComplete ? 'Java Installed!' : 'Java Runtime Required'}
                 </h2>
-                <p className="text-stone-300 text-sm">
+                <p className="text-primary-300 text-sm">
                   {isComplete 
                     ? 'Java has been successfully installed and is ready to use.'
                     : `ChaiLauncher needs to download and install Java ${requiredJavaVersion} to run Minecraft instances.`
@@ -122,16 +122,16 @@ const JavaInstallModal: React.FC<JavaInstallModalProps> = ({ isOpen, onClose, on
               {isInstalling && (
                 <div className="mb-4">
                   <div className="mb-2">
-                    <div className="bg-stone-700 rounded-full h-3 overflow-hidden">
+                    <div className="bg-primary-700 rounded-full h-3 overflow-hidden">
                       <motion.div
-                        className="bg-gradient-to-r from-amber-500 to-amber-400 h-3 rounded-full"
+                        className="bg-gradient-to-r from-secondary-500 to-secondary-400 h-3 rounded-full"
                         initial={{ width: '0%' }}
                         animate={{ width: `${installProgress.progress}%` }}
                         transition={{ duration: 0.3 }}
                       />
                     </div>
                   </div>
-                  <p className="text-stone-300 text-sm">
+                  <p className="text-primary-300 text-sm">
                     {installProgress.stage} ({Math.round(installProgress.progress)}%)
                   </p>
                 </div>
@@ -148,13 +148,13 @@ const JavaInstallModal: React.FC<JavaInstallModalProps> = ({ isOpen, onClose, on
                   <>
                     <button
                       onClick={handleClose}
-                      className="px-4 py-2 bg-stone-700 hover:bg-stone-600 text-white rounded-lg transition-colors"
+                      className="px-4 py-2 bg-primary-700 hover:bg-primary-600 text-white rounded-lg transition-colors"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleInstall}
-                      className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors flex items-center gap-2"
+                      className="px-4 py-2 bg-secondary-600 hover:bg-secondary-500 text-white rounded-lg transition-colors flex items-center gap-2"
                     >
                       <Download size={16} />
                       Install Java
@@ -165,7 +165,7 @@ const JavaInstallModal: React.FC<JavaInstallModalProps> = ({ isOpen, onClose, on
                 {isInstalling && (
                   <button
                     disabled
-                    className="px-4 py-2 bg-stone-700 text-stone-400 rounded-lg cursor-not-allowed"
+                    className="px-4 py-2 bg-primary-700 text-primary-400 rounded-lg cursor-not-allowed"
                   >
                     Installing...
                   </button>

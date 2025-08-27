@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import LauncherSidebar from './components/LauncherSidebar';
 import HomeView from './components/HomeView';
 import InstancesView from './components/InstancesView';
@@ -10,6 +11,7 @@ import CreateInstanceModal from './components/CreateInstanceModal';
 import JavaInstallModal from './components/JavaInstallModal';
 import InstanceSettingsModal from './components/InstanceSettingsModal';
 import { MinecraftInstance, MinecraftVersion, ModpackInfo, LauncherSettings, NewsItem, InstallProgressEvent, InstallCompleteEvent } from './types/minecraft';
+import { applyColorScheme } from './utils/colors';
 import heroImage from './assets/hero.png';
 import type { CSSProperties } from 'react';
 import './index.css';
@@ -373,6 +375,8 @@ function App() {
     instances_dir: '/minecraft/instances',
     downloads_dir: '/minecraft/downloads',
     theme: 'dark',
+    primary_base_color: '#78716c',
+    secondary_base_color: '#eb9109',
     auto_update: true,
     keepLauncherOpen: true,
     showSnapshots: false,
@@ -382,6 +386,20 @@ function App() {
     jvmArgs: ['-XX:+UnlockExperimentalVMOptions', '-XX:+UseG1GC'],
     gameDir: '/minecraft',
   });
+
+  // Apply default color scheme immediately on mount
+  useEffect(() => {
+    // Apply default colors before settings are loaded to prevent white borders
+    applyColorScheme(settings);
+  }, []);
+
+  // Apply color scheme when settings change
+  useEffect(() => {
+    if (settings || launcherSettings) {
+      const activeSettings = launcherSettings || settings;
+      applyColorScheme(activeSettings);
+    }
+  }, [settings, launcherSettings]);
 
 
   const mockModpacks: ModpackInfo[] = [
@@ -619,6 +637,9 @@ function App() {
       await invoke('update_launcher_settings', { settings: newSettings });
       setSettings(newSettings);
       setLauncherSettings(newSettings);
+      
+      // Apply the new color scheme immediately
+      applyColorScheme(newSettings);
     } catch (error) {
       console.error('Failed to update settings:', error);
     }
@@ -731,14 +752,43 @@ function App() {
     };
   }, []);
 
+  // Helper function to get proper background image src
+  const getBackgroundImageSrc = () => {
+    if (!launcherSettings?.background_image) {
+      return heroImage;
+    }
+
+    const imagePath = launcherSettings.background_image.replace(/^["']|["']$/g, '');
+    
+    // If it's already a data URL or HTTP URL, use it directly
+    if (imagePath.startsWith('data:') || 
+        imagePath.startsWith('http://') || 
+        imagePath.startsWith('https://')) {
+      return imagePath;
+    }
+    
+    // For local file paths, try to convert using Tauri's convertFileSrc
+    // If this fails, the onError handler will fall back to heroImage
+    try {
+      return convertFileSrc(imagePath);
+    } catch (error) {
+      console.warn('Failed to convert background image path:', error);
+      return heroImage;
+    }
+  };
+
   return (
-  <div className="min-h-screen h-full w-full bg-stone-950 flex flex-col">
+  <div className="min-h-screen h-full w-full bg-primary-950 flex flex-col">
     {/* Hero Background Image */}
     <div className="absolute inset-0">
       <img
-        src={heroImage}
+        src={getBackgroundImageSrc()}
         alt="Hero Background"
         className="w-full h-full object-cover blur-sm"
+        onError={(e) => {
+          // Fallback to default hero image if custom background fails to load
+          (e.target as HTMLImageElement).src = heroImage;
+        }}
       />
       {/* Dark overlay for UI readability */}
       <div className="absolute inset-0 bg-black/60"></div>
@@ -754,7 +804,7 @@ function App() {
         {/* Titlebar */}
         <div className="flex flex-col flex-1 min-h-0">
         <div
-          className="bg-stone-900/60 backdrop-blur-sm border-r border-amber-600/30 h-9 flex items-center justify-between"
+          className="bg-primary-900/60 backdrop-blur-sm border-r border-secondary-600/30 h-9 flex items-center justify-between"
           style={{ WebkitAppRegion: 'drag' } as CSSProperties}
         >
           <div className="flex-1"></div>
@@ -764,7 +814,7 @@ function App() {
             style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
           >
           <button
-            className="w-6 h-6 flex items-center justify-center hover:bg-stone-800 rounded"
+            className="w-6 h-6 flex items-center justify-center hover:bg-primary-800 rounded"
             title="Minimize"
             onClick={async (e) => {
               e.stopPropagation();
@@ -774,11 +824,11 @@ function App() {
             }}
           >
             <svg width="14" height="14" viewBox="0 0 14 14">
-            <rect x="3" y="10" width="8" height="1.5" fill="#eab308" />
+            <rect x="3" y="10" width="8" height="1.5" fill="var(--secondary-500)" />
             </svg>
           </button>
           <button
-            className="w-6 h-6 flex items-center justify-center hover:bg-stone-800 rounded"
+            className="w-6 h-6 flex items-center justify-center hover:bg-primary-800 rounded"
             title="Maximize"
             onClick={async (e) => {
               e.stopPropagation();
@@ -793,7 +843,7 @@ function App() {
             }}
           >
             <svg width="14" height="14" viewBox="0 0 14 14">
-            <rect x="3" y="3" width="8" height="8" stroke="#eab308" strokeWidth="1.5" fill="none" />
+            <rect x="3" y="3" width="8" height="8" stroke="var(--secondary-500)" strokeWidth="1.5" fill="none" />
             </svg>
           </button>
           <button
@@ -807,8 +857,8 @@ function App() {
             }}
           >
             <svg width="14" height="14" viewBox="0 0 14 14">
-            <line x1="4" y1="4" x2="10" y2="10" stroke="#fff" strokeWidth="1.5" />
-            <line x1="10" y1="4" x2="4" y2="10" stroke="#fff" strokeWidth="1.5" />
+            <line x1="4" y1="4" x2="10" y2="10" stroke="white" strokeWidth="1.5" />
+            <line x1="10" y1="4" x2="4" y2="10" stroke="white" strokeWidth="1.5" />
             </svg>
           </button>
           </div>

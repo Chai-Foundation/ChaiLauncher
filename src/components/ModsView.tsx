@@ -138,7 +138,7 @@ export default function ModsView({ selectedInstance }: ModsViewProps) {
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="bg-stone-800 border border-stone-700 rounded-lg p-4 hover:border-stone-600 transition-colors"
+      className="bg-primary-800 border border-primary-700 rounded-lg p-4 hover:border-primary-600 transition-colors"
     >
       <div className="flex items-start gap-3">
         {mod.icon_url ? (
@@ -148,8 +148,8 @@ export default function ModsView({ selectedInstance }: ModsViewProps) {
             className="w-12 h-12 rounded-lg object-cover"
           />
         ) : (
-          <div className="w-12 h-12 bg-stone-700 rounded-lg flex items-center justify-center">
-            <Package size={24} className="text-stone-400" />
+          <div className="w-12 h-12 bg-primary-700 rounded-lg flex items-center justify-center">
+            <Package size={24} className="text-primary-400" />
           </div>
         )}
         
@@ -161,11 +161,11 @@ export default function ModsView({ selectedInstance }: ModsViewProps) {
             )}
           </div>
           
-          <p className="text-stone-400 text-sm mb-2 line-clamp-2">
+          <p className="text-primary-400 text-sm mb-2 line-clamp-2">
             {mod.description}
           </p>
           
-          <div className="flex items-center justify-between text-xs text-stone-500 mb-3">
+          <div className="flex items-center justify-between text-xs text-primary-500 mb-3">
             <div className="flex items-center gap-3">
               <span className="flex items-center gap-1">
                 <User size={12} />
@@ -187,13 +187,13 @@ export default function ModsView({ selectedInstance }: ModsViewProps) {
               {mod.categories.slice(0, 2).map((category) => (
                 <span
                   key={category}
-                  className="px-2 py-1 bg-stone-700 text-stone-300 text-xs rounded"
+                  className="px-2 py-1 bg-primary-700 text-primary-300 text-xs rounded"
                 >
                   {category}
                 </span>
               ))}
               {mod.categories.length > 2 && (
-                <span className="px-2 py-1 bg-stone-700 text-stone-300 text-xs rounded">
+                <span className="px-2 py-1 bg-primary-700 text-primary-300 text-xs rounded">
                   +{mod.categories.length - 2}
                 </span>
               )}
@@ -203,7 +203,7 @@ export default function ModsView({ selectedInstance }: ModsViewProps) {
               {mod.website_url && (
                 <button
                   onClick={() => window.open(mod.website_url, '_blank')}
-                  className="p-1 text-stone-400 hover:text-white transition-colors"
+                  className="p-1 text-primary-400 hover:text-white transition-colors"
                   title="Visit website"
                 >
                   <ExternalLink size={16} />
@@ -212,7 +212,7 @@ export default function ModsView({ selectedInstance }: ModsViewProps) {
               <button
                 onClick={() => installMod(mod)}
                 disabled={!selectedInstance}
-                className="px-3 py-1 bg-green-600 hover:bg-green-700 disabled:bg-stone-600 disabled:cursor-not-allowed text-white text-sm rounded transition-colors"
+                className="px-3 py-1 bg-green-600 hover:bg-green-700 disabled:bg-primary-600 disabled:cursor-not-allowed text-white text-sm rounded transition-colors"
               >
                 Install
               </button>
@@ -224,13 +224,13 @@ export default function ModsView({ selectedInstance }: ModsViewProps) {
   );
 
   return (
-    <div className="flex-1 overflow-hidden bg-stone-900 text-white">
+    <div className="flex-1 overflow-hidden bg-primary-900 text-white">
       <div className="h-full flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-stone-700">
+        <div className="flex items-center justify-between p-6 border-b border-primary-700">
           <div>
             <h1 className="text-2xl font-bold text-white mb-1">Mods</h1>
-            <p className="text-stone-400">
+            <p className="text-primary-400">
               {selectedInstance ? (
                 `Browse and install mods for ${selectedInstance.name}`
               ) : (
@@ -243,7 +243,7 @@ export default function ModsView({ selectedInstance }: ModsViewProps) {
             <button
               onClick={() => setViewMode('grid')}
               className={`p-2 rounded transition-colors ${
-                viewMode === 'grid' ? 'bg-amber-600 text-white' : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
+                viewMode === 'grid' ? 'bg-secondary-600 text-white' : 'bg-primary-700 text-primary-300 hover:bg-primary-600'
               }`}
             >
               <Grid size={18} />
@@ -251,14 +251,14 @@ export default function ModsView({ selectedInstance }: ModsViewProps) {
             <button
               onClick={() => setViewMode('list')}
               className={`p-2 rounded transition-colors ${
-                viewMode === 'list' ? 'bg-amber-600 text-white' : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
+                viewMode === 'list' ? 'bg-secondary-600 text-white' : 'bg-primary-700 text-primary-300 hover:bg-primary-600'
               }`}
             >
               <List size={18} />
             </button>
             <button
               onClick={loadFeaturedMods}
-              className="p-2 bg-stone-700 text-stone-300 hover:bg-stone-600 rounded transition-colors"
+              className="p-2 bg-primary-700 text-primary-300 hover:bg-primary-600 rounded transition-colors"
             >
               <RefreshCw size={18} />
             </button>
@@ -266,23 +266,23 @@ export default function ModsView({ selectedInstance }: ModsViewProps) {
         </div>
 
         {/* Search Bar */}
-        <div className="p-6 border-b border-stone-700">
+        <div className="p-6 border-b border-primary-700">
           <form onSubmit={handleSearch} className="flex gap-4">
             <div className="flex-1 relative">
-              <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-stone-400" />
+              <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary-400" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search mods..."
-                className="w-full pl-10 pr-4 py-2 bg-stone-800 border border-stone-700 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full pl-10 pr-4 py-2 bg-primary-800 border border-primary-700 rounded-lg text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-secondary-500"
               />
             </div>
             
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-3 py-2 bg-stone-800 border border-stone-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="px-3 py-2 bg-primary-800 border border-primary-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-secondary-500"
             >
               <option value="">All Categories</option>
               {categories.map((category) => (
@@ -295,7 +295,7 @@ export default function ModsView({ selectedInstance }: ModsViewProps) {
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-stone-600 text-white rounded-lg transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-secondary-600 hover:bg-secondary-700 disabled:bg-primary-600 text-white rounded-lg transition-colors flex items-center gap-2"
             >
               {loading ? (
                 <Loader size={16} className="animate-spin" />
@@ -326,7 +326,7 @@ export default function ModsView({ selectedInstance }: ModsViewProps) {
               </div>
             </div>
           ) : searchQuery.trim() && !loading ? (
-            <div className="text-center py-8 text-stone-400">
+            <div className="text-center py-8 text-primary-400">
               <Package size={48} className="mx-auto mb-2" />
               <p>No mods found for "{searchQuery}"</p>
             </div>
@@ -345,7 +345,7 @@ export default function ModsView({ selectedInstance }: ModsViewProps) {
                   ))}
                 </div>
               ) : !featuredLoading ? (
-                <div className="text-center py-8 text-stone-400">
+                <div className="text-center py-8 text-primary-400">
                   <Package size={48} className="mx-auto mb-2" />
                   <p>No featured mods available</p>
                 </div>

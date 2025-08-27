@@ -5,6 +5,47 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    /* Default color scheme - Stone */
+    --primary-50: #fafaf9;
+    --primary-100: #f5f5f4;
+    --primary-200: #e7e5e4;
+    --primary-300: #d6d3d1;
+    --primary-400: #a8a29e;
+    --primary-500: #78716c;
+    --primary-600: #57534e;
+    --primary-700: #44403c;
+    --primary-800: #292524;
+    --primary-900: #1c1917;
+    --primary-950: #0c0a09;
+    
+    /* Accent color - Amber */
+    --accent-50: #fffbeb;
+    --accent-100: #fef3c7;
+    --accent-200: #fde68a;
+    --accent-300: #fcd34d;
+    --accent-400: #fbbf24;
+    --accent-500: #f59e0b;
+    --accent-600: #d97706;
+    --accent-700: #b45309;
+    --accent-800: #92400e;
+    --accent-900: #78350f;
+    --accent-950: #451a03;
+
+    /* Secondary color (same as accent by default) */
+    --secondary-50: #fffbeb;
+    --secondary-100: #fef3c7;
+    --secondary-200: #fde68a;
+    --secondary-300: #fcd34d;
+    --secondary-400: #fbbf24;
+    --secondary-500: #f59e0b;
+    --secondary-600: #d97706;
+    --secondary-700: #b45309;
+    --secondary-800: #92400e;
+    --secondary-900: #78350f;
+    --secondary-950: #451a03;
+  }
+
   * {
     box-sizing: border-box;
   }
@@ -215,4 +256,88 @@
       left: 100%;
     }
   }
+
+  /* Dynamic color classes using CSS custom properties */
+  .bg-primary-50 { background-color: var(--primary-50); }
+  .bg-primary-100 { background-color: var(--primary-100); }
+  .bg-primary-200 { background-color: var(--primary-200); }
+  .bg-primary-300 { background-color: var(--primary-300); }
+  .bg-primary-400 { background-color: var(--primary-400); }
+  .bg-primary-500 { background-color: var(--primary-500); }
+  .bg-primary-600 { background-color: var(--primary-600); }
+  .bg-primary-700 { background-color: var(--primary-700); }
+  .bg-primary-800 { background-color: var(--primary-800); }
+  .bg-primary-900 { background-color: var(--primary-900); }
+  .bg-primary-950 { background-color: var(--primary-950); }
+  
+  .bg-accent-50 { background-color: var(--accent-50); }
+  .bg-accent-100 { background-color: var(--accent-100); }
+  .bg-accent-200 { background-color: var(--accent-200); }
+  .bg-accent-300 { background-color: var(--accent-300); }
+  .bg-accent-400 { background-color: var(--accent-400); }
+  .bg-accent-500 { background-color: var(--accent-500); }
+  .bg-accent-600 { background-color: var(--accent-600); }
+  .bg-accent-700 { background-color: var(--accent-700); }
+  .bg-accent-800 { background-color: var(--accent-800); }
+  .bg-accent-900 { background-color: var(--accent-900); }
+  .bg-accent-950 { background-color: var(--accent-950); }
+
+  .bg-secondary-50 { background-color: var(--secondary-50); }
+  .bg-secondary-100 { background-color: var(--secondary-100); }
+  .bg-secondary-200 { background-color: var(--secondary-200); }
+  .bg-secondary-300 { background-color: var(--secondary-300); }
+  .bg-secondary-400 { background-color: var(--secondary-400); }
+  .bg-secondary-500 { background-color: var(--secondary-500); }
+  .bg-secondary-600 { background-color: var(--secondary-600); }
+  .bg-secondary-700 { background-color: var(--secondary-700); }
+  .bg-secondary-800 { background-color: var(--secondary-800); }
+  .bg-secondary-900 { background-color: var(--secondary-900); }
+  .bg-secondary-950 { background-color: var(--secondary-950); }
+
+  .text-primary-50 { color: var(--primary-50); }
+  .text-primary-100 { color: var(--primary-100); }
+  .text-primary-200 { color: var(--primary-200); }
+  .text-primary-300 { color: var(--primary-300); }
+  .text-primary-400 { color: var(--primary-400); }
+  .text-primary-500 { color: var(--primary-500); }
+  .text-primary-600 { color: var(--primary-600); }
+  .text-primary-700 { color: var(--primary-700); }
+  .text-primary-800 { color: var(--primary-800); }
+  .text-primary-900 { color: var(--primary-900); }
+  .text-primary-950 { color: var(--primary-950); }
+
+  .text-accent-50 { color: var(--accent-50); }
+  .text-accent-100 { color: var(--accent-100); }
+  .text-accent-200 { color: var(--accent-200); }
+  .text-accent-300 { color: var(--accent-300); }
+  .text-accent-400 { color: var(--accent-400); }
+  .text-accent-500 { color: var(--accent-500); }
+  .text-accent-600 { color: var(--accent-600); }
+  .text-accent-700 { color: var(--accent-700); }
+  .text-accent-800 { color: var(--accent-800); }
+  .text-accent-900 { color: var(--accent-900); }
+  .text-accent-950 { color: var(--accent-950); }
+
+  .text-secondary-50 { color: var(--secondary-50); }
+  .text-secondary-100 { color: var(--secondary-100); }
+  .text-secondary-200 { color: var(--secondary-200); }
+  .text-secondary-300 { color: var(--secondary-300); }
+  .text-secondary-400 { color: var(--secondary-400); }
+  .text-secondary-500 { color: var(--secondary-500); }
+  .text-secondary-600 { color: var(--secondary-600); }
+  .text-secondary-700 { color: var(--secondary-700); }
+  .text-secondary-800 { color: var(--secondary-800); }
+  .text-secondary-900 { color: var(--secondary-900); }
+  .text-secondary-950 { color: var(--secondary-950); }
+
+  .border-primary-600 { border-color: var(--primary-600); }
+  .border-accent-600 { border-color: var(--accent-600); }
+  .border-secondary-600 { border-color: var(--secondary-600); }
+
+  .hover\:bg-primary-500:hover { background-color: var(--primary-500); }
+  .hover\:bg-primary-700:hover { background-color: var(--primary-700); }
+  .hover\:bg-accent-600:hover { background-color: var(--accent-600); }
+  .hover\:bg-accent-700:hover { background-color: var(--accent-700); }
+  .hover\:bg-secondary-600:hover { background-color: var(--secondary-600); }
+  .hover\:bg-secondary-700:hover { background-color: var(--secondary-700); }
 }

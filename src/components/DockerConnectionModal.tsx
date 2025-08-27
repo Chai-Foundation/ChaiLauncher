@@ -92,7 +92,7 @@ const DockerConnectionModal: React.FC<DockerConnectionModalProps> = ({ isOpen, o
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-stone-800 rounded-xl p-6 max-w-lg w-full">
+      <div className="bg-primary-800 rounded-xl p-6 max-w-lg w-full">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center">
@@ -102,7 +102,7 @@ const DockerConnectionModal: React.FC<DockerConnectionModalProps> = ({ isOpen, o
           </div>
           <button
             onClick={handleClose}
-            className="text-stone-400 hover:text-white transition-colors"
+            className="text-primary-400 hover:text-white transition-colors"
           >
             <X className="w-6 h-6" />
           </button>
@@ -110,21 +110,21 @@ const DockerConnectionModal: React.FC<DockerConnectionModalProps> = ({ isOpen, o
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-stone-300 mb-2">
+            <label className="block text-sm font-medium text-primary-300 mb-2">
               Connection Name
             </label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              className="w-full px-3 py-2 bg-stone-700 text-white rounded-lg border border-stone-600 focus:border-blue-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-primary-700 text-white rounded-lg border border-primary-600 focus:border-blue-500 focus:outline-none"
               placeholder="My Docker Server"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-stone-300 mb-2">
+            <label className="block text-sm font-medium text-primary-300 mb-2">
               Connection Type
             </label>
             <select
@@ -138,7 +138,7 @@ const DockerConnectionModal: React.FC<DockerConnectionModalProps> = ({ isOpen, o
                   port: ['local', 'windows_named_pipe', 'unix_socket'].includes(type) ? undefined : (prev.port || 2376)
                 }));
               }}
-              className="w-full px-3 py-2 bg-stone-700 text-white rounded-lg border border-stone-600 focus:border-blue-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-primary-700 text-white rounded-lg border border-primary-600 focus:border-blue-500 focus:outline-none"
             >
               <option value="local">Local Docker (Auto-detect)</option>
               <option value="windows_named_pipe">Windows Named Pipe</option>
@@ -149,14 +149,14 @@ const DockerConnectionModal: React.FC<DockerConnectionModalProps> = ({ isOpen, o
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-stone-300 mb-2">
+            <label className="block text-sm font-medium text-primary-300 mb-2">
               Host
             </label>
             <input
               type="text"
               value={formData.host}
               onChange={(e) => setFormData(prev => ({ ...prev, host: e.target.value }))}
-              className="w-full px-3 py-2 bg-stone-700 text-white rounded-lg border border-stone-600 focus:border-blue-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-primary-700 text-white rounded-lg border border-primary-600 focus:border-blue-500 focus:outline-none"
               placeholder="localhost"
               disabled={['local', 'windows_named_pipe', 'unix_socket'].includes(formData.connection_type)}
               required
@@ -165,7 +165,7 @@ const DockerConnectionModal: React.FC<DockerConnectionModalProps> = ({ isOpen, o
 
           {!['local', 'windows_named_pipe', 'unix_socket'].includes(formData.connection_type) && (
             <div>
-              <label className="block text-sm font-medium text-stone-300 mb-2">
+              <label className="block text-sm font-medium text-primary-300 mb-2">
                 Port
               </label>
               <input
@@ -174,16 +174,16 @@ const DockerConnectionModal: React.FC<DockerConnectionModalProps> = ({ isOpen, o
                 max="65535"
                 value={formData.port || ''}
                 onChange={(e) => setFormData(prev => ({ ...prev, port: e.target.value ? parseInt(e.target.value) : undefined }))}
-                className="w-full px-3 py-2 bg-stone-700 text-white rounded-lg border border-stone-600 focus:border-blue-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-primary-700 text-white rounded-lg border border-primary-600 focus:border-blue-500 focus:outline-none"
                 placeholder="2376"
               />
             </div>
           )}
 
           {/* Connection Info */}
-          <div className="bg-stone-700/30 rounded-lg p-4 text-sm">
-            <h4 className="font-medium text-stone-200 mb-2">Connection Information:</h4>
-            <ul className="text-stone-300 space-y-1">
+          <div className="bg-primary-700/30 rounded-lg p-4 text-sm">
+            <h4 className="font-medium text-primary-200 mb-2">Connection Information:</h4>
+            <ul className="text-primary-300 space-y-1">
               {formData.connection_type === 'local' && (
                 <li>• Auto-detects Docker Desktop or local Docker daemon</li>
               )}
@@ -235,11 +235,11 @@ const DockerConnectionModal: React.FC<DockerConnectionModalProps> = ({ isOpen, o
             )}
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-stone-600">
+          <div className="flex justify-end gap-3 pt-4 border-t border-primary-600">
             <button
               type="button"
               onClick={handleClose}
-              className="px-4 py-2 text-stone-300 hover:text-white transition-colors"
+              className="px-4 py-2 text-primary-300 hover:text-white transition-colors"
             >
               Cancel
             </button>

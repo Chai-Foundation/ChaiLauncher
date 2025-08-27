@@ -41,7 +41,7 @@ const InstanceCard: React.FC<InstanceCardProps> = React.memo(({ instance, onPlay
       case 'installing': return 'border-blue-500/50';
       case 'failed': return 'border-red-500/50';
       case 'invalid': return 'border-red-600/50';
-      default: return 'border-amber-600/30';
+      default: return 'border-secondary-600/30';
     }
   };
 
@@ -86,12 +86,12 @@ const InstanceCard: React.FC<InstanceCardProps> = React.memo(({ instance, onPlay
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className={`allow-context-menu bg-stone-900/50 backdrop-blur-sm rounded-xl border overflow-hidden transition-all duration-300 ${getStatusColor()} ${!isDisabled ? 'hover:border-amber-500/50 hover:shadow-xl hover:scale-[1.03]' : ''}`}
+      className={`allow-context-menu bg-primary-900/50 backdrop-blur-sm rounded-xl border overflow-hidden transition-all duration-300 ${getStatusColor()} ${!isDisabled ? 'hover:border-secondary-500/50 hover:shadow-xl hover:scale-[1.03]' : ''}`}
       onContextMenu={handleContextMenu} // <-- Move here!
       tabIndex={0}
     >
       <div
-        className="group aspect-video bg-gradient-to-br from-amber-600 to-amber-500 relative"
+        className="group aspect-video bg-gradient-to-br from-secondary-600 to-secondary-500 relative"
         ref={iconAreaRef}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -164,12 +164,12 @@ const InstanceCard: React.FC<InstanceCardProps> = React.memo(({ instance, onPlay
                   strokeLinecap="round"
                   strokeDasharray={`${2 * Math.PI * 42}`}
                   strokeDashoffset={`${2 * Math.PI * 42 * (1 - (Math.min(100, Math.max(0, instance.installProgress || 0)) / 100))}`}
-                  className="transition-all duration-500 ease-out drop-shadow-[0_0_8px_rgba(59,130,246,0.7)]"
+                  className="transition-all duration-500 ease-out"
                 />
                 <defs>
                   <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#38bdf8" />
-                    <stop offset="100%" stopColor="#fbbf24" />
+                    <stop offset="0%" stopColor="var(--secondary-400)" />
+                    <stop offset="100%" stopColor="var(--secondary-600)" />
                   </linearGradient>
                 </defs>
               </svg>
@@ -199,7 +199,7 @@ const InstanceCard: React.FC<InstanceCardProps> = React.memo(({ instance, onPlay
         )}
 
         {instance.isExternal && (
-          <div className="absolute top-2 left-2 bg-amber-600 text-white text-xs px-2 py-1 rounded-full">
+          <div className="absolute top-2 left-2 bg-secondary-600 text-white text-xs px-2 py-1 rounded-full">
             {instance.externalLauncher?.toUpperCase()}
           </div>
         )}
@@ -213,13 +213,13 @@ const InstanceCard: React.FC<InstanceCardProps> = React.memo(({ instance, onPlay
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.18 }}
-              className="fixed z-50 bg-stone-800 border border-stone-700 rounded-lg shadow-lg p-2 flex flex-col min-w-[140px]"
+              className="fixed z-50 bg-primary-800 border border-primary-700 rounded-lg shadow-lg p-2 flex flex-col min-w-[140px]"
               style={{ left: menuPos.x, top: menuPos.y }}
               tabIndex={-1}
             >
               <button
                 onClick={() => { onEdit(instance); setShowMenu(false); }}
-                className="flex items-center gap-2 px-3 py-2 hover:bg-stone-700 rounded text-white text-sm"
+                className="flex items-center gap-2 px-3 py-2 hover:bg-primary-700 rounded text-white text-sm"
                 autoFocus
               >
                 <Settings size={16} /> Edit
@@ -247,7 +247,7 @@ const InstanceCard: React.FC<InstanceCardProps> = React.memo(({ instance, onPlay
         <h3 className="font-semibold text-white mb-1">{instance.name}</h3>
         {instance.status === 'failed' || instance.status === 'invalid' ? (
           <div className="mb-2">
-            <p className="text-sm text-stone-300 mb-1">
+            <p className="text-sm text-primary-300 mb-1">
               Minecraft {instance.version}
               {instance.modpack && ` • ${instance.modpack}`}
             </p>
@@ -258,13 +258,13 @@ const InstanceCard: React.FC<InstanceCardProps> = React.memo(({ instance, onPlay
           </div>
         ) : (
           <div className="mb-2">
-            <p className="text-sm text-stone-300 mb-1">
+            <p className="text-sm text-primary-300 mb-1">
               Minecraft {instance.version}
               {instance.modpack && ` • ${instance.modpack}`}
             </p>
             {instance.status === 'installing' && (
               <div className="flex items-center gap-2 mt-2">
-                <div className="flex-1 bg-stone-700 rounded-full h-2 overflow-hidden">
+                <div className="flex-1 bg-primary-700 rounded-full h-2 overflow-hidden">
                   <div 
                     className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full transition-all duration-500 ease-out"
                     style={{ width: `${Math.min(100, Math.max(0, instance.installProgress || 0))}%` }}
@@ -278,7 +278,7 @@ const InstanceCard: React.FC<InstanceCardProps> = React.memo(({ instance, onPlay
           </div>
         )}
 
-        <div className="flex items-center justify-between text-xs text-stone-400">
+        <div className="flex items-center justify-between text-xs text-primary-400">
           <div className="flex items-center gap-1">
             <Clock size={12} />
             <span>{formatLastPlayed(instance.lastPlayed)}</span>
