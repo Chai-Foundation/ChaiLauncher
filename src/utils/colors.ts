@@ -87,12 +87,8 @@ function generateColorPalette(baseColor: string): Record<string, string> {
 export function applyColorScheme(settings: LauncherSettings): void {
   const root = document.documentElement;
   
-  // Determine which color scheme to use as primary
-  const primaryColor = settings.color_scheme === 'secondary' 
-    ? settings.secondary_base_color || '#d97706'
-    : settings.primary_base_color || '#78716c';
-    
-  // Generate primary palette
+  // Primary colors are always used for backgrounds, structure (Stone replacement)
+  const primaryColor = settings.primary_base_color || '#78716c';
   const primaryPalette = generateColorPalette(primaryColor);
   
   // Apply primary colors
@@ -100,12 +96,12 @@ export function applyColorScheme(settings: LauncherSettings): void {
     root.style.setProperty(`--primary-${shade}`, color);
   });
   
-  // Always use secondary as accent color (but allow customization)
-  const accentColor = settings.secondary_base_color || '#d97706';
-  const accentPalette = generateColorPalette(accentColor);
+  // Secondary colors are always used for buttons, highlights, borders (Amber replacement)
+  const secondaryColor = settings.secondary_base_color || '#d97706';
+  const secondaryPalette = generateColorPalette(secondaryColor);
   
   // Apply secondary/accent colors
-  Object.entries(accentPalette).forEach(([shade, color]) => {
+  Object.entries(secondaryPalette).forEach(([shade, color]) => {
     root.style.setProperty(`--secondary-${shade}`, color);
     root.style.setProperty(`--accent-${shade}`, color);
   });
@@ -120,9 +116,7 @@ export function applyColorScheme(settings: LauncherSettings): void {
 
 // Function to get the current color for display purposes
 export function getCurrentPrimaryColor(settings: LauncherSettings): string {
-  return settings.color_scheme === 'secondary' 
-    ? settings.secondary_base_color || '#d97706'
-    : settings.primary_base_color || '#78716c';
+  return settings.primary_base_color || '#78716c';
 }
 
 export function getCurrentSecondaryColor(settings: LauncherSettings): string {

@@ -289,41 +289,29 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                   </p>
                 </div>
 
-                {/* Color Scheme Selection */}
+                {/* Color Scheme Preview */}
                 <div>
                   <label className="block text-sm font-medium text-primary-300 mb-3">
-                    Color Scheme
+                    Current Color Scheme
                   </label>
                   <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={() => handleSettingChange('color_scheme', 'primary')}
-                      className={`p-4 rounded-lg border-2 transition-colors ${
-                        localSettings.color_scheme === 'primary'
-                          ? 'border-accent-600 bg-accent-600 bg-opacity-20'
-                          : 'border-primary-600 hover:border-primary-500'
-                      }`}
-                    >
+                    <div className="p-4 rounded-lg border border-primary-600 bg-primary-800/50">
                       <div 
                         className="w-full h-16 rounded mb-2"
                         style={{ backgroundColor: localSettings.primary_base_color || '#78716c' }}
                       ></div>
                       <p className="text-white font-medium">Primary</p>
-                    </button>
+                      <p className="text-primary-400 text-xs">Backgrounds & structure</p>
+                    </div>
                     
-                    <button
-                      onClick={() => handleSettingChange('color_scheme', 'secondary')}
-                      className={`p-4 rounded-lg border-2 transition-colors ${
-                        localSettings.color_scheme === 'secondary'
-                          ? 'border-accent-600 bg-accent-600 bg-opacity-20'
-                          : 'border-primary-600 hover:border-primary-500'
-                      }`}
-                    >
+                    <div className="p-4 rounded-lg border border-primary-600 bg-primary-800/50">
                       <div 
                         className="w-full h-16 rounded mb-2"
                         style={{ backgroundColor: localSettings.secondary_base_color || '#d97706' }}
                       ></div>
                       <p className="text-white font-medium">Secondary</p>
-                    </button>
+                      <p className="text-primary-400 text-xs">Buttons & highlights</p>
+                    </div>
                   </div>
                 </div>
 
@@ -367,7 +355,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                     </div>
                   </div>
                   <p className="text-sm text-primary-400 mt-2">
-                    Customize the base colors for dynamic theming throughout the app
+                    Primary colors control backgrounds and structural elements. Secondary colors control buttons, highlights, and interactive elements.
                   </p>
                 </div>
               </motion.div>
