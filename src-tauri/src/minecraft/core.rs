@@ -89,12 +89,15 @@ impl MCVMCore {
             MinecraftVersion::Version(version.to_string().into())
         };
         
+        // Detect installed mod loader from the instance directory
+        let (modloader, client_type) = Self::detect_installed_modloader(&game_dir).await?;
+        
         let stored_config = InstanceStoredConfig {
             name: Some(name.to_string()),
             version: minecraft_version,
             modifications: GameModifications::new(
-                Modloader::Vanilla,
-                ClientType::Vanilla,
+                modloader.clone(),
+                client_type,
                 ServerType::Vanilla
             ),
             launch: LaunchOptions {
@@ -122,7 +125,7 @@ impl MCVMCore {
             config: stored_config,
         };
         
-        println!("MCVM instance created for '{}' version {}", name, version);
+        println!("MCVM instance created for '{}' version {} with modloader: {:?}", name, version, modloader);
         Ok(instance)
     }
 
@@ -162,6 +165,13 @@ impl MCVMCore {
         
         // Create MCVM instance with proper configuration
         let instance_id: InstanceID = Arc::from(instance.name.as_str());
+        
+        // MCVM will use the working directory we launch it from to find mods and config
+        // Make sure we set the current directory to the instance's game directory
+        let current_dir = std::env::current_dir().unwrap_or_default();
+        std::env::set_current_dir(&instance.game_dir)
+            .map_err(|e| format!("Failed to set working directory to game dir: {}", e))?;
+        
         let mut mcvm_instance = Instance::new(
             InstKind::Client { 
                 window: ClientWindowConfig {
@@ -247,6 +257,8 @@ impl MCVMCore {
         ).await.map_err(|e| {
             let error_msg = format!("MCVM launch failed: {}", e);
             output.display_text(error_msg.clone(), MessageLevel::Important);
+            // Restore directory on error
+            std::env::set_current_dir(&current_dir).ok();
             error_msg
         })?;
         
@@ -264,6 +276,9 @@ impl MCVMCore {
             "✅ Minecraft launched successfully with MCVM (PID: 1)".to_string(),
             MessageLevel::Important
         );
+        
+        // Restore the original working directory
+        std::env::set_current_dir(&current_dir).ok();
         
         Ok(handle)
     }
@@ -333,6 +348,65 @@ impl MCVMCore {
         );
         
         Ok(())
+    }
+
+    /// Detect the installed mod loader from the instance directory
+    async fn detect_installed_modloader(game_dir: &PathBuf) -> Result<(Modloader, ClientType), String> {
+        use crate::mods::loaders::ModLoaderManager;
+        use crate::mods::types::ModLoader;
+
+        let loader_manager = ModLoaderManager::new(game_dir.clone());
+        
+        // Check for installed loaders in order of preference
+        if let Some(loader) = loader_manager.get_installed_loader().await {
+            println!("🔍 Detected installed mod loader: {:?}", loader);
+            match loader {
+                ModLoader::Fabric(_) => {
+                    println!("✅ Configuring MCVM for Fabric");
+                    Ok((Modloader::Fabric, ClientType::Fabric))
+                },
+                ModLoader::Forge(_) => {
+                    println!("✅ Configuring MCVM for Forge");
+                    Ok((Modloader::Forge, ClientType::Forge))
+                },
+                ModLoader::Quilt(_) => {
+                    println!("✅ Configuring MCVM for Quilt");
+                    Ok((Modloader::Quilt, ClientType::Quilt))
+                },
+                ModLoader::NeoForge(_) => {
+                    println!("✅ Configuring MCVM for NeoForge");
+                    Ok((Modloader::NeoForged, ClientType::NeoForged))
+                },
+                _ => {
+                    println!("⚠️ Unknown mod loader type, defaulting to Vanilla");
+                    Ok((Modloader::Vanilla, ClientType::Vanilla))
+                }
+            }
+        } else {
+            // No mod loader detected, check if there are mods in the mods directory
+            let mods_dir = game_dir.join("mods");
+            if mods_dir.exists() {
+                if let Ok(mut entries) = tokio::fs::read_dir(&mods_dir).await {
+                    let mut has_mods = false;
+                    while let Ok(Some(entry)) = entries.next_entry().await {
+                        let name = entry.file_name().to_string_lossy().to_lowercase();
+                        if name.ends_with(".jar") && !name.starts_with(".") {
+                            has_mods = true;
+                            break;
+                        }
+                    }
+                    
+                    if has_mods {
+                        println!("⚠️ Found mods but no mod loader detected, defaulting to Fabric");
+                        // Default to Fabric if we have mods but no loader detected
+                        return Ok((Modloader::Fabric, ClientType::Fabric));
+                    }
+                }
+            }
+            
+            println!("ℹ️ No mod loader or mods detected, using Vanilla");
+            Ok((Modloader::Vanilla, ClientType::Vanilla))
+        }
     }
     
 }

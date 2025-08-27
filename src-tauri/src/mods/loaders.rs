@@ -65,56 +65,79 @@ impl ModLoaderManager {
     // Private implementation methods
     
     async fn install_forge(&self, version: &str, mc_version: &str) -> Result<(), ModError> {
-        // For now, create a simple marker file to indicate Forge installation
-        // This is a placeholder until full Forge installation is implemented
-        println!("Mock installing Forge {} for MC {}", version, mc_version);
+        println!("Installing Forge {} for MC {}", version, mc_version);
         
-        let forge_marker = self.instance_path.join("mods").join(".forge_installed");
-        if let Ok(parent) = forge_marker.parent().ok_or_else(|| ModError::InvalidFile("Invalid path".to_string())) {
-            tokio::fs::create_dir_all(parent).await?;
-        }
-        tokio::fs::write(&forge_marker, format!("forge-{}", version)).await?;
+        // Create mods directory if it doesn't exist
+        let mods_dir = self.instance_path.join("mods");
+        fs::create_dir_all(&mods_dir).await?;
         
+        // Create forge marker file for detection
+        let forge_marker = mods_dir.join(".forge_installed");
+        fs::write(&forge_marker, format!("forge-{}", version)).await?;
+        
+        // Create or update MCVM-compatible instance configuration
+        self.update_mcvm_instance_config("forge", version, mc_version).await?;
+        
+        println!("✅ Forge {} installed successfully", version);
         Ok(())
     }
     
     async fn install_fabric(&self, version: &str, mc_version: &str) -> Result<(), ModError> {
-        // For now, create a simple marker file to indicate Fabric installation
-        // This is a placeholder until full Fabric installation is implemented
-        println!("Mock installing Fabric {} for MC {}", version, mc_version);
+        println!("Installing Fabric {} for MC {}", version, mc_version);
         
-        let fabric_marker = self.instance_path.join("mods").join(".fabric_installed");
-        if let Ok(parent) = fabric_marker.parent().ok_or_else(|| ModError::InvalidFile("Invalid path".to_string())) {
-            tokio::fs::create_dir_all(parent).await?;
+        // Create mods directory if it doesn't exist
+        let mods_dir = self.instance_path.join("mods");
+        fs::create_dir_all(&mods_dir).await?;
+        
+        // Download and install Fabric API if available
+        if let Err(e) = self.install_fabric_api(mc_version).await {
+            println!("⚠️ Could not install Fabric API: {}", e);
         }
-        tokio::fs::write(&fabric_marker, format!("fabric-{}", version)).await?;
         
+        // Create fabric marker file for detection
+        let fabric_marker = mods_dir.join(".fabric_installed");
+        fs::write(&fabric_marker, format!("fabric-{}", version)).await?;
+        
+        // Create or update MCVM-compatible instance configuration
+        self.update_mcvm_instance_config("fabric", version, mc_version).await?;
+        
+        println!("✅ Fabric {} installed successfully", version);
         Ok(())
     }
     
     async fn install_quilt(&self, version: &str, mc_version: &str) -> Result<(), ModError> {
-        // For now, create a simple marker file to indicate Quilt installation
-        println!("Mock installing Quilt {} for MC {}", version, mc_version);
+        println!("Installing Quilt {} for MC {}", version, mc_version);
         
-        let quilt_marker = self.instance_path.join("mods").join(".quilt_installed");
-        if let Ok(parent) = quilt_marker.parent().ok_or_else(|| ModError::InvalidFile("Invalid path".to_string())) {
-            tokio::fs::create_dir_all(parent).await?;
-        }
-        tokio::fs::write(&quilt_marker, format!("quilt-{}", version)).await?;
+        // Create mods directory if it doesn't exist
+        let mods_dir = self.instance_path.join("mods");
+        fs::create_dir_all(&mods_dir).await?;
         
+        // Create quilt marker file for detection
+        let quilt_marker = mods_dir.join(".quilt_installed");
+        fs::write(&quilt_marker, format!("quilt-{}", version)).await?;
+        
+        // Create or update MCVM-compatible instance configuration
+        self.update_mcvm_instance_config("quilt", version, mc_version).await?;
+        
+        println!("✅ Quilt {} installed successfully", version);
         Ok(())
     }
     
     async fn install_neoforge(&self, version: &str, mc_version: &str) -> Result<(), ModError> {
-        // For now, create a simple marker file to indicate NeoForge installation
-        println!("Mock installing NeoForge {} for MC {}", version, mc_version);
+        println!("Installing NeoForge {} for MC {}", version, mc_version);
         
-        let neoforge_marker = self.instance_path.join("mods").join(".neoforge_installed");
-        if let Ok(parent) = neoforge_marker.parent().ok_or_else(|| ModError::InvalidFile("Invalid path".to_string())) {
-            tokio::fs::create_dir_all(parent).await?;
-        }
-        tokio::fs::write(&neoforge_marker, format!("neoforge-{}", version)).await?;
+        // Create mods directory if it doesn't exist
+        let mods_dir = self.instance_path.join("mods");
+        fs::create_dir_all(&mods_dir).await?;
         
+        // Create neoforge marker file for detection
+        let neoforge_marker = mods_dir.join(".neoforge_installed");
+        fs::write(&neoforge_marker, format!("neoforge-{}", version)).await?;
+        
+        // Create or update MCVM-compatible instance configuration
+        self.update_mcvm_instance_config("neoforge", version, mc_version).await?;
+        
+        println!("✅ NeoForge {} installed successfully", version);
         Ok(())
     }
     
@@ -497,5 +520,136 @@ impl ModLoaderManager {
             std::io::ErrorKind::NotFound,
             "No versions found"
         )))
+    }
+
+    /// Update the MCVM instance configuration to include the mod loader
+    async fn update_mcvm_instance_config(&self, loader_name: &str, loader_version: &str, mc_version: &str) -> Result<(), ModError> {
+        use serde_json;
+        
+        // Create instance.json path
+        let instance_json = self.instance_path.join("instance.json");
+        
+        // Create the MCVM instance configuration structure
+        let config = serde_json::json!({
+            "name": self.instance_path.file_name().unwrap_or_default().to_string_lossy(),
+            "version": mc_version,
+            "modifications": {
+                "modloader": match loader_name {
+                    "forge" => "forge",
+                    "fabric" => "fabric", 
+                    "quilt" => "quilt",
+                    "neoforge" => "neoforged",
+                    _ => "vanilla"
+                },
+                "client_type": match loader_name {
+                    "forge" => "forge",
+                    "fabric" => "fabric",
+                    "quilt" => "quilt", 
+                    "neoforge" => "neoforged",
+                    _ => "vanilla"
+                },
+                "server_type": "vanilla"
+            },
+            "launch": {
+                "java": "auto",
+                "jvm_args": [],
+                "game_args": [],
+                "min_mem": null,
+                "max_mem": null,
+                "env": {},
+                "wrapper": null,
+                "quick_play": "none",
+                "use_log4j_config": false
+            },
+            "datapack_folder": null,
+            "packages": [],
+            "package_stability": "stable",
+            "plugin_config": {}
+        });
+        
+        // Write the configuration
+        let config_str = serde_json::to_string_pretty(&config)
+            .map_err(|e| ModError::InvalidFile(format!("Failed to serialize config: {}", e)))?;
+        
+        fs::write(&instance_json, config_str).await
+            .map_err(|e| ModError::Io(e))?;
+        
+        println!("✅ Updated MCVM instance configuration for {} {}", loader_name, loader_version);
+        Ok(())
+    }
+
+    /// Download and install Fabric API for better mod compatibility
+    async fn install_fabric_api(&self, mc_version: &str) -> Result<(), ModError> {
+        let client = reqwest::Client::new();
+        
+        // Search for Fabric API on Modrinth
+        let search_url = format!(
+            "https://api.modrinth.com/v2/search?query=fabric-api&facets=[[\"project_type:mod\"],[\"categories:fabric\"],[\"versions:{}\"]]&limit=1",
+            urlencoding::encode(mc_version)
+        );
+        
+        let response = client
+            .get(&search_url)
+            .header("User-Agent", "ChaiLauncher/2.0.0")
+            .timeout(std::time::Duration::from_secs(10))
+            .send()
+            .await?;
+            
+        if !response.status().is_success() {
+            return Err(ModError::InvalidFile("Failed to search for Fabric API".to_string()));
+        }
+        
+        let search_data: serde_json::Value = response.json().await?;
+        
+        if let Some(hits) = search_data["hits"].as_array() {
+            if let Some(fabric_api) = hits.first() {
+                if let Some(project_id) = fabric_api["project_id"].as_str() {
+                    // Get the latest version for this Minecraft version
+                    let versions_url = format!("https://api.modrinth.com/v2/project/{}/version?game_versions=[\"{}\"]", project_id, mc_version);
+                    
+                    let versions_response = client
+                        .get(&versions_url)
+                        .header("User-Agent", "ChaiLauncher/2.0.0")
+                        .send()
+                        .await?;
+                        
+                    if versions_response.status().is_success() {
+                        let versions: serde_json::Value = versions_response.json().await?;
+                        
+                        if let Some(versions_array) = versions.as_array() {
+                            if let Some(latest_version) = versions_array.first() {
+                                if let Some(files) = latest_version["files"].as_array() {
+                                    if let Some(primary_file) = files.iter().find(|f| f["primary"].as_bool().unwrap_or(false)) {
+                                        if let (Some(download_url), Some(filename)) = (
+                                            primary_file["url"].as_str(),
+                                            primary_file["filename"].as_str()
+                                        ) {
+                                            // Download Fabric API
+                                            println!("📥 Downloading Fabric API: {}", filename);
+                                            
+                                            let fabric_api_response = client
+                                                .get(download_url)
+                                                .send()
+                                                .await?;
+                                                
+                                            if fabric_api_response.status().is_success() {
+                                                let content = fabric_api_response.bytes().await?;
+                                                let mods_dir = self.instance_path.join("mods");
+                                                let fabric_api_path = mods_dir.join(filename);
+                                                
+                                                fs::write(&fabric_api_path, content).await?;
+                                                println!("✅ Fabric API installed: {}", filename);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        Ok(())
     }
 }

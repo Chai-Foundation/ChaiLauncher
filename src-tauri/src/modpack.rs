@@ -7,6 +7,7 @@ use anyhow::{Result, Context};
 use reqwest::Client;
 use tauri::Emitter;
 use futures::StreamExt;
+use chrono;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ModrinthPack {
@@ -59,120 +60,6 @@ pub struct ModrinthDependency {
     pub project_id: Option<String>,
     pub file_name: Option<String>,
     pub dependency_type: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CurseForgeModpack {
-    pub id: u32,
-    pub name: String,
-    pub summary: String,
-    pub download_count: u32,
-    pub categories: Vec<CurseForgeCategory>,
-    pub authors: Vec<CurseForgeAuthor>,
-    pub logo: Option<CurseForgeLogo>,
-    pub screenshots: Vec<CurseForgeScreenshot>,
-    pub main_file_id: u32,
-    pub latest_files: Vec<CurseForgeFile>,
-    pub game_id: u32,
-    pub game_name: String,
-    pub game_slug: String,
-    pub game_version_latest_files: Vec<CurseForgeGameVersionFile>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CurseForgeCategory {
-    pub id: u32,
-    pub name: String,
-    pub slug: String,
-    pub url: String,
-    pub icon_url: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CurseForgeAuthor {
-    pub id: u32,
-    pub name: String,
-    pub url: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CurseForgeLogo {
-    pub id: u32,
-    pub mod_id: u32,
-    pub title: String,
-    pub description: String,
-    pub thumbnail_url: String,
-    pub url: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CurseForgeScreenshot {
-    pub id: u32,
-    pub mod_id: u32,
-    pub title: String,
-    pub description: String,
-    pub thumbnail_url: String,
-    pub url: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CurseForgeFile {
-    pub id: u32,
-    pub game_id: u32,
-    pub mod_id: u32,
-    pub is_available: bool,
-    pub display_name: String,
-    pub file_name: String,
-    pub release_type: u32,
-    pub file_status: u32,
-    pub hashes: Vec<CurseForgeHash>,
-    pub file_date: String,
-    pub file_length: u64,
-    pub download_count: u32,
-    pub download_url: Option<String>,
-    pub game_versions: Vec<String>,
-    pub sortable_game_versions: Vec<CurseForgeSortableGameVersion>,
-    pub dependencies: Vec<CurseForgeDependency>,
-    pub alternate_file_id: Option<u32>,
-    pub is_server_pack: bool,
-    pub file_fingerprint: u64,
-    pub modules: Vec<CurseForgeModule>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CurseForgeHash {
-    pub value: String,
-    pub algo: u32,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CurseForgeSortableGameVersion {
-    pub game_version_name: String,
-    pub game_version_padded: String,
-    pub game_version: String,
-    pub game_version_release_date: String,
-    pub game_version_type_id: Option<u32>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CurseForgeDependency {
-    pub mod_id: u32,
-    pub relation_type: u32,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CurseForgeModule {
-    pub name: String,
-    pub fingerprint: u64,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CurseForgeGameVersionFile {
-    pub game_version: String,
-    pub project_file_id: u32,
-    pub project_file_name: String,
-    pub file_type: u32,
-    pub game_version_flavor: Option<String>,
 }
 
 pub struct ModpackInstaller {
@@ -280,7 +167,15 @@ impl ModpackInstaller {
     {
         progress_callback(0.0, "Fetching modpack information".to_string());
 
-        // First, get the project versions to find the latest version or a valid version
+        // Get project details and versions
+        let project_url = format!("https://api.modrinth.com/v2/project/{}", project_id);
+        let project_response = self.client.get(&project_url)
+            .header("User-Agent", "ChaiLauncher/2.0.0")
+            .send()
+            .await
+            .context("Failed to get project details")?;
+        let project_info: serde_json::Value = project_response.json().await?;
+
         let versions_url = format!("https://api.modrinth.com/v2/project/{}/version", project_id);
         let versions_response = self.client.get(&versions_url)
             .header("User-Agent", "ChaiLauncher/2.0.0")
@@ -291,11 +186,10 @@ impl ModpackInstaller {
         let versions: Vec<ModrinthVersion> = versions_response.json().await
             .context("Failed to parse project versions")?;
 
-        // Find the latest version or a specific version
+        // Find the target version
         let version = if version_id.is_empty() || version_id == "latest" {
             versions.into_iter().next().context("No versions found for this project")?
         } else {
-            // Try to find a version that matches or use the first available
             let versions_clone = versions.clone();
             versions.into_iter()
                 .find(|v| v.id == version_id || v.version_number == version_id)
@@ -303,40 +197,80 @@ impl ModpackInstaller {
                 .context("No valid version found for this project")?
         };
 
-        progress_callback(10.0, "Downloading modpack file".to_string());
+        progress_callback(5.0, format!("Installing {} {}", 
+            project_info["title"].as_str().unwrap_or("Modpack"), 
+            version.version_number));
 
-        // Find the primary file
+        // Determine Minecraft version and mod loaders
+        let mc_version = version.game_versions.first()
+            .context("No Minecraft version specified")?;
+        let mod_loaders = &version.loaders;
+
+        progress_callback(10.0, "Setting up Minecraft instance".to_string());
+
+        // Create proper instance structure
+        self.setup_instance_structure().await?;
+
+        progress_callback(15.0, "Installing mod loaders".to_string());
+
+        // Install mod loaders if specified
+        if !mod_loaders.is_empty() {
+            self.install_mod_loaders(mc_version, mod_loaders, |progress| {
+                let progress = 15.0 + progress * 20.0;
+                progress_callback(progress, "Installing mod loaders".to_string());
+            }).await?;
+        }
+
+        progress_callback(35.0, "Downloading modpack file".to_string());
+
+        // Find and download the primary modpack file
         let pack_file = version.files.iter()
             .find(|f| f.primary)
             .or_else(|| version.files.first())
             .context("No files found for this version")?;
 
-        // Download the modpack file
         let pack_path = self.instance_dir.join(&pack_file.filename);
         self.download_file(&pack_file.url, &pack_path, pack_file.size, |downloaded, total| {
-            let progress = 10.0 + (downloaded as f64 / total as f64) * 30.0;
+            let progress = 35.0 + (downloaded as f64 / total as f64) * 15.0;
             progress_callback(progress, format!("Downloading {}", pack_file.filename));
         }).await?;
 
-        progress_callback(40.0, "Extracting modpack".to_string());
+        progress_callback(50.0, "Extracting modpack".to_string());
 
-        // Extract the modpack
-        self.extract_modpack(&pack_path).await?;
+        // Extract the modpack with proper structure
+        self.extract_modpack_structured(&pack_path, mc_version).await?;
 
-        progress_callback(60.0, "Installing dependencies".to_string());
+        progress_callback(60.0, "Installing modpack mods".to_string());
 
-        // Install dependencies (mods)
-        self.install_dependencies(&version.dependencies, |progress| {
-            let progress = 60.0 + progress * 35.0;
-            progress_callback(progress, "Installing mods".to_string());
-        }).await?;
+        // Install mods included in the modpack
+        let manifest_path = self.instance_dir.join("modrinth.index.json");
+        if manifest_path.exists() {
+            self.install_modpack_mods(&manifest_path, |progress| {
+                let progress = 60.0 + progress * 30.0;
+                progress_callback(progress, "Installing mods".to_string());
+            }).await?;
+        }
 
-        progress_callback(95.0, "Finalizing installation".to_string());
+        progress_callback(90.0, "Installing additional dependencies".to_string());
+
+        // Install additional dependencies
+        if !version.dependencies.is_empty() {
+            self.install_additional_dependencies(&version.dependencies, |progress| {
+                let progress = 90.0 + progress * 8.0;
+                progress_callback(progress, "Installing dependencies".to_string());
+            }).await?;
+        }
+
+        progress_callback(98.0, "Finalizing installation".to_string());
+
+        // Generate instance configuration
+        self.create_instance_config(&project_info, &version, mc_version, mod_loaders).await?;
 
         // Clean up downloaded pack file
         fs::remove_file(&pack_path).await.ok();
 
-        progress_callback(100.0, "Installation complete".to_string());
+        progress_callback(100.0, format!("Successfully installed {}", 
+            project_info["title"].as_str().unwrap_or("Modpack")));
 
         Ok(())
     }
@@ -455,6 +389,8 @@ impl ModpackInstaller {
         Ok(())
     }
 
+    // CurseForge support removed - ChaiLauncher is now Modrinth-only
+    /*
     pub async fn search_curseforge_packs(&self, query: &str, limit: u32) -> Result<Vec<CurseForgeModpack>> {
         // For now, we'll implement a basic search using CurseForge's public API
         // This is limited but functional without requiring an API key
@@ -738,7 +674,9 @@ impl ModpackInstaller {
             }
         }
     }
+    */
 
+    /*
     pub async fn install_curseforge_pack<F>(
         &self,
         modpack_id: u32,
@@ -893,6 +831,326 @@ impl ModpackInstaller {
 
         Ok(())
     }
+    */
+
+    // New helper methods for proper modpack installation
+
+    async fn setup_instance_structure(&self) -> Result<()> {
+        // Create standard Minecraft instance directories
+        let dirs = ["mods", "config", "resourcepacks", "shaderpacks", "saves", "screenshots"];
+        for dir in &dirs {
+            fs::create_dir_all(self.instance_dir.join(dir)).await
+                .context(format!("Failed to create {} directory", dir))?;
+        }
+        Ok(())
+    }
+
+    async fn install_mod_loaders<F>(&self, mc_version: &str, loaders: &[String], progress_callback: F) -> Result<()>
+    where
+        F: Fn(f64),
+    {
+        use crate::mods::loaders::ModLoaderManager;
+        use crate::mods::types::ModLoader;
+
+        let loader_manager = ModLoaderManager::new(self.instance_dir.clone());
+        
+        for (i, loader_name) in loaders.iter().enumerate() {
+            progress_callback(i as f64 / loaders.len() as f64);
+            
+            // Get latest version for this loader and MC version
+            let versions = loader_manager.get_available_versions(loader_name, mc_version).await?;
+            if let Some(latest_version) = versions.first() {
+                let mod_loader = match loader_name.to_lowercase().as_str() {
+                    "forge" => ModLoader::Forge(latest_version.clone()),
+                    "fabric" => ModLoader::Fabric(latest_version.clone()),
+                    "quilt" => ModLoader::Quilt(latest_version.clone()),
+                    "neoforge" => ModLoader::NeoForge(latest_version.clone()),
+                    _ => continue,
+                };
+                
+                loader_manager.install_loader(&mod_loader, mc_version).await
+                    .context(format!("Failed to install {} {}", loader_name, latest_version))?;
+            }
+        }
+        
+        progress_callback(1.0);
+        Ok(())
+    }
+
+    async fn extract_modpack_structured(&self, pack_path: &PathBuf, _mc_version: &str) -> Result<()> {
+        use zip::ZipArchive;
+        use std::io::Read;
+
+        let file = std::fs::File::open(pack_path)
+            .context("Failed to open modpack file")?;
+        let mut archive = ZipArchive::new(file)
+            .context("Failed to read ZIP archive")?;
+
+        // Collect extraction jobs synchronously first to avoid Send issues
+        let mut extraction_jobs = Vec::new();
+        let mut override_jobs = Vec::new();
+        
+        for i in 0..archive.len() {
+            let mut file = archive.by_index(i)
+                .context("Failed to read file from archive")?;
+            
+            let file_path = match file.enclosed_name() {
+                Some(path) => path.to_path_buf(),
+                None => continue,
+            };
+
+            let is_directory = file.name().ends_with('/');
+
+            if !is_directory {
+                // Read file content synchronously
+                let mut contents = Vec::new();
+                file.read_to_end(&mut contents)
+                    .context("Failed to read file content")?;
+
+                // Check if this file is in an overrides directory
+                if let Some(path_str) = file_path.to_str() {
+                    if path_str.starts_with("overrides/") || path_str.starts_with("overrides\\") {
+                        // Override file - extract to instance root, removing "overrides/" prefix
+                        // Handle both Unix and Windows path separators
+                        let relative_path = if path_str.starts_with("overrides/") {
+                            file_path.strip_prefix("overrides/").unwrap_or(&file_path)
+                        } else {
+                            file_path.strip_prefix("overrides\\").unwrap_or(&file_path)
+                        };
+                        let outpath = self.instance_dir.join(relative_path);
+                        override_jobs.push((outpath, contents));
+                        continue;
+                    }
+                }
+
+                // Regular file - extract to instance directory maintaining structure
+                let outpath = self.instance_dir.join(&file_path);
+                extraction_jobs.push((outpath, contents));
+            } else {
+                // Directory - create it unless it's the overrides directory itself
+                if let Some(path_str) = file_path.to_str() {
+                    if !path_str.starts_with("overrides/") && !path_str.starts_with("overrides\\") && path_str != "overrides" {
+                        let outpath = self.instance_dir.join(&file_path);
+                        extraction_jobs.push((outpath, Vec::new())); // Empty for directories
+                    }
+                }
+            }
+        }
+
+        // Extract regular files first
+        for (outpath, contents) in extraction_jobs {
+            if contents.is_empty() && outpath.to_string_lossy().ends_with('/') {
+                // Directory
+                fs::create_dir_all(&outpath).await
+                    .context("Failed to create directory")?;
+            } else {
+                // File - create parent dirs if needed
+                if let Some(parent) = outpath.parent() {
+                    fs::create_dir_all(parent).await
+                        .context("Failed to create parent directory")?;
+                }
+
+                // Write file
+                fs::write(&outpath, contents).await
+                    .context("Failed to write extracted file")?;
+            }
+        }
+
+        // Extract override files (these should overwrite any existing files)
+        for (outpath, contents) in override_jobs {
+            // Create parent dirs if needed
+            if let Some(parent) = outpath.parent() {
+                fs::create_dir_all(parent).await
+                    .context("Failed to create override parent directory")?;
+            }
+
+            // Write override file (overwrites existing files)
+            fs::write(&outpath, contents).await
+                .context("Failed to write override file")?;
+        }
+        Ok(())
+    }
+
+    async fn install_modpack_mods<F>(&self, manifest_path: &PathBuf, progress_callback: F) -> Result<()>
+    where
+        F: Fn(f64),
+    {
+        // Read Modrinth modpack manifest
+        let manifest_content = fs::read_to_string(manifest_path).await
+            .context("Failed to read modpack manifest")?;
+        
+        let manifest: serde_json::Value = serde_json::from_str(&manifest_content)
+            .context("Failed to parse modpack manifest")?;
+
+        let files = manifest["files"].as_array()
+            .context("No files section in manifest")?;
+
+        let mods_dir = self.instance_dir.join("mods");
+        fs::create_dir_all(&mods_dir).await?;
+
+        let total_files = files.len();
+        for (i, file_info) in files.iter().enumerate() {
+            progress_callback(i as f64 / total_files as f64);
+
+            if let Some(downloads) = file_info["downloads"].as_array() {
+                if let Some(download_url) = downloads.first().and_then(|d| d.as_str()) {
+                    if let Some(path) = file_info["path"].as_str() {
+                        let file_path = self.instance_dir.join(path);
+                        
+                        // Create parent directories if needed
+                        if let Some(parent) = file_path.parent() {
+                            fs::create_dir_all(parent).await?;
+                        }
+
+                        // Download file
+                        let file_size = file_info["fileSize"].as_u64().unwrap_or(0);
+                        self.download_file(download_url, &file_path, file_size, |_, _| {}).await
+                            .context(format!("Failed to download {}", path))?;
+                    }
+                }
+            }
+        }
+
+        progress_callback(1.0);
+        Ok(())
+    }
+
+    async fn install_additional_dependencies<F>(&self, dependencies: &[ModrinthDependency], progress_callback: F) -> Result<()>
+    where
+        F: Fn(f64),
+    {
+        let mods_dir = self.instance_dir.join("mods");
+        fs::create_dir_all(&mods_dir).await?;
+
+        let total_deps = dependencies.len();
+        for (i, dep) in dependencies.iter().enumerate() {
+            progress_callback(i as f64 / total_deps as f64);
+
+            if dep.dependency_type == "required" {
+                if let Some(version_id) = &dep.version_id {
+                    // Get dependency details
+                    let url = format!("https://api.modrinth.com/v2/version/{}", version_id);
+                    let response = self.client.get(&url)
+                        .header("User-Agent", "ChaiLauncher/2.0.0")
+                        .send()
+                        .await
+                        .context("Failed to get dependency details")?;
+
+                    let version: ModrinthVersion = response.json().await
+                        .context("Failed to parse dependency details")?;
+
+                    // Download primary file
+                    if let Some(file) = version.files.iter().find(|f| f.primary).or_else(|| version.files.first()) {
+                        let mod_path = mods_dir.join(&file.filename);
+                        self.download_file(&file.url, &mod_path, file.size, |_, _| {}).await
+                            .context(format!("Failed to download dependency {}", file.filename))?;
+                    }
+                }
+            }
+        }
+
+        progress_callback(1.0);
+        Ok(())
+    }
+
+    async fn create_instance_config(
+        &self, 
+        project_info: &serde_json::Value, 
+        version: &ModrinthVersion, 
+        mc_version: &str,
+        mod_loaders: &[String]
+    ) -> Result<()> {
+        // Create instance metadata file for ChaiLauncher
+        let instance_config = serde_json::json!({
+            "name": project_info["title"].as_str().unwrap_or("Modpack"),
+            "description": project_info["description"].as_str().unwrap_or(""),
+            "minecraft_version": mc_version,
+            "modpack_id": project_info["id"].as_str().unwrap_or(""),
+            "modpack_version": version.version_number,
+            "modpack_version_id": version.id,
+            "mod_loaders": mod_loaders,
+            "created_date": chrono::Utc::now().to_rfc3339(),
+            "icon_url": project_info["icon_url"].as_str(),
+            "source": "modrinth"
+        });
+
+        let config_path = self.instance_dir.join("instance.json");
+        let config_content = serde_json::to_string_pretty(&instance_config)?;
+        fs::write(config_path, config_content).await
+            .context("Failed to write instance configuration")?;
+
+        // Register instance with ChaiLauncher's storage system
+        self.register_with_chailauncher(project_info, version, mc_version, mod_loaders).await?;
+
+        Ok(())
+    }
+
+    /// Register the installed modpack instance with ChaiLauncher's storage system
+    async fn register_with_chailauncher(
+        &self,
+        project_info: &serde_json::Value,
+        version: &ModrinthVersion,
+        mc_version: &str,
+        mod_loaders: &[String],
+    ) -> Result<()> {
+        use crate::storage::{StorageManager, InstanceMetadata};
+        use uuid::Uuid;
+
+        // Create a unique instance ID
+        let instance_id = Uuid::new_v4().to_string();
+        
+        // Count mods in the mods directory
+        let mods_dir = self.instance_dir.join("mods");
+        let mods_count = if mods_dir.exists() {
+            match fs::read_dir(&mods_dir).await {
+                Ok(mut entries) => {
+                    let mut count = 0;
+                    while let Ok(Some(entry)) = entries.next_entry().await {
+                        if let Some(name) = entry.file_name().to_str() {
+                            if name.ends_with(".jar") && !name.starts_with(".") {
+                                count += 1;
+                            }
+                        }
+                    }
+                    count
+                }
+                Err(_) => 0,
+            }
+        } else {
+            0
+        };
+
+        // Create instance metadata
+        let instance_metadata = InstanceMetadata {
+            id: instance_id,
+            name: project_info["title"].as_str().unwrap_or("Modpack").to_string(),
+            version: mc_version.to_string(),
+            modpack: Some(project_info["title"].as_str().unwrap_or("Modpack").to_string()),
+            modpack_version: Some(version.version_number.clone()),
+            game_dir: self.instance_dir.clone(),
+            java_path: None, // Will be set by launcher
+            jvm_args: None,  // Will be set by launcher
+            last_played: None,
+            total_play_time: 0,
+            icon: project_info["icon_url"].as_str().map(|s| s.to_string()),
+            is_modded: !mod_loaders.is_empty() || mods_count > 0,
+            mods_count,
+            created_at: chrono::Utc::now().to_rfc3339(),
+            size_mb: None, // Will be calculated by storage manager
+            description: project_info["description"].as_str().map(|s| s.to_string()),
+            tags: vec!["modpack".to_string(), "modrinth".to_string()],
+        };
+
+        // Register with storage manager
+        let mut storage = StorageManager::new().await
+            .context("Failed to initialize storage manager")?;
+        
+        storage.add_instance(instance_metadata).await
+            .context("Failed to register instance with ChaiLauncher")?;
+
+        println!("✅ Instance registered with ChaiLauncher storage system");
+        Ok(())
+    }
 }
 
 use tauri::command;
@@ -907,24 +1165,7 @@ pub async fn search_modpacks(query: String, platform: String, limit: u32) -> Res
                 .map_err(|e| format!("Failed to search modpacks: {}", e))
         }
         "curseforge" => {
-            installer.search_curseforge_packs(&query, limit).await
-                .map_err(|e| format!("Failed to search modpacks: {}", e))
-                .map(|packs| {
-                    packs.into_iter().map(|cf_pack| {
-                        ModrinthPack {
-                            project_id: cf_pack.id.to_string(),
-                            version_id: cf_pack.main_file_id.to_string(),
-                            name: cf_pack.name,
-                            description: cf_pack.summary,
-                            author: cf_pack.authors.get(0).map_or(String::new(), |a| a.name.clone()),
-                            game_versions: vec![cf_pack.game_name],
-                            loaders: vec![],
-                            downloads: cf_pack.download_count,
-                            icon_url: cf_pack.logo.as_ref().map(|l| l.url.clone()),
-                            website_url: None,
-                        }
-                    }).collect()
-                })
+            Err("CurseForge support has been removed. Please use Modrinth instead.".to_string())
         }
         _ => Err("Unsupported platform".to_string())
     }
@@ -952,19 +1193,7 @@ pub async fn install_modpack(
             }).await.map_err(|e| format!("Failed to install modpack: {}", e))
         }
         "curseforge" => {
-            let project_id_u32: u32 = project_id.parse()
-                .map_err(|_| "Invalid CurseForge project ID".to_string())?;
-            let file_id_u32: u32 = version_id.parse()
-                .map_err(|_| "Invalid CurseForge file ID".to_string())?;
-            
-            let app_handle_clone = app_handle.clone();
-            installer.install_curseforge_pack(project_id_u32, file_id_u32, move |progress, stage| {
-                let _ = app_handle_clone.emit("modpack_install_progress", ModpackInstallProgress {
-                    instance_dir: instance_dir.clone(),
-                    progress,
-                    stage,
-                });
-            }).await.map_err(|e| format!("Failed to install modpack: {}", e))
+            Err("CurseForge support has been removed. Please use Modrinth instead.".to_string())
         }
         _ => Err("Unsupported platform".to_string())
     }
