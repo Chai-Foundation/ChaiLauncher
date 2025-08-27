@@ -32,7 +32,7 @@ lazy_static = "1.5.0"
 async-trait = "0.1.81"
 thiserror = "1.0.69"
 hex = "0.4.3"
-mcvm = { git = "https://github.com/tristanpoland/Chai-MCVM", rev = "c8f5d33e238519ab663634fd402edcae85535f60"}
+mcvm = { git = "https://github.com/tristanpoland/Chai-MCVM", rev = "992f254595eafa35187c82a88bafcf28d5d7f76e"}
 bollard = "0.17.1"
 
 [target.'cfg(windows)'.dependencies]
