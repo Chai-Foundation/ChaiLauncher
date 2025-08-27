@@ -66,7 +66,7 @@
   }
 
   ::-webkit-scrollbar-track {
-    background: #1f1f1f;
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
