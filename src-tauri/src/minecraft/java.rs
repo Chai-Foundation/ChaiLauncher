@@ -317,9 +317,18 @@ fn find_java_executable(java_dir: &PathBuf) -> Result<PathBuf, String> {
         let path = entry.path();
         
         if path.is_dir() {
+            // Check for standard bin/java path
             let potential_java = path.join("bin").join(java_exe_name);
             if potential_java.exists() {
                 return Ok(potential_java);
+            }
+            
+            // Check for macOS Contents/Home/bin/java path
+            if cfg!(target_os = "macos") {
+                let macos_java_path = path.join("Contents").join("Home").join("bin").join(java_exe_name);
+                if macos_java_path.exists() {
+                    return Ok(macos_java_path);
+                }
             }
         }
     }

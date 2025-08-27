@@ -76,6 +76,16 @@ pub async fn get_java_for_version(java_version: u32) -> Result<String, String> {
                 if potential_java.exists() {
                     return Ok(potential_java.to_string_lossy().to_string());
                 }
+
+                // Check for macOS Contents/Home/bin/java path
+                if cfg!(target_os = "macos") {
+                    let macos_java_path = entry.path().join("Contents").join("Home").join("bin").join("java");
+                    
+                    checked_paths.push(macos_java_path.to_string_lossy().to_string());
+                    if macos_java_path.exists() {
+                        return Ok(macos_java_path.to_string_lossy().to_string());
+                    }
+                }
             }
         }
     }
