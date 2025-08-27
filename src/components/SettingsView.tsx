@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Save, Folder, HardDrive, Coffee, Palette, Shield } from 'lucide-react';
+import { Save, Folder, HardDrive, Coffee, Palette, Shield, RotateCcw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { LauncherSettings } from '../types/minecraft';
-import { getCurrentPrimaryColor, getCurrentSecondaryColor } from '../utils/colors';
+import { getCurrentPrimaryColor, getCurrentSecondaryColor, DEFAULT_PRIMARY_COLOR, DEFAULT_SECONDARY_COLOR } from '../utils/colors';
 
 interface SettingsViewProps {
   settings: LauncherSettings;
@@ -328,7 +328,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                     <div className="p-4 rounded-lg border border-primary-600 bg-primary-800/50">
                       <div 
                         className="w-full h-16 rounded mb-2"
-                        style={{ backgroundColor: localSettings.primary_base_color || '#78716c' }}
+                        style={{ backgroundColor: localSettings.primary_base_color || DEFAULT_PRIMARY_COLOR }}
                       ></div>
                       <p className="text-white font-medium">Primary</p>
                       <p className="text-primary-400 text-xs">Backgrounds & structure</p>
@@ -337,7 +337,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                     <div className="p-4 rounded-lg border border-primary-600 bg-primary-800/50">
                       <div 
                         className="w-full h-16 rounded mb-2"
-                        style={{ backgroundColor: localSettings.secondary_base_color || '#d97706' }}
+                        style={{ backgroundColor: localSettings.secondary_base_color || DEFAULT_SECONDARY_COLOR }}
                       ></div>
                       <p className="text-white font-medium">Secondary</p>
                       <p className="text-primary-400 text-xs">Buttons & highlights</p>
@@ -347,41 +347,71 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
 
                 {/* Base Color Customization */}
                 <div>
-                  <label className="block text-sm font-medium text-primary-300 mb-3">
-                    Base Color Customization
-                  </label>
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-sm font-medium text-primary-300">
+                      Base Color Customization
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleSettingChange('primary_base_color', DEFAULT_PRIMARY_COLOR);
+                        handleSettingChange('secondary_base_color', DEFAULT_SECONDARY_COLOR);
+                      }}
+                      className="bg-secondary-600 hover:bg-secondary-700 text-white px-3 py-1 rounded text-xs transition-colors flex items-center gap-2"
+                      title="Reset both colors to default"
+                    >
+                      <RotateCcw size={12} />
+                      Reset All
+                    </button>
+                  </div>
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
                       <label className="w-20 text-sm text-primary-400">Primary:</label>
                       <input
                         type="color"
-                        value={localSettings.primary_base_color || '#78716c'}
+                        value={localSettings.primary_base_color || DEFAULT_PRIMARY_COLOR}
                         onChange={(e) => handleSettingChange('primary_base_color', e.target.value)}
                         className="w-12 h-8 rounded border border-primary-600 bg-primary-700"
                       />
                       <input
                         type="text"
-                        value={localSettings.primary_base_color || '#78716c'}
+                        value={localSettings.primary_base_color || DEFAULT_PRIMARY_COLOR}
                         onChange={(e) => handleSettingChange('primary_base_color', e.target.value)}
                         className="flex-1 px-3 py-1 bg-primary-700 border border-primary-600 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-secondary-500"
-                        placeholder="#78716c"
+                        placeholder={DEFAULT_PRIMARY_COLOR}
                       />
+                      <button
+                        type="button"
+                        onClick={() => handleSettingChange('primary_base_color', DEFAULT_PRIMARY_COLOR)}
+                        className="bg-primary-600 hover:bg-primary-700 text-white p-1 rounded transition-colors"
+                        title="Reset to default"
+                      >
+                        <RotateCcw size={16} />
+                      </button>
                     </div>
                     <div className="flex items-center gap-3">
                       <label className="w-20 text-sm text-primary-400">Secondary:</label>
                       <input
                         type="color"
-                        value={localSettings.secondary_base_color || '#d97706'}
+                        value={localSettings.secondary_base_color || DEFAULT_SECONDARY_COLOR}
                         onChange={(e) => handleSettingChange('secondary_base_color', e.target.value)}
                         className="w-12 h-8 rounded border border-primary-600 bg-primary-700"
                       />
                       <input
                         type="text"
-                        value={localSettings.secondary_base_color || '#d97706'}
+                        value={localSettings.secondary_base_color || DEFAULT_SECONDARY_COLOR}
                         onChange={(e) => handleSettingChange('secondary_base_color', e.target.value)}
                         className="flex-1 px-3 py-1 bg-primary-700 border border-primary-600 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-secondary-500"
-                        placeholder="#d97706"
+                        placeholder={DEFAULT_SECONDARY_COLOR}
                       />
+                      <button
+                        type="button"
+                        onClick={() => handleSettingChange('secondary_base_color', DEFAULT_SECONDARY_COLOR)}
+                        className="bg-primary-600 hover:bg-primary-700 text-white p-1 rounded transition-colors"
+                        title="Reset to default"
+                      >
+                        <RotateCcw size={16} />
+                      </button>
                     </div>
                   </div>
                   <p className="text-sm text-primary-400 mt-2">

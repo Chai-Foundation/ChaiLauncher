@@ -1,5 +1,9 @@
 import { LauncherSettings } from '../types/minecraft';
 
+// Default theme colors
+export const DEFAULT_PRIMARY_COLOR = '#78716c';
+export const DEFAULT_SECONDARY_COLOR = '#d97706';
+
 // Function to convert hex to HSL
 function hexToHsl(hex: string): [number, number, number] {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
@@ -92,8 +96,8 @@ export function applyColorScheme(settings: LauncherSettings): void {
   }
 
   // Generate primary and secondary palettes
-  const primaryColor = settings.primary_base_color || '#78716c';
-  const secondaryColor = settings.secondary_base_color || '#d97706';
+  const primaryColor = settings.primary_base_color || DEFAULT_PRIMARY_COLOR;
+  const secondaryColor = settings.secondary_base_color || DEFAULT_SECONDARY_COLOR;
   
   const primaryPalette = generateColorPalette(primaryColor);
   const secondaryPalette = generateColorPalette(secondaryColor);
@@ -194,9 +198,9 @@ export function applyColorScheme(settings: LauncherSettings): void {
 
 // Function to get the current color for display purposes
 export function getCurrentPrimaryColor(settings: LauncherSettings): string {
-  return settings.primary_base_color || '#78716c';
+  return settings.primary_base_color || DEFAULT_PRIMARY_COLOR;
 }
 
 export function getCurrentSecondaryColor(settings: LauncherSettings): string {
-  return settings.secondary_base_color || '#d97706';
+  return settings.secondary_base_color || DEFAULT_SECONDARY_COLOR;
 }
