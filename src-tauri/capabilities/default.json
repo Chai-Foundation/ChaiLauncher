@@ -23,6 +23,12 @@
     "core:event:allow-unlisten",
     "core:event:default",
     "core:app:allow-name",
-    "core:app:allow-version"
+    "core:app:allow-version",
+    "core:window:allow-close",
+    "core:window:allow-maximize",
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-unmaximize",
+    "core:window:default"
   ]
 }
