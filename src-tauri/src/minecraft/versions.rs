@@ -53,7 +53,11 @@ pub async fn get_java_for_version(java_version: u32) -> Result<String, String> {
         java_dir.join("bin").join("java")
     };
 
+    // Track paths checked for debugging
+    let mut checked_paths = Vec::new();
+    
     // Check direct path first
+    checked_paths.push(java_exe.to_string_lossy().to_string());
     if java_exe.exists() {
         return Ok(java_exe.to_string_lossy().to_string());
     }
@@ -68,6 +72,7 @@ pub async fn get_java_for_version(java_version: u32) -> Result<String, String> {
                     entry.path().join("bin").join("java")
                 };
                 
+                checked_paths.push(potential_java.to_string_lossy().to_string());
                 if potential_java.exists() {
                     return Ok(potential_java.to_string_lossy().to_string());
                 }
@@ -75,9 +80,32 @@ pub async fn get_java_for_version(java_version: u32) -> Result<String, String> {
         }
     }
 
+    // Enhanced error message with debugging information
+    let os_info = if cfg!(target_os = "macos") {
+        "macOS"
+    } else if cfg!(target_os = "windows") {
+        "Windows"
+    } else {
+        "Linux"
+    };
+    
+    let java_dir_exists = java_dir.exists();
+    let launcher_dir_exists = launcher_dir.exists();
+    
     Err(format!(
-        "Java {} not found in ChaiLauncher's Java directory: {}\nPlease install Java {} through ChaiLauncher", 
-        java_version, java_dir.display(), java_version
+        "Java {} not found in ChaiLauncher's Java directory.\n\
+        Platform: {}\n\
+        Launcher directory: {} (exists: {})\n\
+        Java directory: {} (exists: {})\n\
+        Paths checked: {}\n\
+        \n\
+        Please install Java {} through ChaiLauncher or check if the Java installation is corrupted.", 
+        java_version,
+        os_info,
+        launcher_dir.display(), launcher_dir_exists,
+        java_dir.display(), java_dir_exists,
+        checked_paths.join(", "),
+        java_version
     ))
 }
 

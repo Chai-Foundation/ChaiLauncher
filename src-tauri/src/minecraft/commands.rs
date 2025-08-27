@@ -46,10 +46,19 @@ pub async fn get_minecraft_versions() -> Result<VersionManifest, String> {
     let url = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
     
     let response = reqwest::get(url).await
-        .map_err(|e| format!("Failed to fetch version manifest: {}", e))?;
+        .map_err(|e| {
+            let os_info = if cfg!(target_os = "macos") {
+                "macOS"
+            } else if cfg!(target_os = "windows") {
+                "Windows"
+            } else {
+                "Linux"
+            };
+            format!("Failed to fetch version manifest from {} (Platform: {}): {}", url, os_info, e)
+        })?;
     
     let manifest: VersionManifest = response.json().await
-        .map_err(|e| format!("Failed to parse version manifest: {}", e))?;
+        .map_err(|e| format!("Failed to parse version manifest JSON: {}. The response may be malformed or the API may have changed.", e))?;
     
     Ok(manifest)
 }
@@ -276,11 +285,45 @@ pub async fn download_and_install_java_version(major_version: u32, app_handle: t
         .map_err(|e| format!("Failed to create Java directory: {}", e))?;
     
     // Get download URL
-    let download_url = get_java_download_url(major_version)?;
+    let api_url = get_java_download_url(major_version)?;
+    println!("📥 Fetching download info from: {}", api_url);
+    
+    // Fetch the API response to get the actual download URL
+    let api_response = reqwest::get(&api_url).await
+        .map_err(|e| format!("Failed to fetch Java download info: {}", e))?;
+    
+    if !api_response.status().is_success() {
+        return Err(format!("Failed to get Java download info: HTTP {}", api_response.status()));
+    }
+    
+    let releases: serde_json::Value = api_response.json().await
+        .map_err(|e| format!("Failed to parse Java API response: {}", e))?;
+    
+    // Extract the download URL from the response
+    let download_url = releases
+        .as_array()
+        .and_then(|arr| arr.first())
+        .and_then(|release| release.get("binaries"))
+        .and_then(|binaries| binaries.as_array())
+        .and_then(|bins| bins.iter().find(|bin| {
+            // Prefer tar.gz for Unix/macOS, zip for Windows
+            if cfg!(target_os = "windows") {
+                bin.get("package").and_then(|p| p.get("name")).and_then(|n| n.as_str()).map_or(false, |s| s.ends_with(".zip"))
+            } else {
+                bin.get("package").and_then(|p| p.get("name")).and_then(|n| n.as_str()).map_or(false, |s| s.ends_with(".tar.gz"))
+            }
+        }))
+        .and_then(|bin| bin.get("package"))
+        .and_then(|pkg| pkg.get("link"))
+        .and_then(|link| link.as_str())
+        .ok_or_else(|| format!("No suitable Java {} download found for this platform", major_version))?;
+    
     println!("📥 Downloading from: {}", download_url);
     
     // Download Java
-    let temp_file = java_dir.join(format!("java{}_temp.zip", major_version));
+    let temp_file = java_dir.join(format!("java{}_temp{}", major_version, 
+        if cfg!(target_os = "windows") { ".zip" } else { ".tar.gz" }
+    ));
     download_file_with_progress(&download_url, &temp_file, &app_handle).await
         .map_err(|e| format!("Failed to download Java {}: {}", major_version, e))?;
     
@@ -1286,16 +1329,11 @@ fn get_java_download_url(major_version: u32) -> Result<String, String> {
         return Err("Unsupported architecture".to_string());
     };
     
-    let _file_ext = if cfg!(target_os = "windows") {
-        "zip"
-    } else {
-        "tar.gz"
-    };
-    
-    // Use Eclipse Temurin API to get latest version
+    // Use the assets API instead of binary/latest for better reliability on macOS
+    // This will get the latest GA release for the specified version, OS, and architecture
     Ok(format!(
-        "https://api.adoptium.net/v3/binary/latest/{}/ga/{}/{}/jdk/hotspot/normal/eclipse",
-        major_version, os, arch
+        "https://api.adoptium.net/v3/assets/feature_releases/{}/ga?architecture={}&os={}&image_type=jdk&jvm_impl=hotspot&heap_size=normal&vendor=eclipse",
+        major_version, arch, os
     ))
 }
 
@@ -1303,7 +1341,7 @@ fn get_java_download_url(major_version: u32) -> Result<String, String> {
 async fn download_file_with_progress(
     url: &str,
     dest: &PathBuf,
-    app_handle: &tauri::AppHandle,
+    _app_handle: &tauri::AppHandle,
 ) -> Result<(), String> {
     println!("📥 Downloading from: {}", url);
     
@@ -1332,7 +1370,7 @@ async fn download_file_with_progress(
         
         if total_size > 0 {
             let progress = (downloaded as f64 / total_size as f64) * 80.0; // Reserve 20% for extraction
-            let _ = app_handle.emit("java_install_progress", serde_json::json!({
+            let _ = _app_handle.emit("java_install_progress", serde_json::json!({
                 "stage": "Downloading Java...",
                 "progress": progress as u32
             }));
@@ -1404,17 +1442,50 @@ async fn extract_java_archive(archive_path: &PathBuf, extract_dir: &PathBuf, app
     {
         use std::process::Stdio;
         
+        println!("🗜️ Extracting tar.gz archive for macOS/Linux...");
+        
+        // Ensure the extraction directory exists and has proper permissions
+        tokio::fs::create_dir_all(extract_dir).await
+            .map_err(|e| format!("Failed to create extraction directory: {}", e))?;
+        
+        // Use tar command for extraction with verbose output for debugging
         let output = tokio::process::Command::new("tar")
-            .args(&["-xzf", &archive_path.to_string_lossy(), "-C", &extract_dir.to_string_lossy()])
+            .args(&[
+                "-xzf", 
+                &archive_path.to_string_lossy(), 
+                "-C", 
+                &extract_dir.to_string_lossy(),
+                "--strip-components=1"  // Remove the top-level directory from extracted files
+            ])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
             .await
-            .map_err(|e| format!("Failed to execute tar: {}", e))?;
+            .map_err(|e| format!("Failed to execute tar command: {}", e))?;
         
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(format!("Tar extraction failed: {}", stderr));
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            return Err(format!("Tar extraction failed: {}\nStdout: {}\nStderr: {}", 
+                output.status, stdout, stderr));
+        }
+        
+        println!("✅ Tar extraction completed successfully");
+        
+        // Set executable permissions on the Java binary for macOS
+        #[cfg(target_os = "macos")]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let java_exe = extract_dir.join("bin").join("java");
+            if java_exe.exists() {
+                let mut perms = tokio::fs::metadata(&java_exe).await
+                    .map_err(|e| format!("Failed to get Java executable metadata: {}", e))?
+                    .permissions();
+                perms.set_mode(0o755); // rwxr-xr-x
+                tokio::fs::set_permissions(&java_exe, perms).await
+                    .map_err(|e| format!("Failed to set Java executable permissions: {}", e))?;
+                println!("✅ Set executable permissions for Java binary");
+            }
         }
     }
     
@@ -1434,13 +1505,18 @@ fn find_java_executable(java_dir: &PathBuf) -> Result<PathBuf, String> {
     #[cfg(not(target_os = "windows"))]
     let java_exe_name = "java";
     
-    // First try direct path (java_dir/bin/java.exe)
+    println!("🔍 Looking for Java executable in: {}", java_dir.display());
+    
+    // First try direct path (java_dir/bin/java) - this should work with --strip-components=1
     let direct_path = java_dir.join("bin").join(java_exe_name);
+    println!("🔍 Checking direct path: {}", direct_path.display());
     if direct_path.exists() {
+        println!("✅ Found Java executable at: {}", direct_path.display());
         return Ok(direct_path);
     }
     
-    // Search for nested JDK directories (like jdk-17.0.16+8)
+    // Search for nested JDK directories as fallback (like jdk-17.0.16+8)
+    println!("🔍 Searching for nested JDK directories...");
     let entries = fs::read_dir(java_dir)
         .map_err(|e| format!("Failed to read Java directory: {}", e))?;
         
@@ -1450,8 +1526,20 @@ fn find_java_executable(java_dir: &PathBuf) -> Result<PathBuf, String> {
         
         if path.is_dir() {
             let potential_java = path.join("bin").join(java_exe_name);
+            println!("🔍 Checking nested path: {}", potential_java.display());
             if potential_java.exists() {
+                println!("✅ Found Java executable at: {}", potential_java.display());
                 return Ok(potential_java);
+            }
+        }
+    }
+    
+    // List all contents for debugging
+    println!("❌ Java executable not found. Directory contents:");
+    if let Ok(entries) = fs::read_dir(java_dir) {
+        for entry in entries {
+            if let Ok(entry) = entry {
+                println!("  - {}", entry.path().display());
             }
         }
     }

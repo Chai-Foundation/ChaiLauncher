@@ -27,6 +27,7 @@ function App() {
   const [, setInstallProgress] = useState<Map<string, InstallProgressEvent>>(new Map());
   const [minecraftVersions, setMinecraftVersions] = useState<MinecraftVersion[]>([]);
   const [versionsLoading, setVersionsLoading] = useState(true);
+  const [versionsError, setVersionsError] = useState<string | null>(null);
 
   // Editing instance state
   const [editingInstance, setEditingInstance] = useState<MinecraftInstance | null>(null);
@@ -156,11 +157,26 @@ function App() {
     const loadVersions = async () => {
       try {
         setVersionsLoading(true);
+        setVersionsError(null);
         const { invoke } = await import('@tauri-apps/api/core');
         const versionManifest = await invoke('get_minecraft_versions') as { versions: MinecraftVersion[] };
         setMinecraftVersions(versionManifest.versions);
       } catch (error) {
         console.error('Failed to load Minecraft versions:', error);
+        
+        // Extract detailed error message for debugging
+        let errorMessage: string;
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        } else if (typeof error === 'object' && error !== null && 'message' in error) {
+          errorMessage = String((error as any).message);
+        } else {
+          errorMessage = String(error);
+        }
+        
+        // Store error for UI display instead of alert
+        setVersionsError(`Failed to load Minecraft versions: ${errorMessage}`);
+        
         // Fallback to a minimal set if API fails
         setMinecraftVersions([
           { id: '1.20.4', type: 'release', releaseTime: '2023-12-07T12:00:00Z', url: '' },
@@ -809,6 +825,8 @@ function App() {
         }}
         onCreateInstance={handleCreateInstance}
         minecraftVersions={versionsLoading ? [] : minecraftVersions}
+        versionsLoading={versionsLoading}
+        versionsError={versionsError}
         popularModpacks={mockModpacks}
       />
 

@@ -14,6 +14,8 @@ interface CreateInstanceModalProps {
     modpackVersion?: string;
   }) => void;
   minecraftVersions: MinecraftVersion[];
+  versionsLoading?: boolean;
+  versionsError?: string | null;
   popularModpacks: ModpackInfo[];
 }
 
@@ -24,6 +26,8 @@ const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({
   onClose,
   onCreateInstance,
   minecraftVersions,
+  versionsLoading = false,
+  versionsError = null,
   popularModpacks,
 }) => {
   const [step, setStep] = useState(1);
@@ -219,22 +223,55 @@ const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({
                         </label>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
-                        {filteredVersions.map((version) => (
-                          <button
-                            key={version.id}
-                            onClick={() => setSelectedVersion(version.id)}
-                            className={`p-3 rounded-lg border text-left transition-colors ${
-                              selectedVersion === version.id
-                                ? 'border-amber-600 bg-amber-600 bg-opacity-20'
-                                : 'border-stone-600 hover:border-stone-500'
-                            }`}
-                          >
-                            <div className="font-semibold text-white">{version.id}</div>
-                            <div className="text-xs text-stone-400 capitalize">{version.type}</div>
-                          </button>
-                        ))}
-                      </div>
+                      {/* Version loading state */}
+                      {versionsLoading && (
+                        <div className="flex items-center justify-center p-8">
+                          <div className="flex items-center gap-3 text-stone-400">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-amber-600"></div>
+                            <span>Loading Minecraft versions...</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Version loading error */}
+                      {versionsError && (
+                        <div className="bg-red-900/20 border border-red-600/30 rounded-lg p-4 mb-4">
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 w-5 h-5 text-red-400 mt-0.5">
+                              <svg fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                            <div className="flex-1">
+                              <h4 className="text-red-300 font-medium mb-1">Version Loading Failed</h4>
+                              <p className="text-red-200 text-sm leading-relaxed">{versionsError}</p>
+                              <p className="text-red-300 text-sm mt-2">
+                                Using fallback versions. Please check your internet connection or report this issue for debugging.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Version grid */}
+                      {!versionsLoading && (
+                        <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+                          {filteredVersions.map((version) => (
+                            <button
+                              key={version.id}
+                              onClick={() => setSelectedVersion(version.id)}
+                              className={`p-3 rounded-lg border text-left transition-colors ${
+                                selectedVersion === version.id
+                                  ? 'border-amber-600 bg-amber-600 bg-opacity-20'
+                                  : 'border-stone-600 hover:border-stone-500'
+                              }`}
+                            >
+                              <div className="font-semibold text-white">{version.id}</div>
+                              <div className="text-xs text-stone-400 capitalize">{version.type}</div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </>
                   )}
                 </motion.div>
