@@ -1068,39 +1068,40 @@ export default function InstanceSettingsModal({
                 })}
               </div>
 
-              {/* Close Button */}
-              <div className="p-4 border-t border-primary-700/50">
-                <button
-                  onClick={onClose}
-                  className="w-full flex items-center justify-center gap-2 p-2 text-primary-400 hover:text-white hover:bg-primary-700/50 rounded-lg transition-colors"
-                >
-                  <X size={16} />
-                  Close
-                </button>
-              </div>
             </div>
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col">
               {/* Content Header */}
               <div className="p-6 border-b border-primary-700/50 bg-primary-800/30 backdrop-blur-sm">
-                <div className="flex items-center gap-3">
-                  {(() => {
-                    const currentTab = [
-                      { id: 'general', label: 'General', icon: Settings },
-                      { id: 'jvm', label: 'JVM Settings', icon: Cpu },
-                      { id: 'mods', label: 'Mods', icon: Package },
-                      { id: 'resourcepacks', label: 'Resource Packs', icon: Folder },
-                      { id: 'screenshots', label: 'Screenshots', icon: Camera },
-                    ].find(tab => tab.id === activeTab);
-                    const Icon = currentTab?.icon || Settings;
-                    return (
-                      <>
-                        <Icon size={20} className="text-secondary-400" />
-                        <h3 className="text-xl font-semibold text-white">{currentTab?.label}</h3>
-                      </>
-                    );
-                  })()}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {(() => {
+                      const currentTab = [
+                        { id: 'general', label: 'General', icon: Settings },
+                        { id: 'jvm', label: 'JVM Settings', icon: Cpu },
+                        { id: 'mods', label: 'Mods', icon: Package },
+                        { id: 'resourcepacks', label: 'Resource Packs', icon: Folder },
+                        { id: 'screenshots', label: 'Screenshots', icon: Camera },
+                      ].find(tab => tab.id === activeTab);
+                      const Icon = currentTab?.icon || Settings;
+                      return (
+                        <>
+                          <Icon size={20} className="text-secondary-400" />
+                          <h3 className="text-xl font-semibold text-white">{currentTab?.label}</h3>
+                        </>
+                      );
+                    })()}
+                  </div>
+                  
+                  {/* Close Button */}
+                  <button
+                    onClick={onClose}
+                    className="p-2 text-primary-400 hover:text-white hover:bg-primary-700/50 rounded-lg transition-colors"
+                    title="Close"
+                  >
+                    <X size={20} />
+                  </button>
                 </div>
               </div>
 
