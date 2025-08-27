@@ -654,7 +654,7 @@ export default function InstanceSettingsModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-primary-300 mb-2">
-                <Memory size={16} className="inline mr-1" />
+                <MemoryStick size={16} className="inline mr-1" />
                 Minimum Memory (MB)
               </label>
               <input
