@@ -47,11 +47,16 @@ pub struct MCVMCore;
 impl MCVMCore {
     /// Initialize MCVM paths for ChaiLauncher
     pub async fn initialize() -> Result<(), String> {
-        println!("Initializing MCVM integration...");
+        println!("Initializing MCVM integration with ChaiLauncher paths...");
         
-        // Create MCVM paths using default location
-        let paths = Paths::new().await
-            .map_err(|e| format!("Failed to create MCVM paths: {}", e))?;
+        // Get ChaiLauncher's data directory
+        let chai_data_dir = dirs::data_local_dir()
+            .ok_or("Failed to get local data directory".to_string())?
+            .join("ChaiLauncher");
+        
+        // Create MCVM paths using ChaiLauncher's directory structure
+        let paths = Paths::with_data_dir(chai_data_dir).await
+            .map_err(|e| format!("Failed to create ChaiLauncher MCVM paths: {}", e))?;
 
         MCVM_PATHS.set(paths)
             .map_err(|_| "Failed to set global MCVM paths")?;
@@ -64,6 +69,7 @@ impl MCVMCore {
     pub fn paths() -> Result<&'static Paths, String> {
         MCVM_PATHS.get().ok_or_else(|| "MCVM not initialized".to_string())
     }
+
 
     /// Create a proper MCVM instance for launching
     pub async fn create_launch_instance(
@@ -181,6 +187,10 @@ impl MCVMCore {
             instance_id,
             instance.config,
         );
+
+        // Set ChaiLauncher's custom game directory instead of letting MCVM create its own
+        mcvm_instance.set_custom_dirs(instance.game_dir.clone())
+            .map_err(|e| format!("Failed to set custom directories: {}", e))?;
         
         // Initialize user manager for authentication with ChaiLauncher's Microsoft client ID
         let client_id = ClientId::new(crate::auth::CLIENT_ID.to_string());
