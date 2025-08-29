@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import LauncherSidebar from './components/LauncherSidebar';
 import HomeView from './components/HomeView';
 import InstancesView from './components/InstancesView';
@@ -10,6 +11,7 @@ import AccountsView from './components/AccountsView';
 import CreateInstanceModal from './components/CreateInstanceModal';
 import JavaInstallModal from './components/JavaInstallModal';
 import InstanceSettingsModal from './components/InstanceSettingsModal';
+import ExitConfirmationModal from './components/ExitConfirmationModal';
 import { MinecraftInstance, MinecraftVersion, ModpackInfo, LauncherSettings, NewsItem, InstallProgressEvent, InstallCompleteEvent } from './types/minecraft';
 import { applyColorScheme } from './utils/colors';
 import heroImage from './assets/hero.png';
@@ -20,6 +22,7 @@ function App() {
   const [activeView, setActiveView] = useState('home');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJavaInstallModal, setShowJavaInstallModal] = useState(false);
+  const [showExitConfirmationModal, setShowExitConfirmationModal] = useState(false);
   const [pendingInstanceLaunch, setPendingInstanceLaunch] = useState<MinecraftInstance | null>(null);
   const [requiredJavaVersion, setRequiredJavaVersion] = useState<number>(17);
 
@@ -66,6 +69,36 @@ function App() {
       });
       return updated;
     });
+  }, []);
+
+  // Get currently installing instances
+  const getInstallingInstances = useCallback(() => {
+    return instances.filter(instance => instance.status === 'installing')
+      .map(instance => ({
+        name: instance.name,
+        installProgress: instance.installProgress || 0
+      }));
+  }, [instances]);
+
+  // Handle exit attempt
+  const handleExitAttempt = useCallback(() => {
+    const installing = getInstallingInstances();
+    if (installing.length > 0) {
+      setShowExitConfirmationModal(true);
+      return false; // Prevent exit
+    } else {
+      return true; // Allow exit
+    }
+  }, [getInstallingInstances]);
+
+  // Handle confirmed exit
+  const handleConfirmedExit = useCallback(async () => {
+    try {
+      const currentWindow = getCurrentWindow();
+      await currentWindow.close();
+    } catch (error) {
+      console.error('Error closing window:', error);
+    }
   }, []);
 
   // Stable completion handler
@@ -294,11 +327,24 @@ function App() {
         const unlistenComplete = await listen<InstallCompleteEvent>('install_complete', (event) => {
           handleInstallComplete(event.payload);
         });
-      
+
+        // Listen for close requests (native OS close events)
+        const currentWindow = getCurrentWindow();
+        const unlistenCloseRequested = await currentWindow.onCloseRequested(async (event) => {
+          // Check current instances using the ref to get latest state
+          const installing = instancesRef.current.filter(instance => instance.status === 'installing');
+          if (installing.length > 0) {
+            // Prevent close and show modal
+            event.preventDefault();
+            setShowExitConfirmationModal(true);
+          }
+          // If no installations, allow the close to proceed normally
+        });
         
         return () => {
           unlistenProgress();
           unlistenComplete();
+          unlistenCloseRequested();
         };
       } catch (error) {
         console.error('Failed to set up event listeners:', error);
@@ -849,11 +895,12 @@ function App() {
           <button
             className="w-6 h-6 flex items-center justify-center hover:bg-red-700 rounded"
             title="Close"
-            onClick={async (e) => {
+            onClick={(e) => {
               e.stopPropagation();
-              const { getCurrentWindow } = await import('@tauri-apps/api/window');
-              const win = getCurrentWindow();
-              win.close();
+              const shouldClose = handleExitAttempt();
+              if (shouldClose) {
+                handleConfirmedExit();
+              }
             }}
           >
             <svg width="14" height="14" viewBox="0 0 14 14">
@@ -894,6 +941,13 @@ function App() {
           instance={editingInstance}
         />
       )}
+
+      <ExitConfirmationModal
+        isOpen={showExitConfirmationModal}
+        onClose={() => setShowExitConfirmationModal(false)}
+        onConfirmExit={handleConfirmedExit}
+        installingInstances={getInstallingInstances()}
+      />
     </div>
   </div>
   );
