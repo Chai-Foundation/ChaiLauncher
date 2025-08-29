@@ -1175,6 +1175,25 @@ pub async fn search_modpacks(query: String, platform: String, limit: u32, offset
 }
 
 #[command]
+pub async fn get_modpack_versions(
+    project_id: String,
+    platform: String,
+) -> Result<Vec<ModrinthVersion>, String> {
+    let installer = ModpackInstaller::new(PathBuf::new());
+    
+    match platform.as_str() {
+        "modrinth" => {
+            installer.get_modrinth_pack_versions(&project_id).await
+                .map_err(|e| format!("Failed to get modpack versions: {}", e))
+        }
+        "curseforge" => {
+            Err("CurseForge support has been removed. Please use Modrinth instead.".to_string())
+        }
+        _ => Err("Unsupported platform".to_string())
+    }
+}
+
+#[command]
 pub async fn install_modpack(
     instance_dir: String,
     platform: String,

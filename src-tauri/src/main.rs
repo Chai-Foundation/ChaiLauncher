@@ -76,6 +76,7 @@ fn main() {
             minecraft::commands::restore_instance,
             minecraft::commands::refresh_instance_sizes,
             modpack::search_modpacks,
+            modpack::get_modpack_versions,
             modpack::install_modpack,
             modpack::create_modpack,
             mods::commands::search_mods,

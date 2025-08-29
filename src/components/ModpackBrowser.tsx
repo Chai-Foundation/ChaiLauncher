@@ -22,7 +22,7 @@ import {
   Upload,
   FolderOpen
 } from 'lucide-react';
-import { ModrinthPack, ModpackInstallProgress, LauncherSettings } from '../types';
+import { ModrinthPack, ModrinthVersion, ModpackInstallProgress, LauncherSettings } from '../types';
 import { useInfiniteModpacks } from '../hooks/useInfiniteModpacks';
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
 
@@ -42,6 +42,10 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [installError, setInstallError] = useState<string | null>(null);
   const [installProgress, setInstallProgress] = useState<Map<string, ModpackInstallProgress>>(new Map());
+  const [showVersionModal, setShowVersionModal] = useState(false);
+  const [selectedPack, setSelectedPack] = useState<ModrinthPack | null>(null);
+  const [availableVersions, setAvailableVersions] = useState<ModrinthVersion[]>([]);
+  const [loadingVersions, setLoadingVersions] = useState(false);
   
   const { modpacks, loading, hasMore, error, loadMore, refresh } = useInfiniteModpacks({
     searchQuery,
@@ -84,33 +88,53 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
     // The hook will automatically refresh when searchQuery changes
   };
 
-  const installModpack = async (pack: ModrinthPack) => {
+  const showVersionSelector = async (pack: ModrinthPack) => {
     if (!launcherSettings) {
       setInstallError('Launcher settings not available');
       return;
     }
 
     try {
-      const instanceDir = `${launcherSettings.instances_dir}/${pack.name}`;
+      setSelectedPack(pack);
+      setLoadingVersions(true);
+      setShowVersionModal(true);
       
-      // Start installation
+      // Fetch available versions
+      const versions = await invoke<ModrinthVersion[]>('get_modpack_versions', {
+        projectId: pack.project_id,
+        platform: selectedPlatform
+      });
+      
+      setAvailableVersions(versions);
+    } catch (error) {
+      console.error('Failed to fetch modpack versions:', error);
+      setInstallError(`Failed to fetch versions for ${pack.name}: ${error}`);
+      setShowVersionModal(false);
+    } finally {
+      setLoadingVersions(false);
+    }
+  };
+
+  const installModpack = async (pack: ModrinthPack, selectedVersion: ModrinthVersion) => {
+    if (!launcherSettings) {
+      setInstallError('Launcher settings not available');
+      return;
+    }
+
+    try {
+      const instanceDir = `${launcherSettings.instances_dir}/${pack.name}_${selectedVersion.version_number}`;
+      
+      // Start installation - backend will register the instance
       await invoke('install_modpack', {
         instanceDir,
         platform: selectedPlatform,
         projectId: pack.project_id,
-        versionId: pack.version_id
+        versionId: selectedVersion.id
       });
 
-      // Optionally trigger instance creation in parent component
-      if (onCreateInstance) {
-        onCreateInstance({
-          name: pack.name,
-          version: pack.game_versions[0] || '1.20.1',
-          modpack: pack.name,
-          modpackVersion: pack.version_id
-        });
-      }
+      // No need to call onCreateInstance since backend registers the instance
 
+      setShowVersionModal(false);
     } catch (error) {
       console.error('Failed to install modpack:', error);
       setInstallError(`Failed to install ${pack.name}: ${error}`);
@@ -128,7 +152,14 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
   };
 
   const renderModpackCard = (pack: ModrinthPack, index: number) => {
-    const progress = installProgress.get(`${launcherSettings?.instances_dir}/${pack.name}`);
+    // Check for progress with any version suffix
+    let progress = null;
+    for (const [key, value] of installProgress.entries()) {
+      if (key.includes(pack.name)) {
+        progress = value;
+        break;
+      }
+    }
     
     return (
       <motion.div
@@ -190,7 +221,7 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
               </div>
             ) : (
               <button
-                onClick={() => installModpack(pack)}
+                onClick={() => showVersionSelector(pack)}
                 className="flex items-center gap-1 px-3 py-1 bg-secondary-600 hover:bg-secondary-500 text-white rounded text-sm transition-colors"
               >
                 <Download className="w-3 h-3" />
@@ -338,6 +369,92 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
               )}
             </div>
           </>
+        )}
+
+        {/* Version Selection Modal */}
+        {showVersionModal && selectedPack && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-primary-800 border border-secondary-600/30 rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
+            >
+              {/* Modal Header */}
+              <div className="px-6 py-4 border-b border-secondary-600/30">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold text-white">
+                    Select Version for {selectedPack.name}
+                  </h2>
+                  <button
+                    onClick={() => setShowVersionModal(false)}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    ×
+                  </button>
+                </div>
+                <p className="text-sm text-gray-300 mt-1">
+                  Choose which version you'd like to install
+                </p>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6 overflow-y-auto max-h-96">
+                {loadingVersions ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="animate-spin w-6 h-6 text-secondary-400" />
+                    <span className="ml-2 text-secondary-400">Loading versions...</span>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {availableVersions.map((version) => (
+                      <div
+                        key={version.id}
+                        className="bg-primary-700 border border-secondary-600/30 rounded-lg p-4 hover:border-secondary-500/50 transition-colors"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h3 className="font-medium text-white">
+                                {version.name}
+                              </h3>
+                              <span className="px-2 py-1 bg-secondary-600/50 text-xs text-secondary-300 rounded">
+                                {version.version_type}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-gray-300">
+                              <span>Version: {version.version_number}</span>
+                              <span>MC: {version.game_versions.join(', ')}</span>
+                              <span>Downloads: {version.downloads.toLocaleString()}</span>
+                            </div>
+                            {version.loaders.length > 0 && (
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-xs text-gray-400">Loaders:</span>
+                                {version.loaders.map((loader) => (
+                                  <span
+                                    key={loader}
+                                    className="px-2 py-0.5 bg-primary-600 text-xs text-gray-300 rounded"
+                                  >
+                                    {loader}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => installModpack(selectedPack, version)}
+                            className="flex items-center gap-2 px-4 py-2 bg-secondary-600 hover:bg-secondary-500 text-white rounded transition-colors"
+                          >
+                            <Download className="w-4 h-4" />
+                            Install
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
         )}
       </div>
     </div>

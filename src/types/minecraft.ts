@@ -56,6 +56,42 @@ export interface ModrinthPack {
   website_url?: string;
 }
 
+export interface ModrinthVersion {
+  id: string;
+  project_id: string;
+  author_id: string;
+  featured: boolean;
+  name: string;
+  version_number: string;
+  changelog?: string;
+  changelog_url?: string;
+  date_published: string;
+  downloads: number;
+  version_type: string;
+  status: string;
+  requested_status?: string;
+  files: ModrinthFile[];
+  dependencies: ModrinthDependency[];
+  game_versions: string[];
+  loaders: string[];
+}
+
+export interface ModrinthFile {
+  hashes: Record<string, string>;
+  url: string;
+  filename: string;
+  primary: boolean;
+  size: number;
+  file_type?: string;
+}
+
+export interface ModrinthDependency {
+  version_id?: string;
+  project_id?: string;
+  file_name?: string;
+  dependency_type: string;
+}
+
 export interface ModpackInstallProgress {
   instance_dir: string;
   progress: number;
