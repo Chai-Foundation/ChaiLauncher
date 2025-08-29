@@ -1,6 +1,6 @@
 [package]
 name = "chailauncher"
-version = "0.8.0-rc1"
+version = "0.8.0-rc2"
 description = "Modern Minecraft launcher inspired by GDLauncher"
 authors = ["ChaiLauncher Team"]
 license = "MIT"
