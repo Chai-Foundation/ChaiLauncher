@@ -120,7 +120,9 @@ fn main() {
             docker::commands::execute_server_command,
             docker::commands::restart_server,
             docker::commands::backup_server,
-            docker::commands::get_server_stats
+            docker::commands::get_server_stats,
+            minecraft::commands::analyze_instance_java_requirements,
+            minecraft::commands::get_mod_java_requirements
         ])
         .setup(|app| {
             // Initialize Docker manager and MCVM concurrently

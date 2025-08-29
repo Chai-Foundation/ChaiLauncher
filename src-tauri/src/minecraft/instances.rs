@@ -44,6 +44,8 @@ impl Instance {
             mods_count: 0,
             is_external: Some(false),
             external_launcher: None,
+            resolved_java_version: None,
+            java_analysis_date: None,
         };
 
         // Store in ChaiLauncher's storage system
@@ -69,6 +71,8 @@ impl Instance {
             size_mb: None, // Will be calculated later
             description: None,
             tags: vec![],
+            resolved_java_version: chai_instance.resolved_java_version,
+            java_analysis_date: chai_instance.java_analysis_date.clone(),
         };
         
         storage.add_instance(instance_metadata).await
@@ -120,6 +124,8 @@ impl Instance {
                     external_launcher: None,
                     modpack: metadata.modpack.clone(),
                     modpack_version: metadata.modpack_version.clone(),
+                    resolved_java_version: metadata.resolved_java_version,
+                    java_analysis_date: metadata.java_analysis_date.clone(),
                 };
                 Ok(Some(instance))
             },
@@ -153,6 +159,8 @@ impl Instance {
                 external_launcher: None,
                 modpack: metadata.modpack.clone(),
                 modpack_version: metadata.modpack_version.clone(),
+                resolved_java_version: metadata.resolved_java_version,
+                java_analysis_date: metadata.java_analysis_date.clone(),
             };
             instances.push(instance);
         }

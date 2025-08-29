@@ -35,6 +35,7 @@ hex = "0.4.3"
 mcvm = { git = "https://github.com/tristanpoland/Chai-MCVM", rev = "b6b105b0b6fa1cbc0eb205607a935c6d18d4391b"}
 #mcvm = { path = "C:\\Users\\redst\\OneDrive\\Documents\\GitHub\\chai-project\\mcvm" }
 bollard = "0.17.1"
+toml = "0.8.19"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3.9", features = ["sysinfoapi", "memoryapi"] }

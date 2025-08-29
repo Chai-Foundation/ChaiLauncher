@@ -1140,6 +1140,8 @@ impl ModpackInstaller {
             size_mb: None, // Will be calculated by storage manager
             description: project_info["description"].as_str().map(|s| s.to_string()),
             tags: vec!["modpack".to_string(), "modrinth".to_string()],
+            resolved_java_version: None,
+            java_analysis_date: None,
         };
 
         // Register with storage manager

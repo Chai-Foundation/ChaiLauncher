@@ -25,6 +25,8 @@ pub struct InstanceMetadata {
     pub size_mb: Option<u64>,
     pub description: Option<String>,
     pub tags: Vec<String>,
+    pub resolved_java_version: Option<u32>,
+    pub java_analysis_date: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -488,6 +490,8 @@ impl From<MinecraftInstance> for InstanceMetadata {
             size_mb: None,
             description: None,
             tags: Vec::new(),
+            resolved_java_version: instance.resolved_java_version,
+            java_analysis_date: instance.java_analysis_date,
         }
     }
 }

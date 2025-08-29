@@ -14,6 +14,7 @@ pub mod launcher;      // Launching logic using MCVM
 pub mod assets;        // Asset management using MCVM
 pub mod java;          // Java management (enhanced with MCVM)
 pub mod commands;      // Tauri commands (unchanged API)
+pub mod mod_scanner;   // Mod JAR scanning for Java requirements
 
 // Re-export main types for compatibility
 pub use core::MCVMCore;
@@ -46,6 +47,10 @@ pub struct MinecraftInstance {
     pub is_external: Option<bool>,
     #[serde(rename = "externalLauncher")]
     pub external_launcher: Option<String>,
+    #[serde(rename = "resolvedJavaVersion")]
+    pub resolved_java_version: Option<u32>,
+    #[serde(rename = "javaAnalysisDate")]
+    pub java_analysis_date: Option<String>,
 }
 
 /// Authentication information

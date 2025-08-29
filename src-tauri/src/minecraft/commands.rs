@@ -89,6 +89,8 @@ pub async fn create_instance(
         size_mb: None,
         description: None,
         tags: vec![],
+        resolved_java_version: None,
+        java_analysis_date: None,
     };
     
     // Save the instance first
@@ -172,6 +174,8 @@ pub async fn launch_instance(
         mods_count: 0,
         is_external: Some(false),
         external_launcher: None,
+        resolved_java_version: None,
+        java_analysis_date: None,
     };
     
     // Try to get auth info from storage
@@ -652,6 +656,8 @@ pub async fn import_orphaned_instances() -> Result<Vec<String>, String> {
                 size_mb: None,
                 description: Some(format!("Imported from existing instance directory")),
                 tags: vec!["imported".to_string()],
+                resolved_java_version: None,
+                java_analysis_date: None,
             };
             
             // Add to storage
@@ -960,6 +966,8 @@ pub async fn install_minecraft_version(
         size_mb: None,
         description: None,
         tags: vec![],
+        resolved_java_version: None,
+        java_analysis_date: None,
     };
     
     // Save to storage
@@ -1126,6 +1134,8 @@ impl From<InstanceMetadata> for MinecraftInstance {
             mods_count: metadata.mods_count,
             is_external: None,
             external_launcher: None,
+            resolved_java_version: metadata.resolved_java_version,
+            java_analysis_date: metadata.java_analysis_date,
         }
     }
 }
@@ -1590,5 +1600,62 @@ async fn calculate_directory_size(dir: &PathBuf) -> Result<u64, String> {
     }
     
     Ok(total_size)
+}
+
+// Mod Scanner Commands
+
+/// Analyze Java requirements for an instance by scanning mod JARs
+#[command]
+pub async fn analyze_instance_java_requirements(instance_id: String) -> Result<crate::minecraft::mod_scanner::InstanceJavaAnalysis, String> {
+    let storage = StorageManager::new().await
+        .map_err(|e| format!("Failed to initialize storage: {}", e))?;
+    
+    let instance = storage.get_instance(&instance_id)
+        .ok_or_else(|| format!("Instance '{}' not found", instance_id))?;
+    
+    println!("🔍 Analyzing Java requirements for instance '{}'", instance.name);
+    
+    let scanner = crate::minecraft::mod_scanner::ModJarScanner::new(instance.game_dir.clone());
+    let analysis = scanner.analyze_instance_java_requirements().await
+        .map_err(|e| format!("Failed to analyze Java requirements: {}", e))?;
+    
+    println!("✅ Analysis complete: min Java {}, recommended Java {}", 
+        analysis.minimum_java_version.unwrap_or(8), 
+        analysis.recommended_java_version);
+    
+    if !analysis.conflicting_requirements.is_empty() {
+        println!("⚠️ Conflicts found: {:?}", analysis.conflicting_requirements);
+    }
+    
+    Ok(analysis)
+}
+
+/// Get mod Java requirements for a specific mod JAR file
+#[command]
+pub async fn get_mod_java_requirements(mod_path: String) -> Result<crate::minecraft::mod_scanner::ModJavaRequirement, String> {
+    use std::path::PathBuf;
+    
+    let jar_path = PathBuf::from(mod_path);
+    
+    if !jar_path.exists() {
+        return Err("Mod file does not exist".to_string());
+    }
+    
+    if jar_path.extension().and_then(|s| s.to_str()) != Some("jar") {
+        return Err("File is not a JAR file".to_string());
+    }
+    
+    println!("🔍 Scanning mod JAR: {}", jar_path.display());
+    
+    // Use a dummy scanner instance for single file scanning
+    let temp_path = jar_path.parent().unwrap_or(&PathBuf::from(".")).to_path_buf();
+    let scanner = crate::minecraft::mod_scanner::ModJarScanner::new(temp_path);
+    
+    let requirement = scanner.scan_mod_jar(&jar_path).await
+        .map_err(|e| format!("Failed to scan mod JAR: {}", e))?;
+    
+    println!("✅ Scanned mod: {} requires Java {}", requirement.mod_name, requirement.java_requirement);
+    
+    Ok(requirement)
 }
 
