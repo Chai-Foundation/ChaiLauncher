@@ -12,6 +12,7 @@ pub async fn search_mods(
     game_version: Option<String>,
     mod_loader: Option<String>,
     limit: Option<u32>,
+    offset: Option<u32>,
 ) -> Result<Vec<ModInfo>, String> {
     // For now, create a temporary mod manager to search
     // In a real implementation, this might use a global manager or cache
@@ -25,6 +26,7 @@ pub async fn search_mods(
         game_version.as_deref(),
         mod_loader.as_deref(),
         limit.unwrap_or(20),
+        offset.unwrap_or(0),
     ).await
     .map_err(|e| format!("Search failed: {}", e))?;
     
@@ -271,6 +273,7 @@ pub async fn get_featured_mods(
     game_version: Option<String>,
     mod_loader: Option<String>,
     limit: Option<u32>,
+    offset: Option<u32>,
 ) -> Result<Vec<ModInfo>, String> {
     let temp_instance_path = std::env::temp_dir().join("temp_mod_search");
     let _manager = ModManager::new(temp_instance_path).await
@@ -283,6 +286,7 @@ pub async fn get_featured_mods(
             game_version.as_deref(),
             mod_loader.as_deref(),
             limit.unwrap_or(10),
+            offset.unwrap_or(0),
         ).await {
             all_featured.append(&mut featured);
         }

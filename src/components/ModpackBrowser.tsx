@@ -12,6 +12,7 @@ import {
   List,
   RefreshCw,
   Loader,
+  Loader2,
   AlertCircle,
   ExternalLink,
   User,
@@ -22,6 +23,8 @@ import {
   FolderOpen
 } from 'lucide-react';
 import { ModrinthPack, ModpackInstallProgress, LauncherSettings } from '../types';
+import { useInfiniteModpacks } from '../hooks/useInfiniteModpacks';
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
 
 interface ModpackBrowserProps {
   onCreateInstance?: (data: {
@@ -35,19 +38,23 @@ interface ModpackBrowserProps {
 
 export default function ModpackBrowser({ onCreateInstance, launcherSettings }: ModpackBrowserProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<ModrinthPack[]>([]);
-  const [featuredPacks, setFeaturedPacks] = useState<ModrinthPack[]>([]);
   const selectedPlatform = 'modrinth';
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [loading, setLoading] = useState(false);
-  const [featuredLoading, setFeaturedLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [installError, setInstallError] = useState<string | null>(null);
   const [installProgress, setInstallProgress] = useState<Map<string, ModpackInstallProgress>>(new Map());
+  
+  const { modpacks, loading, hasMore, error, loadMore, refresh } = useInfiniteModpacks({
+    searchQuery,
+    platform: selectedPlatform,
+    limit: 20
+  });
+  
+  const { sentinelRef } = useInfiniteScroll({
+    loading,
+    hasMore,
+    onLoadMore: loadMore,
+  });
 
-  // Load initial data
-  useEffect(() => {
-    loadFeaturedPacks();
-  }, [selectedPlatform]);
 
   // Listen for installation progress
   useEffect(() => {
@@ -70,55 +77,16 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
     setupProgressListener();
   }, []);
 
-  const loadFeaturedPacks = async () => {
-    setFeaturedLoading(true);
-    setError(null);
-    try {
-      const featured = await invoke<ModrinthPack[]>('search_modpacks', {
-        query: 'featured',
-        platform: selectedPlatform,
-        limit: 12
-      });
-      setFeaturedPacks(featured);
-    } catch (error) {
-      console.error('Failed to load featured modpacks:', error);
-      setError('Failed to load featured modpacks');
-    } finally {
-      setFeaturedLoading(false);
-    }
-  };
 
-  const searchModpacks = async () => {
-    if (!searchQuery.trim()) {
-      setSearchResults([]);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    try {
-      const results = await invoke<ModrinthPack[]>('search_modpacks', {
-        query: searchQuery,
-        platform: selectedPlatform,
-        limit: 20
-      });
-      setSearchResults(results);
-    } catch (error) {
-      console.error('Failed to search modpacks:', error);
-      setError('Failed to search modpacks');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    searchModpacks();
+    // The hook will automatically refresh when searchQuery changes
   };
 
   const installModpack = async (pack: ModrinthPack) => {
     if (!launcherSettings) {
-      setError('Launcher settings not available');
+      setInstallError('Launcher settings not available');
       return;
     }
 
@@ -145,7 +113,7 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
 
     } catch (error) {
       console.error('Failed to install modpack:', error);
-      setError(`Failed to install ${pack.name}: ${error}`);
+      setInstallError(`Failed to install ${pack.name}: ${error}`);
     }
   };
 
@@ -153,7 +121,7 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
     try {
       // This would open a file dialog to select modpack files
       // For now, show a message about importing
-      setError('File import functionality coming soon!');
+      setInstallError('File import functionality coming soon!');
     } catch (error) {
       console.error('Failed to open file dialog:', error);
     }
@@ -167,7 +135,7 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
         key={pack.project_id}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: index * 0.1 }}
+        transition={{ delay: (index % 20) * 0.05 }}
         className={`bg-primary-800/90 backdrop-blur-sm border border-secondary-600/30 rounded-lg overflow-hidden hover:border-secondary-500/50 transition-all duration-200 ${
           viewMode === 'list' ? 'flex' : ''
         }`}
@@ -235,8 +203,6 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
     );
   };
 
-  const displayPacks = searchQuery ? searchResults : featuredPacks;
-  const isLoading = loading || featuredLoading;
 
   return (
     <div className="flex-1 p-6 text-white overflow-y-auto">
@@ -264,10 +230,10 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
               </div>
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={loading}
                 className="px-4 py-2 bg-secondary-600 hover:bg-secondary-500 disabled:bg-primary-600 text-white rounded-lg transition-colors flex items-center gap-2"
               >
-                {isLoading ? <Loader className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                {loading ? <Loader className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                 Search
               </button>
             </form>
@@ -284,11 +250,11 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
                 Import File
               </button>
               <button
-                onClick={loadFeaturedPacks}
-                disabled={isLoading}
+                onClick={refresh}
+                disabled={loading}
                 className="flex items-center gap-2 px-3 py-2 bg-primary-700 hover:bg-primary-600 disabled:bg-primary-600 text-white rounded-lg transition-colors"
               >
-                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
               </button>
             </div>
@@ -315,12 +281,14 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
         </div>
 
         {/* Error Message */}
-        {error && (
+        {(error || installError) && (
           <div className="mb-6 p-4 bg-red-900/50 border border-red-500/50 rounded-lg flex items-center gap-2">
             <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-            <span className="text-red-200">{error}</span>
+            <span className="text-red-200">{error || installError}</span>
             <button
-              onClick={() => setError(null)}
+              onClick={() => {
+                setInstallError(null);
+              }}
               className="ml-auto text-red-400 hover:text-red-300"
             >
               ×
@@ -331,16 +299,11 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
         {/* Results */}
         <div className="mb-4">
           <h2 className="text-xl font-semibold text-white mb-4">
-            {searchQuery ? `Search Results (${displayPacks.length})` : 'Featured Modpacks'}
+            {searchQuery ? `Search Results (${modpacks.length})` : 'Featured Modpacks'}
           </h2>
         </div>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader className="w-8 h-8 animate-spin text-secondary-500" />
-            <span className="ml-3 text-gray-300">Loading modpacks...</span>
-          </div>
-        ) : displayPacks.length === 0 ? (
+        {modpacks.length === 0 && !loading ? (
           <div className="text-center py-12">
             <Package className="w-16 h-16 text-gray-500 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-400 mb-2">
@@ -351,13 +314,30 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
             </p>
           </div>
         ) : (
-          <div className={
-            viewMode === 'grid'
-              ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
-              : 'space-y-3'
-          }>
-            {displayPacks.map((pack, index) => renderModpackCard(pack, index))}
-          </div>
+          <>
+            <div className={
+              viewMode === 'grid'
+                ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
+                : 'space-y-3'
+            }>
+              {modpacks.map((pack, index) => renderModpackCard(pack, index))}
+            </div>
+            
+            {/* Infinite scroll sentinel */}
+            <div ref={sentinelRef} className="flex justify-center py-8">
+              {loading && (
+                <div className="flex items-center gap-2 text-secondary-400">
+                  <Loader2 className="animate-spin" size={20} />
+                  <span>Loading more modpacks...</span>
+                </div>
+              )}
+              {!hasMore && modpacks.length > 0 && (
+                <div className="text-primary-400 text-sm">
+                  No more modpacks to load
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>

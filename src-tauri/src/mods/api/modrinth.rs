@@ -328,11 +328,14 @@ impl ModApi for ModrinthApi {
         game_version: Option<&str>,
         mod_loader: Option<&str>,
         limit: u32,
+        offset: u32,
     ) -> Result<Vec<ModInfo>, ModError> {
         let limit_str = limit.to_string();
+        let offset_str = offset.to_string();
         
         let mut params = vec![
             ("limit", limit_str.as_str()),
+            ("offset", offset_str.as_str()),
             ("index", "downloads"), // Sort by downloads for most popular
         ];
 

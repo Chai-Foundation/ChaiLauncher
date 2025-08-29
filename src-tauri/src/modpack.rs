@@ -75,11 +75,12 @@ impl ModpackInstaller {
         }
     }
 
-    pub async fn search_modrinth_packs(&self, query: &str, limit: u32) -> Result<Vec<ModrinthPack>> {
+    pub async fn search_modrinth_packs(&self, query: &str, limit: u32, offset: u32) -> Result<Vec<ModrinthPack>> {
         let url = format!(
-            "https://api.modrinth.com/v2/search?query={}&facets=[[\"project_type:modpack\"]]&limit={}",
+            "https://api.modrinth.com/v2/search?query={}&facets=[[\"project_type:modpack\"]]&limit={}&offset={}",
             urlencoding::encode(query),
-            limit
+            limit,
+            offset
         );
 
         let response = self.client.get(&url)
@@ -1156,12 +1157,12 @@ impl ModpackInstaller {
 use tauri::command;
 
 #[command]
-pub async fn search_modpacks(query: String, platform: String, limit: u32) -> Result<Vec<ModrinthPack>, String> {
+pub async fn search_modpacks(query: String, platform: String, limit: u32, offset: Option<u32>) -> Result<Vec<ModrinthPack>, String> {
     let installer = ModpackInstaller::new(PathBuf::new());
     
     match platform.as_str() {
         "modrinth" => {
-            installer.search_modrinth_packs(&query, limit).await
+            installer.search_modrinth_packs(&query, limit, offset.unwrap_or(0)).await
                 .map_err(|e| format!("Failed to search modpacks: {}", e))
         }
         "curseforge" => {

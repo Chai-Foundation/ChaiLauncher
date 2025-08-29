@@ -231,11 +231,12 @@ impl ModManager {
         game_version: Option<&str>,
         mod_loader: Option<&str>,
         limit: u32,
+        offset: u32,
     ) -> Result<Vec<ModInfo>, ModError> {
         let mut all_results = Vec::new();
         
         for client in &self.api_clients {
-            match client.search_mods(query, game_version, mod_loader, limit, 0).await {
+            match client.search_mods(query, game_version, mod_loader, limit, offset).await {
                 Ok(mut results) => all_results.append(&mut results),
                 Err(_) => continue, // Skip failed API calls
             }

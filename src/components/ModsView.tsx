@@ -11,6 +11,7 @@ import {
   List,
   RefreshCw,
   Loader,
+  Loader2,
   AlertCircle,
   ExternalLink,
   User,
@@ -19,6 +20,8 @@ import {
 } from 'lucide-react';
 import { ModInfo, ModSearchFilters } from '../types/mods';
 import { MinecraftInstance } from '../types/minecraft';
+import { useInfiniteMods } from '../hooks/useInfiniteMods';
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
 
 interface ModsViewProps {
   selectedInstance?: MinecraftInstance | null;
@@ -26,37 +29,28 @@ interface ModsViewProps {
 
 export default function ModsView({ selectedInstance }: ModsViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<ModInfo[]>([]);
-  const [featuredMods, setFeaturedMods] = useState<ModInfo[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [loading, setLoading] = useState(false);
-  const [featuredLoading, setFeaturedLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [installError, setInstallError] = useState<string | null>(null);
+  
+  const { mods, loading, hasMore, error, loadMore, refresh } = useInfiniteMods({
+    searchQuery,
+    gameVersion: selectedInstance?.version,
+    selectedCategory,
+    limit: 20
+  });
+  
+  const { sentinelRef } = useInfiniteScroll({
+    loading,
+    hasMore,
+    onLoadMore: loadMore,
+  });
 
   // Load initial data
   useEffect(() => {
-    loadFeaturedMods();
     loadCategories();
   }, []);
-
-  const loadFeaturedMods = async () => {
-    setFeaturedLoading(true);
-    try {
-      const featured = await invoke<ModInfo[]>('get_featured_mods', {
-        gameVersion: selectedInstance?.version,
-        modLoader: null,
-        limit: 12
-      });
-      setFeaturedMods(featured);
-    } catch (err) {
-      console.error('Failed to load featured mods:', err);
-      setError('Failed to load featured mods');
-    } finally {
-      setFeaturedLoading(false);
-    }
-  };
 
   const loadCategories = async () => {
     try {
@@ -67,35 +61,10 @@ export default function ModsView({ selectedInstance }: ModsViewProps) {
     }
   };
 
-  const searchMods = async () => {
-    if (!searchQuery.trim()) {
-      setSearchResults([]);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const results = await invoke<ModInfo[]>('search_mods', {
-        query: searchQuery,
-        gameVersion: selectedInstance?.version,
-        modLoader: null,
-        limit: 20
-      });
-      setSearchResults(results);
-    } catch (err) {
-      console.error('Search failed:', err);
-      setError('Search failed. Please try again.');
-      setSearchResults([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const installMod = async (mod: ModInfo) => {
     if (!selectedInstance) {
-      setError('Please select an instance first');
+      setInstallError('Please select an instance first');
       return;
     }
 
@@ -108,13 +77,13 @@ export default function ModsView({ selectedInstance }: ModsViewProps) {
       // Success feedback would come from event listeners
     } catch (err) {
       console.error('Failed to install mod:', err);
-      setError(`Failed to install ${mod.name}`);
+      setInstallError(`Failed to install ${mod.name}`);
     }
   };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    searchMods();
+    // The hook will automatically refresh when searchQuery changes
   };
 
   const formatDownloads = (downloads: number) => {
@@ -134,10 +103,11 @@ export default function ModsView({ selectedInstance }: ModsViewProps) {
     }
   };
 
-  const ModCard = ({ mod }: { mod: ModInfo }) => (
+  const ModCard = ({ mod, index }: { mod: ModInfo; index: number }) => (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: (index % 20) * 0.05 }}
       className="bg-primary-800 border border-primary-700 rounded-lg p-4 hover:border-primary-600 transition-colors"
     >
       <div className="flex items-start gap-3">
@@ -257,7 +227,7 @@ export default function ModsView({ selectedInstance }: ModsViewProps) {
               <List size={18} />
             </button>
             <button
-              onClick={loadFeaturedMods}
+              onClick={refresh}
               className="p-2 bg-primary-700 text-primary-300 hover:bg-primary-600 rounded transition-colors"
             >
               <RefreshCw size={18} />
@@ -309,49 +279,70 @@ export default function ModsView({ selectedInstance }: ModsViewProps) {
 
         {/* Content */}
         <div className="flex-1 overflow-auto p-6">
-          {error && (
+          {(error || installError) && (
             <div className="mb-4 p-4 bg-red-900/50 border border-red-700 rounded-lg flex items-center gap-2 text-red-200">
               <AlertCircle size={18} />
-              {error}
+              {error || installError}
+              <button
+                onClick={() => {
+                  setInstallError(null);
+                }}
+                className="ml-auto text-red-400 hover:text-red-300"
+              >
+                ×
+              </button>
             </div>
           )}
 
-          {searchResults.length > 0 ? (
-            <div>
-              <h2 className="text-xl font-semibold mb-4">Search Results ({searchResults.length})</h2>
-              <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
-                {searchResults.map((mod) => (
-                  <ModCard key={mod.id} mod={mod} />
-                ))}
-              </div>
-            </div>
-          ) : searchQuery.trim() && !loading ? (
-            <div className="text-center py-8 text-primary-400">
-              <Package size={48} className="mx-auto mb-2" />
-              <p>No mods found for "{searchQuery}"</p>
-            </div>
-          ) : (
-            <div>
-              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                <Star size={20} className="text-yellow-500" />
-                Featured Mods
-                {featuredLoading && <Loader size={16} className="animate-spin" />}
-              </h2>
-              
-              {featuredMods.length > 0 ? (
+          <div>
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              {searchQuery.trim() ? (
+                <>Search Results ({mods.length})</>
+              ) : (
+                <>
+                  <Star size={20} className="text-yellow-500" />
+                  {selectedCategory ? `${selectedCategory} Mods` : 'Featured Mods'}
+                </>
+              )}
+            </h2>
+            
+            {mods.length > 0 ? (
+              <>
                 <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
-                  {featuredMods.map((mod) => (
-                    <ModCard key={mod.id} mod={mod} />
+                  {mods.map((mod, index) => (
+                    <ModCard key={mod.id} mod={mod} index={index} />
                   ))}
                 </div>
-              ) : !featuredLoading ? (
-                <div className="text-center py-8 text-primary-400">
-                  <Package size={48} className="mx-auto mb-2" />
-                  <p>No featured mods available</p>
+                
+                {/* Infinite scroll sentinel */}
+                <div ref={sentinelRef} className="flex justify-center py-8">
+                  {loading && (
+                    <div className="flex items-center gap-2 text-primary-400">
+                      <Loader2 className="animate-spin" size={20} />
+                      <span>Loading more mods...</span>
+                    </div>
+                  )}
+                  {!hasMore && mods.length > 0 && (
+                    <div className="text-primary-400 text-sm">
+                      No more mods to load
+                    </div>
+                  )}
                 </div>
-              ) : null}
-            </div>
-          )}
+              </>
+            ) : !loading ? (
+              <div className="text-center py-8 text-primary-400">
+                <Package size={48} className="mx-auto mb-2" />
+                <p>
+                  {searchQuery.trim() ? `No mods found for "${searchQuery}"` : 'No mods available'}
+                </p>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="animate-spin" size={32} />
+                <span className="ml-3 text-primary-300">Loading mods...</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

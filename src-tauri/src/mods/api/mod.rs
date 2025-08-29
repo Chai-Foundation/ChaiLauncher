@@ -38,6 +38,7 @@ pub trait ModApi: Send + Sync {
         game_version: Option<&str>,
         mod_loader: Option<&str>,
         limit: u32,
+        offset: u32,
     ) -> Result<Vec<ModInfo>, ModError>;
     
     /// Get categories available for mods
@@ -97,9 +98,10 @@ impl ModApi for ApiClient {
         game_version: Option<&str>,
         mod_loader: Option<&str>,
         limit: u32,
+        offset: u32,
     ) -> Result<Vec<ModInfo>, ModError> {
         match self {
-            ApiClient::Modrinth(api) => api.get_featured_mods(game_version, mod_loader, limit).await,
+            ApiClient::Modrinth(api) => api.get_featured_mods(game_version, mod_loader, limit, offset).await,
         }
     }
     
