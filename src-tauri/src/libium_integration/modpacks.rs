@@ -145,12 +145,22 @@ impl ModpackManager {
         limit: u32,
         offset: u32,
     ) -> Result<Vec<ModpackSearchResult>, LibiumError> {
-        let mut url = format!(
-            "https://api.curseforge.com/v1/mods/search?gameId=432&classId=4471&searchFilter={}&pageSize={}&index={}",
-            urlencoding::encode(query),
-            limit,
-            offset
-        );
+        let mut url = if query.is_empty() {
+            // No search filter, omit searchFilter param
+            format!(
+                "https://api.curseforge.com/v1/mods/search?gameId=432&classId=4471&page_size={}&index={}",
+                limit,
+                offset
+            )
+        } else {
+            // Include searchFilter param
+            format!(
+                "https://api.curseforge.com/v1/mods/search?gameId=432&classId=4471&searchFilter={}&page_size={}&index={}",
+                urlencoding::encode(query),
+                limit,
+                offset
+            )
+        };
 
         println!("CurseForge search URL: {}", url);
 
@@ -191,10 +201,13 @@ impl ModpackManager {
         println!("CurseForge search response: {:?}", response);
 
         // Use the same CurseForgeSearchResponse from mod.rs
-        let search_response: crate::libium_integration::CurseForgeSearchResponse = response
+        let search_response = response
             .json()
-            .await
-            .map_err(|e| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, e)))?;
+            .await;
+
+        println!("CurseForge search response (raw): {:?}", search_response);
+
+        let search_response: crate::libium_integration::CurseForgeSearchResponse = search_response.map_err(|e| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, e)))?;
 
         println!("CurseForge search response (parsed): {:?}", search_response);
 

@@ -57,62 +57,95 @@ struct CurseForgeSearchResponse {
 #[derive(Deserialize, Debug)]
 struct CurseForgePagination {
     index: u32,
+    #[serde(rename = "pageSize")]
     page_size: u32,
+    #[serde(rename = "resultCount")]
     result_count: u32,
+    #[serde(rename = "totalCount")]
     total_count: u32,
 }
 
 #[derive(Deserialize, Debug)]
 struct CurseForgeSearchHit {
+    #[serde(rename = "screenshots")]
+    screenshots: Vec<CurseForgeScreenshot>,
     id: u64,
+    #[serde(rename = "gameId")]
     game_id: u64,
     name: String,
     slug: String,
     links: CurseForgeLinks,
     summary: String,
     status: u32,
+    #[serde(rename = "downloadCount")]
     download_count: u64,
+    #[serde(rename = "isFeatured")]
     is_featured: bool,
+    #[serde(rename = "primaryCategoryId")]
     primary_category_id: u64,
     categories: Vec<CurseForgeCategory>,
+    #[serde(rename = "classId")]
     class_id: Option<u64>,
     authors: Vec<CurseForgeAuthor>,
     logo: Option<CurseForgeLogo>,
-    screenshots: Vec<CurseForgeScreenshot>,
+    #[serde(rename = "mainFileId")]
     main_file_id: u64,
+    #[serde(rename = "latestFiles")]
     latest_files: Vec<CurseForgeFile>,
+    #[serde(rename = "latestFilesIndexes")]
     latest_files_indexes: Vec<CurseForgeFileIndex>,
+    #[serde(rename = "latestEarlyAccessFilesIndexes")]
     latest_early_access_files_indexes: Vec<CurseForgeFileIndex>,
+    #[serde(rename = "dateCreated")]
     date_created: String,
+    #[serde(rename = "dateModified")]
     date_modified: String,
+    #[serde(rename = "dateReleased")]
     date_released: String,
+    #[serde(rename = "allowModDistribution")]
     allow_mod_distribution: Option<bool>,
+    #[serde(rename = "gamePopularityRank")]
     game_popularity_rank: u64,
+    #[serde(rename = "isAvailable")]
     is_available: bool,
+    #[serde(rename = "thumbsUpCount")]
     thumbs_up_count: u64,
+    #[serde(rename = "featuredProjectTag")]
+    featured_project_tag: Option<u64>,
     rating: Option<f64>,
 }
 
 #[derive(Deserialize, Debug)]
 struct CurseForgeLinks {
+    #[serde(rename = "websiteUrl")]
     website_url: String,
+    #[serde(rename = "wikiUrl")]
     wiki_url: Option<String>,
+    #[serde(rename = "issuesUrl")]
     issues_url: Option<String>,
+    #[serde(rename = "sourceUrl")]
     source_url: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
 struct CurseForgeCategory {
     id: u64,
+    #[serde(rename = "gameId")]
     game_id: u64,
     name: String,
     slug: String,
     url: String,
+    #[serde(rename = "iconUrl")]
     icon_url: String,
+    #[serde(rename = "dateModified")]
     date_modified: String,
+    #[serde(rename = "isClass")]
     is_class: Option<bool>,
+    #[serde(rename = "classId")]
     class_id: Option<u64>,
+    #[serde(rename = "parentCategoryId")]
     parent_category_id: Option<u64>,
+    #[serde(rename = "displayIndex")]
     display_index: Option<u64>,
 }
 
@@ -121,14 +154,18 @@ struct CurseForgeAuthor {
     id: u64,
     name: String,
     url: String,
+    #[serde(rename = "avatarUrl")]
+    avatar_url: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
 struct CurseForgeLogo {
     id: u64,
+    #[serde(rename = "modId")]
     mod_id: u64,
     title: String,
     description: String,
+    #[serde(rename = "thumbnailUrl")]
     thumbnail_url: String,
     url: String,
 }
@@ -136,9 +173,11 @@ struct CurseForgeLogo {
 #[derive(Deserialize, Debug)]
 struct CurseForgeScreenshot {
     id: u64,
+    #[serde(rename = "modId")]
     mod_id: u64,
     title: String,
     description: String,
+    #[serde(rename = "thumbnailUrl")]
     thumbnail_url: String,
     url: String,
 }
@@ -146,40 +185,57 @@ struct CurseForgeScreenshot {
 #[derive(Deserialize, Debug)]
 struct CurseForgeFile {
     id: u64,
+    #[serde(rename = "gameId")]
     game_id: u64,
-    mod_id: u64,
+    #[serde(rename = "modId")]
+    mod_id: Option<u64>,
+    #[serde(rename = "isAvailable")]
     is_available: bool,
+    #[serde(rename = "displayName")]
     display_name: String,
+    #[serde(rename = "fileName")]
     file_name: String,
+    #[serde(rename = "releaseType")]
     release_type: u32,
+    #[serde(rename = "fileStatus")]
     file_status: u32,
     hashes: Vec<CurseForgeHash>,
+    #[serde(rename = "fileDate")]
     file_date: String,
+    #[serde(rename = "fileLength")]
     file_length: u64,
+    #[serde(rename = "downloadCount")]
     download_count: u64,
+    #[serde(rename = "fileSizeOnDisk")]
     file_size_on_disk: Option<u64>,
+    #[serde(rename = "downloadUrl")]
     download_url: Option<String>,
+    #[serde(rename = "gameVersions")]
     game_versions: Vec<String>,
+    #[serde(rename = "sortableGameVersions")]
     sortable_game_versions: Vec<CurseForgeSortableGameVersion>,
     dependencies: Vec<CurseForgeDependency>,
-    expose_as_alternative: Option<bool>,
-    parent_project_file_id: Option<u64>,
+    #[serde(rename = "alternateFileId")]
     alternate_file_id: Option<u64>,
+    #[serde(rename = "isServerPack")]
     is_server_pack: Option<bool>,
-    server_pack_file_id: Option<u64>,
-    is_early_access_content: Option<bool>,
-    early_access_end_date: Option<String>,
+    #[serde(rename = "fileFingerprint")]
     file_fingerprint: u64,
     modules: Vec<CurseForgeModule>,
 }
 
 #[derive(Deserialize, Debug)]
 struct CurseForgeFileIndex {
+    #[serde(rename = "gameVersion")]
     game_version: String,
+    #[serde(rename = "fileId")]
     file_id: u64,
     filename: String,
+    #[serde(rename = "releaseType")]
     release_type: u32,
+    #[serde(rename = "gameVersionTypeId")]
     game_version_type_id: Option<u64>,
+    #[serde(rename = "modLoader")]
     mod_loader: Option<u32>,
 }
 
@@ -191,10 +247,15 @@ struct CurseForgeHash {
 
 #[derive(Deserialize, Debug)]
 struct CurseForgeSortableGameVersion {
+    #[serde(rename = "gameVersionName")]
     game_version_name: String,
+    #[serde(rename = "gameVersionPadded")]
     game_version_padded: String,
+    #[serde(rename = "gameVersion")]
     game_version: String,
+    #[serde(rename = "gameVersionReleaseDate")]
     game_version_release_date: String,
+    #[serde(rename = "gameVersionTypeId")]
     game_version_type_id: Option<u64>,
 }
 
