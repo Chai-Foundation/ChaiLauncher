@@ -122,17 +122,25 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
     }
 
     try {
-      const instanceDir = `${launcherSettings.instances_dir}/${pack.name}_${selectedVersion.version_number}`;
-      
-      // Start installation - backend will register the instance
+      // Start installation - backend will register the instance  
+      const instanceName = `${pack.name}_${selectedVersion.version_number}`;
       await invoke('install_modpack', {
-        instanceDir,
-        platform: selectedPlatform,
+        instanceName: instanceName,
+        gameDir: launcherSettings.instances_dir,
         projectId: pack.project_id,
         versionId: selectedVersion.id
       });
 
-      // No need to call onCreateInstance since backend registers the instance
+      // Notify parent to refresh instances list since backend registered the instance
+      if (onCreateInstance) {
+        // Call with dummy data just to trigger refresh - backend handles actual instance creation
+        onCreateInstance({
+          name: instanceName,
+          version: selectedVersion.game_versions[0] || '1.20.1',
+          modpack: pack.name,
+          modpackVersion: selectedVersion.version_number
+        });
+      }
 
       setShowVersionModal(false);
     } catch (error) {

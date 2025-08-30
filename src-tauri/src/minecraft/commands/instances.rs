@@ -6,7 +6,7 @@ use serde_json;
 
 use crate::storage::{StorageManager, InstanceMetadata};
 use crate::minecraft::{MinecraftInstance, AuthInfo};
-use super::versions::download_minecraft_assets_with_progress;
+use super::versions::{download_minecraft_assets_with_progress, download_minecraft_assets_with_progress_auto, download_version_manifest};
 
 /// Create a new Minecraft instance
 #[command]
@@ -43,7 +43,7 @@ pub async fn create_instance(
     
     // Download assets for the new instance
     println!("📦 Downloading assets for new instance '{}'...", name);
-    download_minecraft_assets_with_progress(
+    download_minecraft_assets_with_progress_auto(
         version,
         game_dir,
         &instance.id,
@@ -337,9 +337,8 @@ pub async fn install_minecraft_version(
         "totalBytes": 0
     }));
     
-    let version_manifest = crate::minecraft::versions::load_version_manifest(&instance_dir, &version_id).await
-        .map_err(|e| format!("Failed to load version manifest: {}", e))?
-        .ok_or_else(|| format!("Version manifest for {} not found", version_id))?;
+    let version_manifest = download_version_manifest(&version_id, &instance_dir).await
+        .map_err(|e| format!("Failed to download version manifest: {}", e))?;
     
     // Download version JAR
     let _ = app_handle.emit("install_progress", serde_json::json!({
@@ -385,7 +384,10 @@ pub async fn install_minecraft_version(
         println!("📦 Downloading {} libraries...", libraries.len());
         
         for (i, library) in libraries.iter().enumerate() {
+            println!("🔄 Processing library {}/{}: {:?}", i + 1, libraries.len(), library.get("name").and_then(|n| n.as_str()).unwrap_or("unknown"));
+            
             if !should_include_library(library) {
+                println!("⏭️  Skipping library {} (OS rules)", library.get("name").and_then(|n| n.as_str()).unwrap_or("unknown"));
                 continue;
             }
             
@@ -396,15 +398,34 @@ pub async fn install_minecraft_version(
                             let lib_path = libraries_dir.join(path);
                             
                             if !lib_path.exists() {
+                                println!("📥 Downloading artifact: {}", path);
                                 if let Some(parent) = lib_path.parent() {
                                     fs::create_dir_all(parent).await
                                         .map_err(|e| format!("Failed to create library directory: {}", e))?;
                                 }
                                 
-                                if let Ok(response) = reqwest::get(url).await {
-                                    if let Ok(bytes) = response.bytes().await {
-                                        let _ = fs::write(&lib_path, &bytes).await;
+                                match tokio::time::timeout(
+                                    std::time::Duration::from_secs(30),
+                                    reqwest::get(url)
+                                ).await {
+                                    Ok(Ok(response)) => {
+                                        match tokio::time::timeout(
+                                            std::time::Duration::from_secs(30),
+                                            response.bytes()
+                                        ).await {
+                                            Ok(Ok(bytes)) => {
+                                                if let Err(e) = fs::write(&lib_path, &bytes).await {
+                                                    println!("⚠️  Failed to write library {}: {}", path, e);
+                                                } else {
+                                                    println!("✅ Downloaded artifact: {}", path);
+                                                }
+                                            }
+                                            Ok(Err(e)) => println!("⚠️  Failed to read library bytes {}: {}", path, e),
+                                            Err(_) => println!("⚠️  Timeout reading library bytes: {}", path),
+                                        }
                                     }
+                                    Ok(Err(e)) => println!("⚠️  Failed to download library {}: {}", path, e),
+                                    Err(_) => println!("⚠️  Timeout downloading library: {}", path),
                                 }
                             }
                         }
@@ -427,15 +448,34 @@ pub async fn install_minecraft_version(
                                 let lib_path = libraries_dir.join(path);
                                 
                                 if !lib_path.exists() {
+                                    println!("📥 Downloading native library: {}", path);
                                     if let Some(parent) = lib_path.parent() {
                                         fs::create_dir_all(parent).await
                                             .map_err(|e| format!("Failed to create library directory: {}", e))?;
                                     }
                                     
-                                    if let Ok(response) = reqwest::get(url).await {
-                                        if let Ok(bytes) = response.bytes().await {
-                                            let _ = fs::write(&lib_path, &bytes).await;
+                                    match tokio::time::timeout(
+                                        std::time::Duration::from_secs(30),
+                                        reqwest::get(url)
+                                    ).await {
+                                        Ok(Ok(response)) => {
+                                            match tokio::time::timeout(
+                                                std::time::Duration::from_secs(30),
+                                                response.bytes()
+                                            ).await {
+                                                Ok(Ok(bytes)) => {
+                                                    if let Err(e) = fs::write(&lib_path, &bytes).await {
+                                                        println!("⚠️  Failed to write native library {}: {}", path, e);
+                                                    } else {
+                                                        println!("✅ Downloaded native library: {}", path);
+                                                    }
+                                                }
+                                                Ok(Err(e)) => println!("⚠️  Failed to read native library bytes {}: {}", path, e),
+                                                Err(_) => println!("⚠️  Timeout reading native library bytes: {}", path),
+                                            }
                                         }
+                                        Ok(Err(e)) => println!("⚠️  Failed to download native library {}: {}", path, e),
+                                        Err(_) => println!("⚠️  Timeout downloading native library: {}", path),
                                     }
                                 }
                             }
@@ -453,6 +493,7 @@ pub async fn install_minecraft_version(
                     let lib_path = libraries_dir.join(&group).join(artifact).join(version).join(&jar_name);
                     
                     if !lib_path.exists() {
+                        println!("📥 Downloading legacy library: {}", jar_name);
                         if let Some(parent) = lib_path.parent() {
                             fs::create_dir_all(parent).await
                                 .map_err(|e| format!("Failed to create library directory: {}", e))?;
@@ -464,13 +505,31 @@ pub async fn install_minecraft_version(
                         let mc_url = format!("https://libraries.minecraft.net/{}/{}/{}/{}", 
                             group, artifact, version, jar_name);
                         
-                        if let Ok(response) = reqwest::get(&mc_url).await {
-                            if response.status().is_success() {
-                                if let Ok(bytes) = response.bytes().await {
-                                    let _ = fs::write(&lib_path, &bytes).await;
-                                    downloaded = true;
+                        match tokio::time::timeout(
+                            std::time::Duration::from_secs(30),
+                            reqwest::get(&mc_url)
+                        ).await {
+                            Ok(Ok(response)) => {
+                                if response.status().is_success() {
+                                    match tokio::time::timeout(
+                                        std::time::Duration::from_secs(30),
+                                        response.bytes()
+                                    ).await {
+                                        Ok(Ok(bytes)) => {
+                                            if let Err(e) = fs::write(&lib_path, &bytes).await {
+                                                println!("⚠️  Failed to write library {}: {}", jar_name, e);
+                                            } else {
+                                                println!("✅ Downloaded legacy library from MC repo: {}", jar_name);
+                                                downloaded = true;
+                                            }
+                                        }
+                                        Ok(Err(e)) => println!("⚠️  Failed to read library bytes {}: {}", jar_name, e),
+                                        Err(_) => println!("⚠️  Timeout reading library bytes: {}", jar_name),
+                                    }
                                 }
                             }
+                            Ok(Err(e)) => println!("⚠️  Failed to download library {}: {}", jar_name, e),
+                            Err(_) => println!("⚠️  Timeout downloading library: {}", jar_name),
                         }
                         
                         // Fallback to Maven Central
@@ -480,12 +539,30 @@ pub async fn install_minecraft_version(
                                 group, artifact, version, jar_name
                             );
                             
-                            if let Ok(response) = reqwest::get(&maven_url).await {
-                                if response.status().is_success() {
-                                    if let Ok(bytes) = response.bytes().await {
-                                        let _ = fs::write(&lib_path, &bytes).await;
+                            match tokio::time::timeout(
+                                std::time::Duration::from_secs(30),
+                                reqwest::get(&maven_url)
+                            ).await {
+                                Ok(Ok(response)) => {
+                                    if response.status().is_success() {
+                                        match tokio::time::timeout(
+                                            std::time::Duration::from_secs(30),
+                                            response.bytes()
+                                        ).await {
+                                            Ok(Ok(bytes)) => {
+                                                if let Err(e) = fs::write(&lib_path, &bytes).await {
+                                                    println!("⚠️  Failed to write library {}: {}", jar_name, e);
+                                                } else {
+                                                    println!("✅ Downloaded legacy library from Maven: {}", jar_name);
+                                                }
+                                            }
+                                            Ok(Err(e)) => println!("⚠️  Failed to read library bytes from Maven {}: {}", jar_name, e),
+                                            Err(_) => println!("⚠️  Timeout reading library bytes from Maven: {}", jar_name),
+                                        }
                                     }
                                 }
+                                Ok(Err(e)) => println!("⚠️  Failed to download library from Maven {}: {}", jar_name, e),
+                                Err(_) => println!("⚠️  Timeout downloading library from Maven: {}", jar_name),
                             }
                         }
                     }
@@ -503,6 +580,8 @@ pub async fn install_minecraft_version(
                 "totalBytes": libraries.len() as u64
             }));
             
+            println!("🔄 Completed processing library {}/{}", i + 1, libraries.len());
+            
             if (i + 1) % 10 == 0 {
                 println!("📦 Downloaded {}/{} libraries", i + 1, libraries.len());
             }
@@ -519,7 +598,9 @@ pub async fn install_minecraft_version(
         "totalBytes": 0
     }));
     
-    download_minecraft_assets_with_progress(version_id.clone(), instance_dir.to_string_lossy().to_string(), &instance_id, &app_handle).await?;
+    println!("🎯 Starting asset download for version {}", version_id);
+    download_minecraft_assets_with_progress(version_id.clone(), instance_dir.to_string_lossy().to_string(), &instance_id, &app_handle, &version_manifest).await?;
+    println!("✅ Asset download completed for version {}", version_id);
     
     // Save the instance to storage so it persists
     let instance_metadata = InstanceMetadata {

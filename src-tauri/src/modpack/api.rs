@@ -118,12 +118,29 @@ impl ModpackInstaller {
         progress_callback(ModpackInstallProgress {
             instance_dir: self.instance_dir.to_string_lossy().to_string(),
             progress: 30.0,
-            stage: "Extracting modpack".to_string(),
+            stage: "Installing modpack".to_string(),
         });
 
-        // Extract modpack to instance directory
-        self.extract_modpack(&temp_file).await
-            .context("Failed to extract modpack")?;
+        // Handle modpack installation based on file type
+        let extension = temp_file.extension()
+            .and_then(|ext| ext.to_str())
+            .unwrap_or("");
+
+        match extension.to_lowercase().as_str() {
+            "mrpack" => {
+                // For .mrpack files, use our proper implementation that downloads individual mods
+                self.extract_mrpack(&temp_file).await
+                    .context("Failed to install .mrpack modpack")?;
+            },
+            "zip" => {
+                // For .zip files, use traditional extraction
+                self.extract_zip(&temp_file).await
+                    .context("Failed to extract .zip modpack")?;
+            },
+            _ => {
+                return Err(anyhow::anyhow!("Unsupported modpack format: {}", extension));
+            }
+        }
 
         progress_callback(ModpackInstallProgress {
             instance_dir: self.instance_dir.to_string_lossy().to_string(),
@@ -203,8 +220,419 @@ impl ModpackInstaller {
     }
 
     async fn extract_mrpack(&self, mrpack_path: &std::path::Path) -> Result<()> {
-        // .mrpack files are essentially ZIP files with a specific structure
-        self.extract_zip(mrpack_path).await
+        use zip::ZipArchive;
+        use std::fs::File;
+        use std::io::Read;
+        use super::types::MrpackIndex;
+
+        println!("🔧 Processing .mrpack file with proper dependency resolution");
+        
+        let mrpack_path = mrpack_path.to_path_buf();
+        let instance_dir = self.instance_dir.clone();
+        
+        let index = tokio::task::spawn_blocking(move || -> Result<MrpackIndex> {
+            let file = File::open(&mrpack_path)
+                .context("Failed to open mrpack file")?;
+            
+            let mut archive = ZipArchive::new(file)
+                .context("Failed to read mrpack archive")?;
+
+            // Step 1: Parse modrinth.index.json
+            let mut index_json = String::new();
+            {
+                let mut index_file = archive.by_name("modrinth.index.json")
+                    .context("Missing modrinth.index.json in mrpack file")?;
+                index_file.read_to_string(&mut index_json)
+                    .context("Failed to read modrinth.index.json")?;
+            }
+            
+            let index: MrpackIndex = serde_json::from_str(&index_json)
+                .context("Failed to parse modrinth.index.json")?;
+
+            // Validate format
+            if index.format_version != 1 {
+                return Err(anyhow::anyhow!("Unsupported mrpack format version: {}", index.format_version));
+            }
+            
+            if index.game != "minecraft" {
+                return Err(anyhow::anyhow!("Unsupported game: {}", index.game));
+            }
+
+            println!("📦 Installing modpack '{}' (version {})", index.name, index.version_id);
+            println!("🔍 Found {} files to download", index.files.len());
+
+            // Step 2: Handle overrides first (extract from ZIP)
+            for i in 0..archive.len() {
+                let mut file = archive.by_index(i)
+                    .context("Failed to read file from archive")?;
+                
+                let file_path = file.name().to_string();
+                
+                // Only extract overrides and client-overrides (ignore server-overrides for client)
+                if file_path.starts_with("overrides/") || file_path.starts_with("client-overrides/") {
+                    let relative_path = if file_path.starts_with("overrides/") {
+                        &file_path[10..] // Remove "overrides/" prefix
+                    } else {
+                        &file_path[17..] // Remove "client-overrides/" prefix
+                    };
+                    
+                    if relative_path.is_empty() || file_path.ends_with('/') {
+                        continue; // Skip directories and empty paths
+                    }
+                    
+                    let outpath = instance_dir.join(relative_path);
+                    
+                    if let Some(p) = outpath.parent() {
+                        std::fs::create_dir_all(p)
+                            .context("Failed to create parent directory")?;
+                    }
+                    
+                    let mut buffer = Vec::new();
+                    file.read_to_end(&mut buffer)
+                        .context("Failed to read file content")?;
+                    
+                    std::fs::write(&outpath, &buffer)
+                        .context("Failed to write extracted file")?;
+                    
+                    println!("📁 Extracted override: {}", relative_path);
+                }
+            }
+
+            Ok(index)
+        }).await.map_err(|e| anyhow::anyhow!("Task join error: {}", e))??;
+
+        // Step 3: Download individual mod files (async part)
+        self.download_mrpack_files(&index.files).await
+            .context("Failed to download mrpack files")?;
+
+        println!("✅ Successfully installed mrpack with proper dependency resolution");
+        Ok(())
+    }
+
+    /// Download individual mod files from mrpack index with hash verification (parallel)
+    async fn download_mrpack_files(&self, files: &[super::types::MrpackFile]) -> Result<()> {
+        use std::collections::HashSet;
+        use std::sync::{Arc, Mutex};
+        use tokio::sync::Semaphore;
+        use futures::stream::{FuturesUnordered, StreamExt};
+
+        // Create mods directory
+        let mods_dir = self.instance_dir.join("mods");
+        tokio::fs::create_dir_all(&mods_dir).await
+            .context("Failed to create mods directory")?;
+
+        // Thread-safe collections for tracking downloads
+        let downloaded_files = Arc::new(Mutex::new(HashSet::new()));
+        let failed_downloads = Arc::new(Mutex::new(Vec::new()));
+        
+        // Limit concurrent downloads to prevent overwhelming the server/network
+        // Use environment variable or default to 8 concurrent downloads
+        let max_concurrent = std::env::var("CHAI_MAX_CONCURRENT_DOWNLOADS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(8)
+            .clamp(1, 16); // Clamp between 1 and 16
+        let semaphore = Arc::new(Semaphore::new(max_concurrent));
+        let total_files = files.len();
+        let completed_count = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+
+        println!("🚀 Starting parallel download of {} mod files (max {} concurrent)", total_files, max_concurrent);
+
+        // Create futures for all downloads
+        let mut download_futures = FuturesUnordered::new();
+        
+        for (i, file) in files.iter().enumerate() {
+            // Skip duplicates early
+            if downloaded_files.lock().unwrap().contains(&file.path) {
+                println!("⚠️  Skipping duplicate file: {}", file.path);
+                completed_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                continue;
+            }
+
+            let semaphore = semaphore.clone();
+            let downloaded_files = downloaded_files.clone();
+            let failed_downloads = failed_downloads.clone();
+            let completed_count = completed_count.clone();
+            let client = self.client.clone();
+            let instance_dir = self.instance_dir.clone();
+            
+            let file_path = file.path.clone();
+            let file_downloads = file.downloads.clone();
+            let expected_sha1 = file.hashes.sha1.clone();
+            let file_size = file.file_size;
+            let file_index = i + 1;
+
+            let download_future = async move {
+                let _permit = semaphore.acquire().await.unwrap();
+                
+                // Check again if already downloaded (race condition protection)
+                if downloaded_files.lock().unwrap().contains(&file_path) {
+                    let current = completed_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+                    println!("⚠️  [{}/{}] Skipping duplicate file: {}", current, total_files, file_path);
+                    return Ok(());
+                }
+
+                println!("📥 [{}/{}] Downloading: {}", file_index, total_files, file_path);
+
+                // Try each download URL with retry logic
+                let mut download_success = false;
+                for (url_index, url) in file_downloads.iter().enumerate() {
+                    // Retry each URL up to 3 times
+                    for retry_attempt in 0..3 {
+                        match Self::download_and_verify_file_static(
+                            &client, 
+                            &instance_dir, 
+                            url, 
+                            &file_path, 
+                            &expected_sha1, 
+                            file_size
+                        ).await {
+                            Ok(_) => {
+                                downloaded_files.lock().unwrap().insert(file_path.clone());
+                                download_success = true;
+                                let current = completed_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+                                if retry_attempt > 0 {
+                                    println!("✅ [{}/{}] Downloaded (retry {}): {}", current, total_files, retry_attempt + 1, file_path);
+                                } else {
+                                    println!("✅ [{}/{}] Downloaded: {}", current, total_files, file_path);
+                                }
+                                break;
+                            }
+                            Err(e) => {
+                                if retry_attempt < 2 {
+                                    println!("⚠️  Retry {}/3 for {} from URL {}: {}", retry_attempt + 1, file_path, url_index + 1, e);
+                                    tokio::time::sleep(std::time::Duration::from_millis(1000 * (retry_attempt + 1) as u64)).await;
+                                } else {
+                                    eprintln!("⚠️  Failed to download {} from URL {}: {}", file_path, url_index + 1, e);
+                                }
+                                continue;
+                            }
+                        }
+                    }
+                    
+                    if download_success {
+                        break;
+                    }
+                }
+
+                if !download_success {
+                    failed_downloads.lock().unwrap().push(file_path.clone());
+                    let current = completed_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+                    eprintln!("❌ [{}/{}] Failed to download: {}", current, total_files, file_path);
+                    return Err(anyhow::anyhow!("Failed to download: {}", file_path));
+                }
+
+                Ok(())
+            };
+
+            download_futures.push(download_future);
+        }
+
+        // Execute all downloads concurrently
+        let mut success_count = 0;
+        let mut failure_count = 0;
+
+        while let Some(result) = download_futures.next().await {
+            match result {
+                Ok(_) => success_count += 1,
+                Err(_) => failure_count += 1,
+            }
+        }
+
+        // Check final results
+        let failed = failed_downloads.lock().unwrap();
+        if !failed.is_empty() {
+            return Err(anyhow::anyhow!("Failed to download {} files: {:?}", 
+                failed.len(), *failed));
+        }
+
+        let downloaded = downloaded_files.lock().unwrap();
+        println!("🎉 Successfully downloaded {} mod files in parallel (Success: {}, Skipped duplicates: {})", 
+            downloaded.len(), success_count, total_files - success_count - failure_count);
+        Ok(())
+    }
+
+    /// Download a file and verify its hash
+    async fn download_and_verify_file(&self, url: &str, filename: &str, expected_sha1: &str, expected_size: u64) -> Result<()> {
+        use sha1::{Digest, Sha1};
+
+        let file_path = self.instance_dir.join("mods").join(filename);
+        
+        // Skip if file already exists with correct hash
+        if file_path.exists() {
+            if let Ok(existing_data) = tokio::fs::read(&file_path).await {
+                if existing_data.len() as u64 == expected_size {
+                    let mut hasher = Sha1::new();
+                    hasher.update(&existing_data);
+                    let hash = hex::encode(hasher.finalize());
+                    
+                    if hash == expected_sha1 {
+                        println!("✅ File already exists with correct hash: {}", filename);
+                        return Ok(());
+                    }
+                }
+            }
+        }
+
+        // Download the file
+        let response = self.client.get(url)
+            .header("User-Agent", "ChaiLauncher/2.0.0")
+            .send()
+            .await
+            .context("Failed to download file")?;
+
+        if !response.status().is_success() {
+            return Err(anyhow::anyhow!("HTTP error {}: {}", response.status(), url));
+        }
+
+        let data = response.bytes().await
+            .context("Failed to read file data")?;
+
+        // Verify file size
+        if data.len() as u64 != expected_size {
+            return Err(anyhow::anyhow!("File size mismatch: expected {}, got {}", expected_size, data.len()));
+        }
+
+        // Verify SHA1 hash
+        let mut hasher = Sha1::new();
+        hasher.update(&data);
+        let hash = hex::encode(hasher.finalize());
+        
+        if hash != expected_sha1 {
+            return Err(anyhow::anyhow!("Hash mismatch: expected {}, got {}", expected_sha1, hash));
+        }
+
+        // Write the file
+        tokio::fs::write(&file_path, &data).await
+            .context("Failed to write file")?;
+
+        println!("✅ Downloaded and verified: {}", filename);
+        Ok(())
+    }
+
+    /// Static version of download_and_verify_file for use in parallel contexts
+    async fn download_and_verify_file_static(
+        client: &reqwest::Client,
+        instance_dir: &std::path::Path,
+        url: &str, 
+        filename: &str, 
+        expected_sha1: &str, 
+        expected_size: u64
+    ) -> Result<()> {
+        use sha1::{Digest, Sha1};
+
+        let file_path = instance_dir.join("mods").join(filename);
+        
+        // Skip if file already exists with correct hash
+        if file_path.exists() {
+            if let Ok(existing_data) = tokio::fs::read(&file_path).await {
+                if existing_data.len() as u64 == expected_size {
+                    let mut hasher = Sha1::new();
+                    hasher.update(&existing_data);
+                    let hash = hex::encode(hasher.finalize());
+                    
+                    if hash == expected_sha1 {
+                        return Ok(()); // File already exists with correct hash
+                    }
+                }
+            }
+        }
+
+        // Download the file
+        let response = client.get(url)
+            .header("User-Agent", "ChaiLauncher/2.0.0")
+            .send()
+            .await
+            .context("Failed to download file")?;
+
+        if !response.status().is_success() {
+            return Err(anyhow::anyhow!("HTTP error {}: {}", response.status(), url));
+        }
+
+        let data = response.bytes().await
+            .context("Failed to read file data")?;
+
+        // Verify file size
+        if data.len() as u64 != expected_size {
+            return Err(anyhow::anyhow!("File size mismatch: expected {}, got {}", expected_size, data.len()));
+        }
+
+        // Verify SHA1 hash
+        let mut hasher = Sha1::new();
+        hasher.update(&data);
+        let hash = hex::encode(hasher.finalize());
+        
+        if hash != expected_sha1 {
+            return Err(anyhow::anyhow!("Hash mismatch: expected {}, got {}", expected_sha1, hash));
+        }
+
+        // Write the file
+        tokio::fs::write(&file_path, &data).await
+            .context("Failed to write file")?;
+
+        Ok(())
+    }
+
+    /// Install .mrpack directly from version metadata without downloading the pack file
+    pub async fn install_mrpack_direct<F>(&self, version: &ModrinthVersion, mut progress_callback: F) -> Result<()>
+    where
+        F: FnMut(ModpackInstallProgress),
+    {
+        use super::types::{MrpackIndex, MrpackFile, MrpackHashes};
+
+        println!("🔧 Installing modpack '{}' directly from metadata", version.name);
+        
+        // Create instance directory
+        tokio::fs::create_dir_all(&self.instance_dir).await
+            .context("Failed to create instance directory")?;
+
+        progress_callback(ModpackInstallProgress {
+            instance_dir: self.instance_dir.to_string_lossy().to_string(),
+            progress: 10.0,
+            stage: "Preparing modpack installation".to_string(),
+        });
+
+        // Convert ModrinthVersion to our internal format for processing
+        let mrpack_files: Vec<MrpackFile> = version.files.iter().map(|file| {
+            MrpackFile {
+                path: file.filename.clone(),
+                hashes: MrpackHashes {
+                    sha1: file.hashes.get("sha1").cloned().unwrap_or_default(),
+                    sha512: file.hashes.get("sha512").cloned(),
+                },
+                env: None, // Modrinth doesn't provide this in the same format
+                downloads: vec![file.url.clone()],
+                file_size: file.size as u64,
+            }
+        }).collect();
+
+        progress_callback(ModpackInstallProgress {
+            instance_dir: self.instance_dir.to_string_lossy().to_string(),
+            progress: 20.0,
+            stage: format!("Downloading {} mods in parallel", mrpack_files.len()),
+        });
+
+        // Use our parallel download system
+        self.download_mrpack_files(&mrpack_files).await
+            .context("Failed to download modpack files")?;
+
+        progress_callback(ModpackInstallProgress {
+            instance_dir: self.instance_dir.to_string_lossy().to_string(),
+            progress: 90.0,
+            stage: "Finalizing modpack installation".to_string(),
+        });
+
+        // TODO: Handle overrides if they exist in version metadata
+        // For now, Modrinth versions don't typically include override data in the API
+
+        progress_callback(ModpackInstallProgress {
+            instance_dir: self.instance_dir.to_string_lossy().to_string(),
+            progress: 100.0,
+            stage: "Modpack installation complete".to_string(),
+        });
+
+        println!("✅ Successfully installed modpack '{}' with {} mods", version.name, mrpack_files.len());
+        Ok(())
     }
 }
 

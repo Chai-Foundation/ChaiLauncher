@@ -325,7 +325,7 @@ impl MCVMCore {
         
         // Call ChaiLauncher's existing asset download function
         if let Some(handle) = &app_handle {
-            crate::minecraft::commands::download_minecraft_assets_with_progress(
+            crate::minecraft::commands::download_minecraft_assets_with_progress_auto(
                 version.to_string(),
                 game_dir_str,
                 &instance.name, // instance ID

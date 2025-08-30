@@ -114,3 +114,36 @@ impl ModpackCreator {
         Self
     }
 }
+
+/// Proper .mrpack format structures
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MrpackIndex {
+    pub format_version: u32,
+    pub game: String,
+    pub version_id: String,
+    pub name: String,
+    pub summary: Option<String>,
+    pub files: Vec<MrpackFile>,
+    pub dependencies: HashMap<String, String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MrpackFile {
+    pub path: String,
+    pub hashes: MrpackHashes,
+    pub env: Option<MrpackEnv>,
+    pub downloads: Vec<String>,
+    pub file_size: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MrpackHashes {
+    pub sha1: String,
+    pub sha512: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MrpackEnv {
+    pub client: Option<String>,
+    pub server: Option<String>,
+}

@@ -7,7 +7,9 @@
       "Bash(cargo check:*)",
       "Read(C:\\Users\\redst\\OneDrive\\Documents\\GitHub\\chai-project\\mcvm\\crates\\pkg\\src/**)",
       "Bash(npm run build:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "WebFetch(domain:support.modrinth.com)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []
