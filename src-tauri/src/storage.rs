@@ -29,7 +29,7 @@ pub struct InstanceMetadata {
     pub java_analysis_date: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LauncherConfig {
     pub instances: HashMap<String, InstanceMetadata>,
     pub docker_connections: HashMap<String, DockerConnection>,
@@ -93,6 +93,7 @@ impl Default for LauncherConfig {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct StorageManager {
     config_path: PathBuf,
     config: LauncherConfig,
