@@ -13,7 +13,7 @@ pub mod versions;      // Version management using MCVM
 pub mod launcher;      // Launching logic using MCVM
 pub mod assets;        // Asset management using MCVM
 pub mod java;          // Java management (enhanced with MCVM)
-pub mod commands;      // Tauri commands (unchanged API)
+pub mod commands;      // Tauri commands (refactored into submodules)
 pub mod mod_scanner;   // Mod JAR scanning for Java requirements
 
 // Re-export main types for compatibility
