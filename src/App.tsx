@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import LauncherSidebar from './components/LauncherSidebar';
@@ -8,12 +8,12 @@ import ServersView from './components/ServersView';
 import ModpackBrowser from './components/ModpackBrowser';
 import SettingsView from './components/SettingsView';
 import AccountsView from './components/AccountsView';
-import CreateInstanceModal from './components/CreateInstanceModal';
 import JavaInstallModal from './components/JavaInstallModal';
 import InstanceSettingsModal from './components/InstanceSettingsModal';
-import ExitConfirmationModal from './components/ExitConfirmationModal';
-import { MinecraftInstance, MinecraftVersion, ModpackInfo, LauncherSettings, NewsItem, InstallProgressEvent, InstallCompleteEvent } from './types/minecraft';
-import { applyColorScheme } from './utils/colors';
+import { CreateInstanceModal, ExitConfirmationModal } from './components/modals';
+import { MinecraftInstance, ModpackInfo } from './types/minecraft';
+import { useInstances, useSettings, useMinecraftVersions } from './hooks';
+import { JavaService } from './services';
 import heroImage from './assets/hero.png';
 import type { CSSProperties } from 'react';
 import './index.css';
@@ -23,62 +23,22 @@ function App() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJavaInstallModal, setShowJavaInstallModal] = useState(false);
   const [showExitConfirmationModal, setShowExitConfirmationModal] = useState(false);
+  const [editingInstance, setEditingInstance] = useState<MinecraftInstance | null>(null);
   const [pendingInstanceLaunch, setPendingInstanceLaunch] = useState<MinecraftInstance | null>(null);
   const [requiredJavaVersion, setRequiredJavaVersion] = useState<number>(17);
 
-  // Instance state
-  const [instances, setInstances] = useState<MinecraftInstance[]>([]);
-  const [launcherSettings, setLauncherSettings] = useState<LauncherSettings | null>(null);
-  const [, setInstallProgress] = useState<Map<string, InstallProgressEvent>>(new Map());
-  const [minecraftVersions, setMinecraftVersions] = useState<MinecraftVersion[]>([]);
-  const [versionsLoading, setVersionsLoading] = useState(true);
-  const [versionsError, setVersionsError] = useState<string | null>(null);
-
-  // Editing instance state
-  const [editingInstance, setEditingInstance] = useState<MinecraftInstance | null>(null);
-
-  // Use ref to maintain current instances for event handlers
-  const instancesRef = useRef<MinecraftInstance[]>([]);
-
-  // Update ref whenever instances change
-  useEffect(() => {
-    instancesRef.current = instances;
-  }, [instances]);
-
-  // Stable progress update handler with throttling
-  const handleProgressUpdate = useCallback((event: any) => {
-    const instanceId = event.instance_id || event.instanceId;
-    const newProgress = Math.round(event.progress);
-    
-    setInstances(prev => {
-      const updated = prev.map(inst => {
-        if (inst.id === instanceId) {
-          // Only update if progress changed by at least 1% to reduce flickering
-          const currentProgress = Math.round(inst.installProgress || 0);
-          if (Math.abs(newProgress - currentProgress) >= 1 || inst.status !== 'installing') {
-            const updatedInstance = { 
-              ...inst, 
-              installProgress: newProgress, 
-              status: 'installing' as const,
-            };
-            console.log(`Updating instance ${inst.name}: progress=${newProgress}%`);
-            return updatedInstance;
-          }
-        }
-        return inst;
-      });
-      return updated;
-    });
-  }, []);
-
-  // Get currently installing instances
-  const getInstallingInstances = useCallback(() => {
-    return instances.filter(instance => instance.status === 'installing')
-      .map(instance => ({
-        name: instance.name,
-        installProgress: instance.installProgress || 0
-      }));
-  }, [instances]);
+  // Custom hooks
+  const { settings, launcherSettings, updateSettings, openFolder } = useSettings();
+  const { 
+    instances, 
+    instancesRef, 
+    createInstance, 
+    launchInstance, 
+    deleteInstance, 
+    openInstanceFolder,
+    getInstallingInstances 
+  } = useInstances(launcherSettings);
+  const { minecraftVersions, versionsLoading, versionsError } = useMinecraftVersions();
 
   // Handle exit attempt
   const handleExitAttempt = useCallback(() => {
@@ -101,234 +61,10 @@ function App() {
     }
   }, []);
 
-  // Stable completion handler
-  const handleInstallComplete = useCallback(async (event: any) => {
-    console.log('Install complete event received:', event);
-    const instanceId = event.instance_id || event.instanceId;
-    setInstallProgress(prev => {
-      const newMap = new Map(prev);
-      newMap.delete(instanceId);
-      return newMap;
-    });
-    
-    if (event.success) {
-      setInstances(prev => 
-        prev.map(inst => 
-          inst.id === instanceId
-            ? { ...inst, status: 'ready', installProgress: 100 }
-            : inst
-        )
-      );
-    } else {
-      setInstances(prev => 
-        prev.map(inst => 
-          inst.id === instanceId
-            ? { ...inst, status: 'failed', errorMessage: event.error || 'Installation failed' }
-            : inst
-        )
-      );
-    }
-  }, []);
-
-  // Detect all external launcher instances
-  const detectExternalInstances = async (): Promise<MinecraftInstance[]> => {
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      const externalInstances = await invoke('detect_all_external_instances');
-      return (externalInstances as any[]).map(instance => {
-        const gameDir = instance.path || instance.game_dir || '';
-        let status: 'ready' | 'invalid' = 'ready';
-        let errorMessage: string | undefined;
-        
-        // Validate instance
-        if (!gameDir) {
-          status = 'invalid';
-          errorMessage = 'Missing game directory path';
-        } else if (!instance.name) {
-          status = 'invalid';
-          errorMessage = 'Missing instance name';
-        } else if (!instance.version) {
-          status = 'invalid';
-          errorMessage = 'Missing Minecraft version';
-        }
-        
-        return {
-          id: instance.id,
-          name: instance.name || 'Unknown Instance',
-          version: instance.version || 'Unknown',
-          gameDir,
-          lastPlayed: instance.last_played ? new Date(instance.last_played) : undefined,
-          totalPlayTime: instance.total_play_time || 0,
-          isModded: instance.is_modded || false,
-          modsCount: instance.mods_count || 0,
-          isExternal: true,
-          externalLauncher: instance.launcher_type as 'gdlauncher' | 'multimc' | 'prism' | 'modrinth',
-          modpack: instance.modpack,
-          modpackVersion: instance.modpack_version,
-          icon: instance.icon,
-          status,
-          errorMessage,
-        };
-      });
-    } catch (error) {
-      console.error('Failed to detect external launcher instances:', error);
-      return [];
-    }
-  };
-
-  // Ensure Java is available
-  const ensureJavaAvailable = async () => {
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('get_bundled_java_path');
-      console.log('Bundled Java is available');
-    } catch (error) {
-      console.log('Bundled Java not found, will download when needed');
-    }
-  };
-
-  // Load Minecraft versions
+  // Set up window close listeners
   useEffect(() => {
-    const loadVersions = async () => {
+    const setupCloseListener = async () => {
       try {
-        setVersionsLoading(true);
-        setVersionsError(null);
-        const { invoke } = await import('@tauri-apps/api/core');
-        const versionManifest = await invoke('get_minecraft_versions') as { versions: MinecraftVersion[] };
-        setMinecraftVersions(versionManifest.versions);
-      } catch (error) {
-        console.error('Failed to load Minecraft versions:', error);
-        
-        // Extract detailed error message for debugging
-        let errorMessage: string;
-        if (error instanceof Error) {
-          errorMessage = error.message;
-        } else if (typeof error === 'object' && error !== null && 'message' in error) {
-          errorMessage = String((error as any).message);
-        } else {
-          errorMessage = String(error);
-        }
-        
-        // Store error for UI display instead of alert
-        setVersionsError(`Failed to load Minecraft versions: ${errorMessage}`);
-        
-        // Fallback to a minimal set if API fails
-        setMinecraftVersions([
-          { id: '1.20.4', type: 'release', releaseTime: '2023-12-07T12:00:00Z', url: '' },
-          { id: '1.20.3', type: 'release', releaseTime: '2023-12-05T12:00:00Z', url: '' },
-        ]);
-      } finally {
-        setVersionsLoading(false);
-      }
-    };
-
-    loadVersions();
-  }, []);
-
-  // Load instances and settings on startup
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        
-        // Load stored instances
-        const storedInstances = await invoke('load_instances') as MinecraftInstance[];
-        console.log('Loaded stored instances from backend:', storedInstances);
-        
-        // Validate stored instances have gameDir and add status
-        const validStoredInstances = storedInstances.filter(instance => {
-          const gameDir = (instance as any).gameDir || (instance as any).game_dir;
-          console.log('Validating stored instance:', {
-            id: instance.id,
-            name: instance.name,
-            gameDir: gameDir,
-            rawInstance: instance
-          });
-          
-          if (!gameDir) {
-            console.warn('Invalid stored instance found with missing gameDir:', instance.name || instance.id);
-            return false;
-          }
-          return true;
-        }).map(instance => {
-          // Convert snake_case to camelCase for frontend compatibility
-          const rawInstance = instance as any;
-          return {
-            id: rawInstance.id,
-            name: rawInstance.name,
-            version: rawInstance.version,
-            modpack: rawInstance.modpack,
-            modpackVersion: rawInstance.modpack_version,
-            gameDir: rawInstance.game_dir || rawInstance.gameDir,
-            javaPath: rawInstance.java_path,
-            jvmArgs: rawInstance.jvm_args,
-            lastPlayed: rawInstance.last_played ? new Date(rawInstance.last_played) : undefined,
-            totalPlayTime: rawInstance.total_play_time || 0,
-            icon: rawInstance.icon,
-            isModded: rawInstance.is_modded || false,
-            modsCount: rawInstance.mods_count || 0,
-            isExternal: rawInstance.is_external,
-            externalLauncher: rawInstance.external_launcher,
-            status: rawInstance.status || 'ready' as const
-          } as MinecraftInstance;
-        });
-        
-        console.log('Valid stored instances after filtering:', validStoredInstances);
-        
-        // Load external instances
-        const externalInstances = await detectExternalInstances();
-        
-        // Filter external instances to ensure gameDir exists
-        const validExternalInstances = externalInstances.filter(instance => {
-          if (!instance.gameDir) {
-            console.warn('Invalid external instance found with missing gameDir:', instance.name || instance.id);
-            return false;
-          }
-          return true;
-        });
-        
-        // Combine both
-        const allInstances = [...validStoredInstances, ...validExternalInstances];
-        console.log('Final combined instances:', allInstances);
-        setInstances(allInstances);
-        
-        // Load launcher settings
-        const backendSettings = await invoke('get_launcher_settings') as LauncherSettings;
-        setLauncherSettings(backendSettings);
-        setSettings(backendSettings);
-        
-      } catch (error) {
-        console.error('Failed to load launcher data:', error);
-        // Fallback to external instances only
-        const externalInstances = await detectExternalInstances();
-        const validExternalInstances = externalInstances.filter(instance => {
-          if (!instance.gameDir) {
-            console.warn('Invalid external instance found with missing gameDir:', instance.name || instance.id);
-            return false;
-          }
-          return true;
-        });
-        setInstances(validExternalInstances);
-      }
-    };
-
-    // Set up event listeners
-    const setupEventListeners = async () => {
-      try {
-        const { listen } = await import('@tauri-apps/api/event');
-        
-        // Listen for install progress
-        const unlistenProgress = await listen<InstallProgressEvent>('install_progress', (event) => {
-          handleProgressUpdate(event.payload);
-        });
-        
-      
-        // Listen for install completion
-        const unlistenComplete = await listen<InstallCompleteEvent>('install_complete', (event) => {
-          handleInstallComplete(event.payload);
-        });
-
-        // Listen for close requests (native OS close events)
         const currentWindow = getCurrentWindow();
         const unlistenCloseRequested = await currentWindow.onCloseRequested(async (event) => {
           // Check current instances using the ref to get latest state
@@ -341,112 +77,68 @@ function App() {
           // If no installations, allow the close to proceed normally
         });
         
-        return () => {
-          unlistenProgress();
-          unlistenComplete();
-          unlistenCloseRequested();
-        };
+        return unlistenCloseRequested;
       } catch (error) {
-        console.error('Failed to set up event listeners:', error);
+        console.error('Failed to set up close listener:', error);
       }
     };
 
-    loadData();
-    setupEventListeners();
-    ensureJavaAvailable();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    setupCloseListener();
+  }, [instancesRef]);
 
-  // Automatic orphaned instance scanning
+  // Ensure Java is available on startup
   useEffect(() => {
-    let intervalId: ReturnType<typeof setInterval> | undefined = undefined;
+    JavaService.ensureJavaAvailable();
+  }, []);
 
-    const importOrphanedInstances = async () => {
-      try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        const imported = await invoke('import_orphaned_instances') as string[];
-        
-        if (imported.length > 0) {
-          console.log('🔄 Auto-imported orphaned instances:', imported);
-          
-          // Reload instances to show the newly imported ones
-          const updatedInstances = await invoke('load_instances') as MinecraftInstance[];
-          const validInstances = updatedInstances.filter(instance => {
-            const gameDir = (instance as any).gameDir || (instance as any).game_dir;
-            return !!gameDir;
-          }).map(instance => {
-            const rawInstance = instance as any;
-            return {
-              id: rawInstance.id,
-              name: rawInstance.name,
-              version: rawInstance.version,
-              modpack: rawInstance.modpack,
-              modpackVersion: rawInstance.modpack_version,
-              gameDir: rawInstance.game_dir || rawInstance.gameDir,
-              javaPath: rawInstance.java_path,
-              jvmArgs: rawInstance.jvm_args,
-              lastPlayed: rawInstance.last_played ? new Date(rawInstance.last_played) : undefined,
-              totalPlayTime: rawInstance.total_play_time || 0,
-              icon: rawInstance.icon,
-              isModded: rawInstance.is_modded || false,
-              modsCount: rawInstance.mods_count || 0,
-              status: 'ready' as const,
-              installProgress: 0
-            } as MinecraftInstance;
-          });
-          
-          setInstances(validInstances);
+  const handleCreateInstance = async (data: {
+    name: string;
+    version: string;
+    modpack?: string;
+    modpackVersion?: string;
+  }) => {
+    await createInstance(data);
+    setShowCreateModal(false);
+  };
+
+  const handlePlayInstance = async (instance: MinecraftInstance) => {
+    try {
+      await launchInstance(instance, settings);
+    } catch (error: any) {
+      if (error.message === 'JAVA_REQUIRED') {
+        try {
+          const requiredVersion = await JavaService.getRequiredJavaVersion(instance.version);
+          setRequiredJavaVersion(requiredVersion);
+        } catch {
+          setRequiredJavaVersion(17);
         }
-      } catch (error) {
-        console.log('Orphaned instance scan failed (normal if no orphans):', error);
+        setPendingInstanceLaunch(instance);
+        setShowJavaInstallModal(true);
+      } else {
+        console.error('Failed to launch instance:', error);
+        alert(`Failed to launch ${instance.name}: ${error.message || error}`);
       }
-    };
-
-    // Run immediately on mount
-    importOrphanedInstances();
-
-    // Set up interval to run every 15 seconds
-    // intervalId = setInterval(importOrphanedInstances, 15000);
-
-    // Cleanup interval on unmount
-    return () => {
-      if (intervalId !== undefined) {
-        clearInterval(intervalId);
-      }
-    };
-  }, []);
-
-  const [settings, setSettings] = useState<LauncherSettings>({
-    default_memory: 4096,
-    default_jvm_args: ['-XX:+UnlockExperimentalVMOptions', '-XX:+UseG1GC'],
-    instances_dir: '/minecraft/instances',
-    downloads_dir: '/minecraft/downloads',
-    theme: 'dark',
-    primary_base_color: '#78716c',
-    secondary_base_color: '#eb9109',
-    auto_update: true,
-    keepLauncherOpen: true,
-    showSnapshots: false,
-    javaPath: '',
-    maxMemory: 4096,
-    minMemory: 1024,
-    jvmArgs: ['-XX:+UnlockExperimentalVMOptions', '-XX:+UseG1GC'],
-    gameDir: '/minecraft',
-  });
-
-  // Apply default color scheme immediately on mount
-  useEffect(() => {
-    // Apply default colors before settings are loaded to prevent white borders
-    applyColorScheme(settings);
-  }, []);
-
-  // Apply color scheme when settings change
-  useEffect(() => {
-    if (settings || launcherSettings) {
-      const activeSettings = launcherSettings || settings;
-      applyColorScheme(activeSettings);
     }
-  }, [settings, launcherSettings]);
+  };
 
+  const handleJavaInstallComplete = async (javaPath: string) => {
+    setShowJavaInstallModal(false);
+    
+    if (pendingInstanceLaunch) {
+      try {
+        await launchInstance(pendingInstanceLaunch, { ...settings, javaPath });
+      } catch (error: any) {
+        console.error('Failed to launch instance after Java install:', error);
+        alert(`Failed to launch ${pendingInstanceLaunch.name}: ${error.message || error}`);
+      }
+      setPendingInstanceLaunch(null);
+    }
+  };
+
+  const handleJavaInstallCancel = () => {
+    setShowJavaInstallModal(false);
+    setPendingInstanceLaunch(null);
+  };
 
   const mockModpacks: ModpackInfo[] = [
     {
@@ -471,259 +163,7 @@ function App() {
     },
   ];
 
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const mockAccounts = [
-    {
-      id: '1',
-      username: 'Player123',
-      email: 'player@example.com',
-      type: 'microsoft' as const,
-      isActive: true,
-      lastUsed: new Date(Date.now() - 86400000),
-    },
-    {
-      id: '2',
-      username: 'OfflinePlayer',
-      email: '',
-      type: 'offline' as const,
-      isActive: false,
-    },
-  ];
-
-  const handleCreateInstance = async (data: {
-    name: string;
-    version: string;
-    modpack?: string;
-    modpackVersion?: string;
-  }) => {
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      
-      const params = {
-        versionId: data.version,
-        instanceName: data.name,
-        gameDir: launcherSettings?.instances_dir || '/minecraft',
-      };
-      
-  // Generate instance ID upfront to avoid timing issues
-  const instanceId = `instance-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-      // Create instance with real ID and installing status BEFORE starting installation
-      const newInstance: MinecraftInstance = {
-        id: instanceId,
-        name: data.name,
-        version: data.version,
-        gameDir: `${launcherSettings?.instances_dir || '/minecraft'}/${data.name}`,
-        totalPlayTime: 0,
-        isModded: !!data.modpack,
-        modsCount: 0,
-        status: 'installing',
-        installProgress: 0,
-        modpack: data.modpack,
-        modpackVersion: data.modpackVersion,
-      };
-      
-      // Add to instances BEFORE starting installation
-      setInstances(prev => [...prev, newInstance]);
-      
-      // Start the installation with predefined instance ID
-      await invoke('install_minecraft_version', {
-        ...params,
-        instanceId: instanceId
-      });
-      
-      setShowCreateModal(false);
-    } catch (error) {
-      console.error('Failed to create instance:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
-      
-      // Mark any temp instances as failed
-      setInstances(prev => 
-        prev.map(inst => 
-          inst.status === 'installing' 
-            ? { 
-                ...inst, 
-                status: 'failed', 
-                errorMessage: typeof error === 'string' 
-                  ? error 
-                  : error instanceof Error 
-                    ? error.message 
-                    : JSON.stringify(error) 
-              }
-            : inst
-        )
-      );
-    }
-  };
-
-  const handlePlayInstance = async (instance: MinecraftInstance) => {
-    // Validate gameDir before launching
-    if (!instance.gameDir) {
-      console.error('Cannot launch instance: gameDir is undefined or empty for instance:', instance.name);
-      alert('Error: This instance has an invalid game directory and cannot be launched.');
-      return;
-    }
-    
-    // Update last played time
-    setInstances(prev => 
-      prev.map(inst => 
-        inst.id === instance.id 
-          ? { ...inst, lastPlayed: new Date() }
-          : inst
-      )
-    );
-    
-    try {
-      console.log('Preparing to launch instance at:', instance.gameDir);
-      const { invoke } = await import('@tauri-apps/api/core');
-      
-      // Get bundled Java path, download if needed
-      let javaPath: string;
-      try {
-        javaPath = await invoke('get_java_for_minecraft_version', { 
-          minecraftVersion: instance.version 
-        }) as string;
-        console.log('Using appropriate Java version for', instance.version + ':', javaPath);
-      } catch (javaError) {
-        console.log('Specific Java version not found, trying default...');
-        try {
-          javaPath = await invoke('get_bundled_java_path') as string;
-          console.log('Using default bundled Java:', javaPath);
-        } catch (defaultError) {
-          console.log('No Java found, determining required Java version...');
-          try {
-            const requiredVersion = await invoke('get_required_java_version', {
-              minecraftVersion: instance.version
-            }) as number;
-            console.log(`MC ${instance.version} requires Java ${requiredVersion}`);
-            setRequiredJavaVersion(requiredVersion);
-          } catch (versionError) {
-            console.warn('Could not determine Java version, defaulting to 17');
-            setRequiredJavaVersion(17);
-          }
-          setPendingInstanceLaunch(instance);
-          setShowJavaInstallModal(true);
-          return;
-        }
-      }
-      
-      await invoke('launch_instance', {
-        instanceId: instance.id,
-        instancePath: instance.gameDir,
-        version: instance.version,
-        javaPath,
-        memory: settings.maxMemory || 4096,
-        jvmArgs: settings.jvmArgs || []
-      });
-      console.log('Successfully launched instance:', instance.name);
-    } catch (error) {
-      console.error('Failed to launch instance:', error);
-      alert(`Failed to launch ${instance.name}: ${error}`);
-    }
-  };
-
-  const handleJavaInstallComplete = async (javaPath: string) => {
-    setShowJavaInstallModal(false);
-    
-    if (pendingInstanceLaunch) {
-      // Launch the pending instance with the new Java path
-      try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        await invoke('launch_instance', {
-          instanceId: pendingInstanceLaunch.id,
-          instancePath: pendingInstanceLaunch.gameDir,
-          version: pendingInstanceLaunch.version,
-          javaPath,
-          memory: settings.maxMemory || 4096,
-          jvmArgs: settings.jvmArgs || []
-        });
-        console.log('Successfully launched instance:', pendingInstanceLaunch.name);
-      } catch (error) {
-        console.error('Failed to launch instance after Java install:', error);
-        alert(`Failed to launch ${pendingInstanceLaunch.name}: ${error}`);
-      }
-      
-      setPendingInstanceLaunch(null);
-    }
-  };
-
-  const handleJavaInstallCancel = () => {
-    setShowJavaInstallModal(false);
-    setPendingInstanceLaunch(null);
-  };
-
-  const handleEditInstance = (instance: MinecraftInstance) => {
-    setEditingInstance(instance);
-    setShowCreateModal(false);
-  };
-
-  const handleCreateButton = () => {
-    setShowCreateModal(true);
-  };
-
-  const handleDeleteInstance = async (instance: MinecraftInstance) => {
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      
-      if (!instance.isExternal) {
-        // Delete from storage
-        await invoke('delete_instance', { instanceId: instance.id });
-      }
-      
-      // Remove from UI
-      setInstances(prev => prev.filter(inst => inst.id !== instance.id));
-    } catch (error) {
-      console.error('Failed to delete instance:', error);
-    }
-  };
-
-  const handleUpdateSettings = async (newSettings: LauncherSettings) => {
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('update_launcher_settings', { settings: newSettings });
-      setSettings(newSettings);
-      setLauncherSettings(newSettings);
-      
-      // Apply the new color scheme immediately
-      applyColorScheme(newSettings);
-    } catch (error) {
-      console.error('Failed to update settings:', error);
-    }
-  };
-
-  const handleOpenFolder = async (folderPath: string) => {
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('open_folder', { path: folderPath });
-    } catch (error) {
-      console.error('Failed to open folder:', error);
-    }
-  };
-
-  const handleOpenInstanceFolder = async (instance: MinecraftInstance) => {
-    // Validate gameDir before opening
-    if (!instance.gameDir) {
-      console.error('Cannot open folder: gameDir is undefined or empty for instance:', instance.name);
-      alert('Error: This instance has an invalid game directory.');
-      return;
-    }
-    
-    if (instance.isExternal) {
-      await handleOpenFolder(instance.gameDir);
-    } else {
-      try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        await invoke('open_instance_folder', { instanceId: instance.id });
-      } catch (error) {
-        console.error('Failed to open instance folder:', error);
-        // Fallback to opening the gameDir directly
-        await handleOpenFolder(instance.gameDir);
-      }
-    }
-  };
-
   const renderActiveView = () => {
-    console.log('Rendering view with instances:', instances);
     switch (activeView) {
       case 'home':
         return (
@@ -736,9 +176,9 @@ function App() {
             })}
             onCreateInstance={() => setShowCreateModal(true)}
             onPlayInstance={handlePlayInstance}
-            onEditInstance={handleEditInstance}
-            onDeleteInstance={handleDeleteInstance}
-            onOpenFolder={handleOpenInstanceFolder}
+            onEditInstance={setEditingInstance}
+            onDeleteInstance={deleteInstance}
+            onOpenFolder={openInstanceFolder}
           />
         );
       case 'instances':
@@ -747,17 +187,13 @@ function App() {
             instances={instances}
             onCreateInstance={() => setShowCreateModal(true)}
             onPlayInstance={handlePlayInstance}
-            onEditInstance={handleEditInstance}
-            onDeleteInstance={handleDeleteInstance}
-            onOpenFolder={handleOpenInstanceFolder}
+            onEditInstance={setEditingInstance}
+            onDeleteInstance={deleteInstance}
+            onOpenFolder={openInstanceFolder}
           />
         );
       case 'servers':
-        return (
-          <ServersView
-            instances={instances}
-          />
-        );
+        return <ServersView instances={instances} />;
       case 'browse':
         return (
           <ModpackBrowser
@@ -769,8 +205,8 @@ function App() {
         return (
           <SettingsView
             settings={settings}
-            onUpdateSettings={handleUpdateSettings}
-            onOpenFolder={handleOpenFolder}
+            onUpdateSettings={updateSettings}
+            onOpenFolder={openFolder}
           />
         );
       case 'accounts':
@@ -784,9 +220,9 @@ function App() {
     }
   };
 
+  // Context menu prevention
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => {
-      // Only allow right-clicks on instance cards
       const target = e.target as HTMLElement;
       if (!target.closest('.allow-context-menu')) {
         e.preventDefault();
@@ -806,15 +242,12 @@ function App() {
 
     const imagePath = launcherSettings.background_image.replace(/^["']|["']$/g, '');
     
-    // If it's already a data URL or HTTP URL, use it directly
     if (imagePath.startsWith('data:') || 
         imagePath.startsWith('http://') || 
         imagePath.startsWith('https://')) {
       return imagePath;
     }
     
-    // For local file paths, try to convert using Tauri's convertFileSrc
-    // If this fails, the onError handler will fall back to heroImage
     try {
       return convertFileSrc(imagePath);
     } catch (error) {
@@ -824,132 +257,129 @@ function App() {
   };
 
   return (
-  <div className="min-h-screen h-full w-full bg-primary-950 flex flex-col">
-    {/* Hero Background Image */}
-    <div className="absolute inset-0">
-      <img
-        src={getBackgroundImageSrc()}
-        alt="Hero Background"
-        className="w-full h-full object-cover blur-sm"
-        onError={(e) => {
-          // Fallback to default hero image if custom background fails to load
-          (e.target as HTMLImageElement).src = heroImage;
-        }}
-      />
-      {/* Dark overlay for UI readability */}
-      <div className="absolute inset-0 bg-black/60"></div>
-    </div>
+    <div className="min-h-screen h-full w-full bg-primary-950 flex flex-col">
+      {/* Hero Background Image */}
+      <div className="absolute inset-0">
+        <img
+          src={getBackgroundImageSrc()}
+          alt="Hero Background"
+          className="w-full h-full object-cover blur-sm"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = heroImage;
+          }}
+        />
+        <div className="absolute inset-0 bg-black/60"></div>
+      </div>
 
-    {/* Main Content */}
-    <div className="relative z-10 flex w-full">
-      <LauncherSidebar
-        activeView={activeView}
-        onViewChange={setActiveView}
-      />
+      {/* Main Content */}
+      <div className="relative z-10 flex w-full">
+        <LauncherSidebar
+          activeView={activeView}
+          onViewChange={setActiveView}
+        />
 
         {/* Titlebar */}
         <div className="flex flex-col flex-1 min-h-0">
-        <div
-          className="bg-primary-900/60 backdrop-blur-sm border-r border-secondary-600/30 h-9 flex items-center justify-between"
-          style={{ WebkitAppRegion: 'drag' } as CSSProperties}
-        >
-          <div className="flex-1"></div>
-          {/* Windows Buttons */}
           <div
-            className="flex items-center gap-1 px-2"
-            style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
+            className="bg-primary-900/60 backdrop-blur-sm border-r border-secondary-600/30 h-9 flex items-center justify-between"
+            style={{ WebkitAppRegion: 'drag' } as CSSProperties}
           >
-          <button
-            className="w-6 h-6 flex items-center justify-center hover:bg-primary-800 rounded"
-            title="Minimize"
-            onClick={async (e) => {
-              e.stopPropagation();
-              const { getCurrentWindow } = await import('@tauri-apps/api/window');
-              const win = getCurrentWindow();
-              win.minimize();
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14">
-            <rect x="3" y="10" width="8" height="1.5" fill="var(--secondary-500)" />
-            </svg>
-          </button>
-          <button
-            className="w-6 h-6 flex items-center justify-center hover:bg-primary-800 rounded"
-            title="Maximize"
-            onClick={async (e) => {
-              e.stopPropagation();
-              const { getCurrentWindow } = await import('@tauri-apps/api/window');
-              const win = getCurrentWindow();
-              const isMaximized = await win.isMaximized();
-              if (isMaximized) {
-                win.unmaximize();
-              } else {
-                win.maximize();
-              }
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14">
-            <rect x="3" y="3" width="8" height="8" stroke="var(--secondary-500)" strokeWidth="1.5" fill="none" />
-            </svg>
-          </button>
-          <button
-            className="w-6 h-6 flex items-center justify-center hover:bg-red-700 rounded"
-            title="Close"
-            onClick={(e) => {
-              e.stopPropagation();
-              const shouldClose = handleExitAttempt();
-              if (shouldClose) {
-                handleConfirmedExit();
-              }
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14">
-            <line x1="4" y1="4" x2="10" y2="10" stroke="white" strokeWidth="1.5" />
-            <line x1="10" y1="4" x2="4" y2="10" stroke="white" strokeWidth="1.5" />
-            </svg>
-          </button>
+            <div className="flex-1"></div>
+            {/* Windows Buttons */}
+            <div
+              className="flex items-center gap-1 px-2"
+              style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
+            >
+              <button
+                className="w-6 h-6 flex items-center justify-center hover:bg-primary-800 rounded"
+                title="Minimize"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  const { getCurrentWindow } = await import('@tauri-apps/api/window');
+                  const win = getCurrentWindow();
+                  win.minimize();
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14">
+                  <rect x="3" y="10" width="8" height="1.5" fill="var(--secondary-500)" />
+                </svg>
+              </button>
+              <button
+                className="w-6 h-6 flex items-center justify-center hover:bg-primary-800 rounded"
+                title="Maximize"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  const { getCurrentWindow } = await import('@tauri-apps/api/window');
+                  const win = getCurrentWindow();
+                  const isMaximized = await win.isMaximized();
+                  if (isMaximized) {
+                    win.unmaximize();
+                  } else {
+                    win.maximize();
+                  }
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14">
+                  <rect x="3" y="3" width="8" height="8" stroke="var(--secondary-500)" strokeWidth="1.5" fill="none" />
+                </svg>
+              </button>
+              <button
+                className="w-6 h-6 flex items-center justify-center hover:bg-red-700 rounded"
+                title="Close"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const shouldClose = handleExitAttempt();
+                  if (shouldClose) {
+                    handleConfirmedExit();
+                  }
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14">
+                  <line x1="4" y1="4" x2="10" y2="10" stroke="white" strokeWidth="1.5" />
+                  <line x1="10" y1="4" x2="4" y2="10" stroke="white" strokeWidth="1.5" />
+                </svg>
+              </button>
+            </div>
           </div>
+          <main className="overflow-y-auto" style={{ height: 'calc(100vh - 40px)' }}>
+            {renderActiveView()}
+          </main>
         </div>
-        <main className="overflow-y-auto" style={{ height: 'calc(100vh - 40px)' }}>
-          {renderActiveView()}
-        </main>
-        </div>
 
-      <CreateInstanceModal
-        isOpen={showCreateModal}
-        onClose={() => {
-          setShowCreateModal(false);
-        }}
-        onCreateInstance={handleCreateInstance}
-        minecraftVersions={versionsLoading ? [] : minecraftVersions}
-        versionsLoading={versionsLoading}
-        versionsError={versionsError}
-        popularModpacks={mockModpacks}
-      />
-
-      <JavaInstallModal
-        isOpen={showJavaInstallModal}
-        onClose={handleJavaInstallCancel}
-        onInstallComplete={handleJavaInstallComplete}
-        requiredJavaVersion={requiredJavaVersion}
-      />
-
-      {editingInstance && (
-        <InstanceSettingsModal
-          isOpen={!!editingInstance}
-          onClose={() => setEditingInstance(null)}
-          instance={editingInstance}
+        {/* Modals */}
+        <CreateInstanceModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onCreateInstance={handleCreateInstance}
+          minecraftVersions={minecraftVersions}
+          versionsLoading={versionsLoading}
+          versionsError={versionsError}
+          popularModpacks={mockModpacks}
         />
-      )}
 
-      <ExitConfirmationModal
-        isOpen={showExitConfirmationModal}
-        onClose={() => setShowExitConfirmationModal(false)}
-        onConfirmExit={handleConfirmedExit}
-        installingInstances={getInstallingInstances()}
-      />
+        <JavaInstallModal
+          isOpen={showJavaInstallModal}
+          onClose={handleJavaInstallCancel}
+          onInstallComplete={handleJavaInstallComplete}
+          requiredJavaVersion={requiredJavaVersion}
+        />
+
+        {editingInstance && (
+          <InstanceSettingsModal
+            isOpen={!!editingInstance}
+            onClose={() => setEditingInstance(null)}
+            instance={editingInstance}
+          />
+        )}
+
+        <ExitConfirmationModal
+          isOpen={showExitConfirmationModal}
+          onClose={() => setShowExitConfirmationModal(false)}
+          onConfirmExit={handleConfirmedExit}
+          installingInstances={getInstallingInstances()}
+        />
+      </div>
     </div>
-  </div>
   );
 }
 

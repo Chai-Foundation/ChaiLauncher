@@ -5,7 +5,8 @@
       "Read(/C:\\Users\\redst\\OneDrive\\Documents\\GitHub\\chai-project\\mcvm\\crates\\core\\src\\launch/**)",
       "Read(/C:\\Users\\redst\\OneDrive\\Documents\\GitHub\\chai-project\\mcvm\\crates\\core\\src/**)",
       "Bash(cargo check:*)",
-      "Read(C:\\Users\\redst\\OneDrive\\Documents\\GitHub\\chai-project\\mcvm\\crates\\pkg\\src/**)"
+      "Read(C:\\Users\\redst\\OneDrive\\Documents\\GitHub\\chai-project\\mcvm\\crates\\pkg\\src/**)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

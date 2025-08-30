@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { Plus, Search, Grid, List, Play, Settings, Folder, Package } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MinecraftInstance } from '../types/minecraft';
-import InstanceCard from './InstanceCard';
+import { InstanceList } from './instance';
 import ModpackCreator from './ModpackCreator';
+import { Button } from './ui';
 
 interface InstancesViewProps {
   instances: MinecraftInstance[];
@@ -82,21 +83,19 @@ const InstancesView: React.FC<InstancesViewProps> = ({
           <p className="text-primary-400">{instances.length} instances</p>
         </div>
         <div className="flex gap-3">
-          <button
+          <Button
             onClick={() => setShowModpackCreator(true)}
             disabled={instances.length === 0}
-            className="bg-secondary-600 hover:bg-secondary-700 disabled:bg-primary-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+            icon={Package}
           >
-            <Package size={18} />
             Create Modpack
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={onCreateInstance}
-            className="bg-secondary-600 hover:bg-secondary-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+            icon={Plus}
           >
-            <Plus size={18} />
             Create Instance
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -156,98 +155,14 @@ const InstancesView: React.FC<InstancesViewProps> = ({
         </div>
       </div>
 
-      <AnimatePresence mode="wait">
-        {filteredInstances.length > 0 ? (
-          <motion.div
-            key={viewMode}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className={
-              viewMode === 'grid'
-                ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
-                : 'space-y-3'
-            }
-          >
-            {filteredInstances.map((instance) => (
-              viewMode === 'grid' ? (
-                <InstanceCard
-                  key={instance.id}
-                  instance={instance}
-                  onPlay={onPlayInstance}
-                  onEdit={handleEditInstance}
-                  onDelete={onDeleteInstance}
-                  onOpenFolder={onOpenFolder}
-                />
-              ) : (
-                <motion.div
-                  key={instance.id}
-                  layout
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  className="bg-primary-800 border border-primary-700 rounded-lg p-4 flex items-center gap-4 hover:border-primary-600 transition-colors group"
-                >
-                  <div className="w-16 h-16 bg-gradient-to-br from-secondary-600 to-secondary-700 rounded-lg flex-shrink-0"></div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-white truncate">{instance.name}</h3>
-                    <p className="text-sm text-primary-400">
-                      Minecraft {instance.version}
-                      {instance.modpack && ` • ${instance.modpack}`}
-                    </p>
-                    <p className="text-xs text-primary-500">
-                      {instance.lastPlayed ? instance.lastPlayed.toLocaleDateString() : 'Never played'}
-                    </p>
-                  </div>
-                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => onPlayInstance(instance)}
-                      className="bg-secondary-600 hover:bg-secondary-700 text-white p-2 rounded-lg transition-colors"
-                    >
-                      <Play size={16} />
-                    </button>
-                    <button
-                      onClick={() => handleEditInstance(instance)}
-                      className="bg-secondary-600 hover:bg-secondary-700 text-white p-2 rounded-lg transition-colors"
-                    >
-                      <Settings size={16} />
-                    </button>
-                    {onOpenFolder && (
-                      <button
-                        onClick={() => onOpenFolder(instance)}
-                        className="bg-secondary-600 hover:bg-secondary-700 text-white p-2 rounded-lg transition-colors"
-                      >
-                        <Folder size={16} />
-                      </button>
-                    )}
-                  </div>
-                </motion.div>
-              )
-            ))}
-          </motion.div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center py-12"
-          >
-            <div className="text-primary-400 mb-4">
-              {searchTerm || filterModded !== 'all' 
-                ? 'No instances match your search criteria' 
-                : 'No instances created yet'
-              }
-            </div>
-            {(!searchTerm && filterModded === 'all') && (
-              <button
-                onClick={onCreateInstance}
-                className="bg-secondary-600 hover:bg-secondary-700 text-white px-6 py-2 rounded-lg transition-colors"
-              >
-                Create Your First Instance
-              </button>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <InstanceList
+        instances={filteredInstances}
+        onPlay={onPlayInstance}
+        onEdit={handleEditInstance}
+        onDelete={onDeleteInstance}
+        onOpenFolder={onOpenFolder}
+        viewMode={viewMode}
+      />
 
       {/* Modpack Creator Modal */}
       {showModpackCreator && (

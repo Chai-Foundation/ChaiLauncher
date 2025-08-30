@@ -2,7 +2,7 @@ import React from 'react';
 import { Plus, Zap, TrendingUp, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { MinecraftInstance } from '../types/minecraft';
-import InstanceCard from './InstanceCard';
+import { InstanceCard } from './instance';
 import { useInfiniteNews } from '../hooks/useInfiniteNews';
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
 import { open } from '@tauri-apps/plugin-shell';
