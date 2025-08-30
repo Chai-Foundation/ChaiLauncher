@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { X, Container, TestTube, CheckCircle } from 'lucide-react';
+import React from 'react';
+import { X, Container, TestTube } from 'lucide-react';
 import { DockerConnection } from '../types/servers';
-import { invoke } from '@tauri-apps/api/core';
+import { useDockerConnection } from '../hooks/useDockerConnection';
+import { ConnectionForm } from './docker/ConnectionForm';
+import { ConnectionTestResult } from './docker/ConnectionTestResult';
 
 interface DockerConnectionModalProps {
   isOpen: boolean;
@@ -10,80 +12,32 @@ interface DockerConnectionModalProps {
 }
 
 const DockerConnectionModal: React.FC<DockerConnectionModalProps> = ({ isOpen, onClose, onAdd }) => {
-  const [formData, setFormData] = useState({
-    name: '',
-    host: 'localhost',
-    port: undefined as number | undefined,
-    connection_type: 'local' as 'local' | 'windows_named_pipe' | 'unix_socket' | 'remote' | 'swarm'
-  });
-
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const {
+    formData,
+    setFormData,
+    testing,
+    testResult,
+    resetForm,
+    testConnection,
+    validateAndCreateConnection,
+    getConnectionTypeLabel
+  } = useDockerConnection();
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name.trim()) {
-      alert('Connection name is required');
+    const result = validateAndCreateConnection();
+    if (typeof result === 'string') {
+      alert(result);
       return;
     }
 
-    const connection: DockerConnection = {
-      id: `docker-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-      name: formData.name.trim(),
-      host: formData.host,
-      port: formData.port,
-      connection_type: formData.connection_type,
-      is_connected: false // Will be set to true after successful test
-    };
-
-    onAdd(connection);
-    onClose();
-    resetForm();
+    onAdd(result);
+    handleClose();
   };
 
-  const handleTestConnection = async () => {
-    setTesting(true);
-    setTestResult(null);
-
-    try {
-      const testConnection: DockerConnection = {
-        id: 'test',
-        name: formData.name.trim() || 'Test Connection',
-        host: formData.host,
-        port: formData.port,
-        connection_type: formData.connection_type,
-        is_connected: false
-      };
-
-      const success = await invoke<boolean>('test_docker_connection', { connection: testConnection });
-      
-      if (success) {
-        setTestResult({ success: true, message: 'Connection successful!' });
-      } else {
-        setTestResult({ success: false, message: 'Connection failed' });
-      }
-    } catch (error) {
-      setTestResult({ 
-        success: false, 
-        message: error instanceof Error ? error.message : 'Connection failed' 
-      });
-    } finally {
-      setTesting(false);
-    }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      host: 'localhost',
-      port: undefined,
-      connection_type: 'local'
-    });
-    setTestResult(null);
-  };
 
   const handleClose = () => {
     resetForm();
@@ -210,7 +164,7 @@ const DockerConnectionModal: React.FC<DockerConnectionModalProps> = ({ isOpen, o
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={handleTestConnection}
+              onClick={testConnection}
               disabled={testing || !formData.name.trim()}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
             >
@@ -227,12 +181,7 @@ const DockerConnectionModal: React.FC<DockerConnectionModalProps> = ({ isOpen, o
               )}
             </button>
             
-            {testResult && (
-              <div className={`flex items-center gap-2 ${testResult.success ? 'text-green-400' : 'text-red-400'}`}>
-                {testResult.success && <CheckCircle className="w-4 h-4" />}
-                <span className="text-sm">{testResult.message}</span>
-              </div>
-            )}
+            <ConnectionTestResult testResult={testResult} testing={false} />
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-primary-600">
