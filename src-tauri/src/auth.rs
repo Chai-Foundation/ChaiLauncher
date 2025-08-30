@@ -174,12 +174,16 @@ pub async fn start_microsoft_oauth() -> Result<String, String> {
     let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
 
     // Generate CSRF token
-    let (auth_url, csrf_token) = client
+    let (mut auth_url, csrf_token) = client
         .authorize_url(|| CsrfToken::new_random())
         .add_scope(Scope::new("XboxLive.signin".to_string()))
         .add_scope(Scope::new("offline_access".to_string()))
         .set_pkce_challenge(pkce_challenge)
         .url();
+
+    // Add prompt=select_account to force account selection every time
+    // This prevents the issue where users get stuck with the wrong MS account
+    auth_url.query_pairs_mut().append_pair("prompt", "select_account");
 
     let session = OAuthSession {
         csrf_token: csrf_token.secret().clone(),
@@ -211,12 +215,16 @@ pub async fn start_oauth_with_server() -> Result<MinecraftAccount, String> {
     let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
 
     // Generate CSRF token
-    let (auth_url, csrf_token) = client
+    let (mut auth_url, csrf_token) = client
         .authorize_url(|| CsrfToken::new_random())
         .add_scope(Scope::new("XboxLive.signin".to_string()))
         .add_scope(Scope::new("offline_access".to_string()))
         .set_pkce_challenge(pkce_challenge)
         .url();
+
+    // Add prompt=select_account to force account selection every time
+    // This prevents the issue where users get stuck with the wrong MS account
+    auth_url.query_pairs_mut().append_pair("prompt", "select_account");
 
     // Start local server
     let server_future = start_callback_server();
