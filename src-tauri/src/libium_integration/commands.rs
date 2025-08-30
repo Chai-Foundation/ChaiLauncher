@@ -603,11 +603,8 @@ pub async fn fix_vanilla_instances() -> Result<Vec<String>, String> {
     let mut storage_manager = storage::StorageManager::new().await
         .map_err(|e| format!("Failed to initialize storage: {}", e))?;
 
-    // Collect instances into a Vec to avoid borrowing storage_manager
-    let instances_vec = {
-        let instances = storage_manager.get_all_instances();
-        instances.iter().cloned().collect::<Vec<_>>()
-    };
+    // Get all instances by value to avoid borrow conflicts
+    let instances_vec = storage_manager.get_all_instances().into_iter().collect::<Vec<_>>();
     
     for instance in instances_vec {
         let instance_path = &instance.game_dir;
