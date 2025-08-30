@@ -544,7 +544,8 @@ impl ModpackManager {
                                 println!("📦 Extracted mod: {}", file.name());
                             } else if install_overrides && file.name().starts_with("overrides/") {
                                 // Strip "overrides/" prefix when extracting
-                                let relative_path = file.name().strip_prefix("overrides/").unwrap_or(file.name());
+                                let file_name = file.name().to_string();
+                                let relative_path = file_name.strip_prefix("overrides/").unwrap_or(&file_name);
                                 let override_path = instance_path.join(relative_path);
                                 
                                 if let Some(parent) = override_path.parent() {
