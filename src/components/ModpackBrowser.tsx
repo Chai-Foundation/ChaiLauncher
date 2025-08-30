@@ -38,6 +38,7 @@ interface ModpackBrowserProps {
 
 export default function ModpackBrowser({ onCreateInstance, launcherSettings }: ModpackBrowserProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState('');
   const [selectedPlatform, setSelectedPlatform] = useState<'modrinth' | 'curseforge' | 'all'>('modrinth');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [installError, setInstallError] = useState<string | null>(null);
@@ -84,8 +85,8 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
 
 
   const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    // The hook will automatically refresh when searchQuery changes
+  e.preventDefault();
+  setSearchQuery(searchInput);
   };
 
   const showVersionSelector = async (pack: ModrinthPack) => {
@@ -264,8 +265,8 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
                 <input
                   type="text"
                   placeholder="Search modpacks..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 bg-primary-800/90 border border-secondary-600/30 rounded-lg text-white placeholder-primary-400 focus:outline-none focus:border-secondary-500/50"
                 />
               </div>
