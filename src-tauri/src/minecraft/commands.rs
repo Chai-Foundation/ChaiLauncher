@@ -1182,19 +1182,12 @@ async fn get_auth_info() -> Result<AuthInfo, String> {
             }
         }
         
-        // Fallback with just the manual token
-        return Ok(AuthInfo {
-            username: "Player".to_string(),
-            uuid: "12345678-90ab-cdef-1234-567890abcdef".to_string(),
-            access_token: token,
-            user_type: "msa".to_string(),
-        });
+        // Require a Microsoft account when using manual tokens
+        return Err("Manual authentication token provided, but no Microsoft account found. Please sign in with a Microsoft account first, then set your authentication token.".to_string());
     }
     
-    // Last resort: Use offline credentials (this should show a warning)
-    println!("⚠️  No valid authentication found - launching in offline mode");
-    println!("⚠️  Please sign in with a Microsoft account for online play");
-    Ok(AuthInfo::default())
+    // No valid authentication found - refuse to launch
+    Err("No valid authentication found. ChaiLauncher requires either a Microsoft account or a valid authentication token. Please sign in with a Microsoft account or configure an authentication token.".to_string())
 }
 
 /// Get authentication info for debugging (public version of get_auth_info)

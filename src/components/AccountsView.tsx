@@ -1,27 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, User, LogOut, Shield, EyeOff, Key } from 'lucide-react';
-import { motion } from 'framer-motion';
-
-interface MinecraftAccount {
-  id: string;
-  username: string;
-  uuid: string;
-  access_token: string;
-  refresh_token: string;
-  expires_at: number;
-  skin_url?: string;
-  cape_url?: string;
-  type?: 'microsoft' | 'offline';
-  isActive?: boolean;
-  lastUsed?: Date;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface OAuthSession {
-  csrf_token: string;
-  pkce_verifier: string;
-  auth_url: string;
-}
+import React, { useState } from 'react';
+import { Plus, User, Key } from 'lucide-react';
+import { useAccounts } from '../hooks/useAccounts';
+import { AccountCard } from './accounts/AccountCard';
+import { AddAccountModal } from './accounts/AddAccountModal';
+import { AuthTokenModal } from './accounts/AuthTokenModal';
+import { AuthTokenStatus } from './accounts/AuthTokenStatus';
 
 interface AccountsViewProps {
   onSetActiveAccount?: (accountId: string) => void;
@@ -30,167 +13,46 @@ interface AccountsViewProps {
 const AccountsView: React.FC<AccountsViewProps> = ({
   onSetActiveAccount,
 }) => {
-  const [accounts, setAccounts] = useState<MinecraftAccount[]>([]);
-  const [activeAccountId, setActiveAccountId] = useState<string | null>(null);
+  const {
+    accounts,
+    activeAccountId,
+    currentAuthToken,
+    isAuthenticating,
+    saveAuthToken,
+    clearAuthToken,
+    loginWithMicrosoft,
+    removeAccount,
+    setActiveAccount,
+    addOfflineAccount
+  } = useAccounts();
+  
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showOfflineForm, setShowOfflineForm] = useState(false);
-  const [offlineUsername, setOfflineUsername] = useState('');
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authToken, setAuthToken] = useState('');
-  const [currentAuthToken, setCurrentAuthToken] = useState<string | null>(null);
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
-  useEffect(() => {
-    loadAuthToken();
-    loadAccounts();
-  }, []);
 
-  const loadAccounts = async () => {
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      const storedAccounts = await invoke('get_stored_accounts') as MinecraftAccount[];
-      setAccounts(storedAccounts);
-      
-      // Set first account as active if none is set
-      if (storedAccounts.length > 0 && !activeAccountId) {
-        setActiveAccountId(storedAccounts[0].id);
-      }
-    } catch (error) {
-      console.error('Failed to load accounts:', error);
-    }
+  const handleSetActiveAccount = (accountId: string) => {
+    setActiveAccount(accountId);
+    onSetActiveAccount?.(accountId);
   };
 
-  const loadAuthToken = async () => {
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      const token = await invoke('get_auth_token') as string | null;
-      setCurrentAuthToken(token);
-    } catch (error) {
-      console.error('Failed to load auth token:', error);
-    }
+  const handleMicrosoftLogin = async () => {
+    const account = await loginWithMicrosoft();
+    alert(`Successfully added Microsoft account: ${account.username}`);
   };
 
-  const handleSaveAuthToken = async () => {
+  const handleRemoveAccount = async (accountId: string) => {
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('set_auth_token', { token: authToken });
-      setCurrentAuthToken(authToken);
-      setShowAuthModal(false);
-      setAuthToken('');
+      await removeAccount(accountId);
     } catch (error) {
-      console.error('Failed to save auth token:', error);
-      alert('Failed to save auth token');
+      alert('Failed to remove account');
     }
   };
 
   const handleClearAuthToken = async () => {
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('clear_auth_token');
-      setCurrentAuthToken(null);
+      await clearAuthToken();
     } catch (error) {
-      console.error('Failed to clear auth token:', error);
       alert('Failed to clear auth token');
-    }
-  };
-
-  const handleMicrosoftLogin = async () => {
-    try {
-      setIsAuthenticating(true);
-      const { invoke } = await import('@tauri-apps/api/core');
-      
-      // Start OAuth flow with local server
-      const account = await invoke('start_oauth_with_server') as MinecraftAccount;
-      
-      // Refresh accounts list
-      await loadAccounts();
-      setShowAddModal(false);
-      
-      alert(`Successfully added Microsoft account: ${account.username}`);
-      
-    } catch (error) {
-      console.error('Microsoft login failed:', error);
-      alert(`Microsoft login failed: ${error}`);
-    } finally {
-      setIsAuthenticating(false);
-    }
-  };
-
-  const handleRemoveAccount = async (accountId: string) => {
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('remove_minecraft_account', { accountId });
-      await loadAccounts();
-      
-      // Clear active account if it was removed
-      if (activeAccountId === accountId) {
-        setActiveAccountId(accounts.length > 1 ? accounts.find(a => a.id !== accountId)?.id || null : null);
-      }
-    } catch (error) {
-      console.error('Failed to remove account:', error);
-      alert('Failed to remove account');
-    }
-  };
-
-  const handleSetActiveAccount = (accountId: string) => {
-    setActiveAccountId(accountId);
-    onSetActiveAccount?.(accountId);
-  };
-
-  const handleAddOfflineAccount = () => {
-    if (offlineUsername.trim()) {
-      // Create a new offline account
-      const newAccount: MinecraftAccount = {
-        id: `offline_${Date.now()}`,
-        username: offlineUsername.trim(),
-        uuid: `offline-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        access_token: 'offline',
-        refresh_token: 'offline',
-        expires_at: Date.now() + (365 * 24 * 60 * 60 * 1000), // 1 year from now
-        type: 'offline',
-        isActive: false,
-        lastUsed: new Date()
-      };
-      
-      // Add to accounts list
-      setAccounts(prev => [...prev, newAccount]);
-      
-      // If this is the first account, make it active
-      if (accounts.length === 0) {
-        setActiveAccountId(newAccount.id);
-        onSetActiveAccount?.(newAccount.id);
-      }
-      
-      // Reset form
-      setOfflineUsername('');
-      setShowOfflineForm(false);
-    }
-  };
-
-  const getAccountTypeIcon = (type: string) => {
-    switch (type) {
-      case 'microsoft':
-        return '🟢';
-      case 'mojang':
-        return '🔶';
-      case 'offline':
-        return '⚫';
-      default:
-        return '❓';
-    }
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const getAccountTypeLabel = (type: string) => {
-    switch (type) {
-      case 'microsoft':
-        return 'Microsoft Account';
-      case 'mojang':
-        return 'Mojang Account';
-      case 'offline':
-        return 'Offline Account';
-      default:
-        return 'Unknown';
     }
   };
 
@@ -219,96 +81,22 @@ const AccountsView: React.FC<AccountsViewProps> = ({
         </div>
       </div>
 
-      {/* Auth Token Status */}
-      <div className="mb-6 bg-primary-800 border border-primary-700 rounded-lg p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-semibold text-white mb-1">Authentication Token</h3>
-            <p className="text-primary-400 text-sm">
-              {currentAuthToken 
-                ? `Token configured (${currentAuthToken.substring(0, 8)}...)`
-                : 'No authentication token configured'
-              }
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowAuthModal(true)}
-              className="bg-secondary-600 hover:bg-secondary-700 text-white px-3 py-1 rounded text-sm transition-colors"
-            >
-              {currentAuthToken ? 'Update' : 'Set Token'}
-            </button>
-            {currentAuthToken && (
-              <button
-                onClick={handleClearAuthToken}
-                className="bg-secondary-600 hover:bg-secondary-700 text-white px-3 py-1 rounded text-sm transition-colors"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+      <AuthTokenStatus
+        currentAuthToken={currentAuthToken}
+        onShowModal={() => setShowAuthModal(true)}
+        onClearToken={handleClearAuthToken}
+      />
 
       <div className="space-y-4">
         {accounts.length > 0 ? (
           accounts.map((account) => (
-            <motion.div
+            <AccountCard
               key={account.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`bg-primary-800 border rounded-lg p-4 transition-colors ${
-                activeAccountId === account.id ? 'border-secondary-500' : 'border-primary-700 hover:border-primary-600'
-              }`}
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-primary-700 rounded-lg flex items-center justify-center">
-                  {account.skin_url ? (
-                    <img 
-                      src={account.skin_url} 
-                      alt={account.username} 
-                      className="w-full h-full rounded-lg object-cover"
-                    />
-                  ) : (
-                    <User size={32} className="text-primary-400" />
-                  )}
-                </div>
-                
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold text-white">{account.username}</h3>
-                    <span className="text-lg">{getAccountTypeIcon('microsoft')}</span>
-                    {activeAccountId === account.id && (
-                      <span className="bg-secondary-600 text-white text-xs px-2 py-1 rounded-full">
-                        Active
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-primary-400 text-sm">{account.uuid}</p>
-                  <p className="text-primary-500 text-xs">Microsoft Account</p>
-                  <p className="text-primary-500 text-xs">
-                    Token expires: {new Date(account.expires_at * 1000).toLocaleString()}
-                  </p>
-                </div>
-                
-                <div className="flex gap-2">
-                  {activeAccountId !== account.id && (
-                    <button
-                      onClick={() => handleSetActiveAccount(account.id)}
-                      className="bg-secondary-600 hover:bg-secondary-700 text-white px-3 py-1 rounded text-sm transition-colors"
-                    >
-                      Set Active
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleRemoveAccount(account.id)}
-                    className="bg-secondary-600 hover:bg-secondary-700 text-white p-2 rounded transition-colors"
-                  >
-                    <LogOut size={16} />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
+              account={account}
+              isActive={activeAccountId === account.id}
+              onSetActive={handleSetActiveAccount}
+              onRemove={handleRemoveAccount}
+            />
           ))
         ) : (
           <div className="text-center py-12">
@@ -325,140 +113,19 @@ const AccountsView: React.FC<AccountsViewProps> = ({
         )}
       </div>
 
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-primary-800 rounded-lg border border-primary-700 p-6 w-full max-w-md"
-          >
-            <h3 className="text-lg font-semibold text-white mb-4">Add Account</h3>
-            
-            {!showOfflineForm ? (
-              <div className="space-y-3">
-                <button
-                  onClick={handleMicrosoftLogin}
-                  disabled={isAuthenticating}
-                  className="w-full bg-secondary-600 hover:bg-secondary-700 text-white p-3 rounded-lg flex items-center gap-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Shield size={20} />
-                  <div className="text-left">
-                    <div className="font-semibold">
-                      {isAuthenticating ? 'Authenticating...' : 'Microsoft Account'}
-                    </div>
-                    <div className="text-sm opacity-90">Recommended for most users</div>
-                  </div>
-                </button>
-                
-                <button
-                  onClick={() => setShowOfflineForm(true)}
-                  className="w-full bg-primary-600 hover:bg-primary-700 text-white p-3 rounded-lg flex items-center gap-3 transition-colors"
-                >
-                  <EyeOff size={20} />
-                  <div className="text-left">
-                    <div className="font-semibold">Offline Account</div>
-                    <div className="text-sm opacity-90">Play without authentication (Coming soon)</div>
-                  </div>
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-primary-300 mb-2">
-                    Username
-                  </label>
-                  <input
-                    type="text"
-                    value={offlineUsername}
-                    onChange={(e) => setOfflineUsername(e.target.value)}
-                    placeholder="Enter username"
-                    className="w-full px-3 py-2 bg-primary-700 border border-primary-600 rounded-lg text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-secondary-500"
-                  />
-                </div>
-                
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowOfflineForm(false)}
-                    className="flex-1 bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-lg transition-colors"
-                  >
-                    Back
-                  </button>
-                  <button
-                    onClick={handleAddOfflineAccount}
-                    disabled={!offlineUsername.trim()}
-                    className="flex-1 bg-secondary-600 hover:bg-secondary-700 text-white py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Add Account
-                  </button>
-                </div>
-              </div>
-            )}
-            
-            <div className="flex justify-end mt-6">
-              <button
-                onClick={() => {
-                  setShowAddModal(false);
-                  setShowOfflineForm(false);
-                  setOfflineUsername('');
-                }}
-                className="text-primary-400 hover:text-white transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+      <AddAccountModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onMicrosoftLogin={handleMicrosoftLogin}
+        onOfflineAccount={addOfflineAccount}
+        isAuthenticating={isAuthenticating}
+      />
 
-      {/* Auth Token Modal */}
-      {showAuthModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-primary-800 rounded-lg border border-primary-700 p-6 w-full max-w-md"
-          >
-            <h3 className="text-lg font-semibold text-white mb-4">Set Authentication Token</h3>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-primary-300 mb-2">
-                  Authentication Token
-                </label>
-                <input
-                  type="password"
-                  value={authToken}
-                  onChange={(e) => setAuthToken(e.target.value)}
-                  placeholder="Enter your authentication token"
-                  className="w-full px-3 py-2 bg-primary-700 border border-primary-600 rounded-lg text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-secondary-500"
-                />
-                <p className="text-xs text-primary-500 mt-1">
-                  This token will be passed to the game when launching instances.
-                </p>
-              </div>
-              
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setShowAuthModal(false);
-                    setAuthToken('');
-                  }}
-                  className="flex-1 bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveAuthToken}
-                  disabled={!authToken.trim()}
-                  className="flex-1 bg-secondary-600 hover:bg-secondary-700 text-white py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Save Token
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
+      <AuthTokenModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSave={saveAuthToken}
+      />
     </div>
   );
 };
