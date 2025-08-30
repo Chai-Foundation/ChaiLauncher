@@ -374,8 +374,8 @@ impl ModpackManager {
         // Add modpack to config
         self.manager.get_config_mut().modpacks.push(modpack);
         
-        // Install modpack based on platform
-        match request.platform.as_str() {
+        // Install modpack based on platform and get mod count
+        let mod_count = match request.platform.as_str() {
             "modrinth" => {
                 self.install_modrinth_modpack(
                     &request.modpack_id,
@@ -383,7 +383,7 @@ impl ModpackManager {
                     &instance_path,
                     request.install_overrides,
                     &progress_callback,
-                ).await?;
+                ).await?
             }
             "curseforge" => {
                 self.install_curseforge_modpack(
@@ -392,10 +392,10 @@ impl ModpackManager {
                     &instance_path,
                     request.install_overrides,
                     &progress_callback,
-                ).await?;
+                ).await?
             }
             _ => return Err(LibiumError::Add(libium::add::Error::DoesNotExist)),
-        }
+        };
         
         progress_callback(90, 100, "Registering instance".to_string());
         
@@ -422,7 +422,7 @@ impl ModpackManager {
             total_play_time: 0,
             icon: None,
             is_modded: true,
-            mods_count: 0, // Will be counted after installation
+            mods_count: mod_count, // Use actual mod count from installation
             modpack: Some(request.instance_name.clone()),
             modpack_version: Some(request.version_id.clone()),
             created_at: chrono::Utc::now().to_rfc3339(),
@@ -452,7 +452,7 @@ impl ModpackManager {
         instance_path: &Path,
         install_overrides: bool,
         progress_callback: &impl Fn(u64, u64, String),
-    ) -> Result<(), LibiumError> {
+    ) -> Result<u32, LibiumError> {
         progress_callback(10, 100, "Fetching modpack information".to_string());
         
         // Get modpack version information from Modrinth API
@@ -519,6 +519,9 @@ impl ModpackManager {
                         let mods_dir = instance_path.join("mods");
                         fs::create_dir_all(&mods_dir).await?;
                         
+                        let mut mods_extracted = 0;
+                        let mut overrides_extracted = 0;
+                        
                         // Extract mods and overrides
                         for i in 0..archive.len() {
                             let mut file = archive.by_index(i)
@@ -536,6 +539,9 @@ impl ModpackManager {
                                     .map_err(|e| LibiumError::Io(e))?;
                                 std::io::copy(&mut file, &mut outfile)
                                     .map_err(|e| LibiumError::Io(e))?;
+                                
+                                mods_extracted += 1;
+                                println!("📦 Extracted mod: {}", file.name());
                             } else if install_overrides && file.name().starts_with("overrides/") {
                                 // Strip "overrides/" prefix when extracting
                                 let relative_path = file.name().strip_prefix("overrides/").unwrap_or(file.name());
@@ -550,13 +556,20 @@ impl ModpackManager {
                                     .map_err(|e| LibiumError::Io(e))?;
                                 std::io::copy(&mut file, &mut outfile)
                                     .map_err(|e| LibiumError::Io(e))?;
+                                
+                                overrides_extracted += 1;
+                                println!("📁 Extracted override: {}", relative_path);
                             }
                         }
+                        
+                        println!("✅ Extracted {} mods and {} overrides from modpack", mods_extracted, overrides_extracted);
                         
                         // Clean up the downloaded modpack file
                         let _ = fs::remove_file(&modpack_file).await;
                         
-                        break;
+                        progress_callback(80, 100, "Finalizing installation".to_string());
+                        
+                        return Ok(mods_extracted);
                     }
                 }
             }
@@ -564,7 +577,7 @@ impl ModpackManager {
         
         progress_callback(80, 100, "Finalizing installation".to_string());
         
-        Ok(())
+        Ok(0) // No mods found
     }
     
     /// Install a CurseForge modpack
@@ -575,7 +588,7 @@ impl ModpackManager {
         instance_path: &Path,
         install_overrides: bool,
         progress_callback: &impl Fn(u64, u64, String),
-    ) -> Result<(), LibiumError> {
+    ) -> Result<u32, LibiumError> {
         progress_callback(10, 100, "Fetching CurseForge modpack information".to_string());
         
         // For CurseForge, we need to implement proper API calls
@@ -603,7 +616,7 @@ impl ModpackManager {
         println!("   The mod loader has been installed and directory structure created.");
         println!("   Full CurseForge modpack support requires additional API integration.");
         
-        Ok(())
+        Ok(0) // No mods installed for CurseForge yet
     }
     
     /// Get modpack profile name based on the mod loader that was installed

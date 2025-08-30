@@ -93,6 +93,8 @@ fn main() {
             libium_integration::commands::create_modded_instance,
             libium_integration::commands::get_mod_loaders,
             libium_integration::commands::install_instance_mod_loader,
+            libium_integration::commands::diagnose_instances,
+            libium_integration::commands::fix_vanilla_instances,
             commands::open_folder,
             commands::open_instance_folder,
             commands::set_auth_token,

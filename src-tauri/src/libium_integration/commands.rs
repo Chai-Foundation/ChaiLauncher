@@ -519,6 +519,166 @@ pub async fn get_mod_loaders() -> Result<Vec<String>, String> {
     ])
 }
 
+/// Diagnose and fix instances that may be incorrectly marked as vanilla
+#[command]
+pub async fn diagnose_instances() -> Result<Vec<String>, String> {
+    let mut diagnostics = Vec::new();
+    
+    let storage_manager = storage::StorageManager::new().await
+        .map_err(|e| format!("Failed to initialize storage: {}", e))?;
+    
+    let instances = storage_manager.get_all_instances();
+    
+    for instance in instances {
+        let instance_path = &instance.game_dir;
+        let mods_dir = instance_path.join("mods");
+        let versions_dir = instance_path.join("versions");
+        
+        // Check if mods directory exists and has mods
+        let has_mods_dir = mods_dir.exists();
+        let mods_count = if has_mods_dir {
+            std::fs::read_dir(&mods_dir)
+                .map(|entries| entries.filter_map(|e| e.ok()).filter(|e| {
+                    e.path().extension().map_or(false, |ext| ext == "jar")
+                }).count())
+                .unwrap_or(0)
+        } else {
+            0
+        };
+        
+        // Check for mod loader profiles
+        let mut mod_loader_profiles = Vec::new();
+        if versions_dir.exists() {
+            if let Ok(entries) = std::fs::read_dir(&versions_dir) {
+                for entry in entries.filter_map(|e| e.ok()) {
+                    let name = entry.file_name().to_string_lossy().to_string();
+                    if name.contains("fabric-loader") || name.contains("quilt-loader") || name.contains("forge") {
+                        mod_loader_profiles.push(name);
+                    }
+                }
+            }
+        }
+        
+        // Generate diagnostic info
+        let mut instance_diag = format!("Instance '{}' ({})", instance.name, instance.id);
+        
+        if instance.is_modded {
+            instance_diag.push_str(" - Marked as MODDED");
+        } else {
+            instance_diag.push_str(" - Marked as VANILLA");
+        }
+        
+        instance_diag.push_str(&format!(" - Version: {}", instance.version));
+        instance_diag.push_str(&format!(" - Mods directory: {}", if has_mods_dir { "EXISTS" } else { "MISSING" }));
+        instance_diag.push_str(&format!(" - Mods count: {} (metadata: {})", mods_count, instance.mods_count));
+        
+        if !mod_loader_profiles.is_empty() {
+            instance_diag.push_str(&format!(" - Mod loader profiles found: {}", mod_loader_profiles.join(", ")));
+        }
+        
+        // Check for issues
+        if !instance.is_modded && (!mod_loader_profiles.is_empty() || mods_count > 0) {
+            instance_diag.push_str(" - ⚠️  ISSUE: Should be marked as modded!");
+        }
+        
+        if instance.is_modded && mod_loader_profiles.is_empty() {
+            instance_diag.push_str(" - ⚠️  ISSUE: No mod loader profiles found!");
+        }
+        
+        if instance.version.chars().all(|c| c.is_ascii_digit() || c == '.') && !mod_loader_profiles.is_empty() {
+            instance_diag.push_str(" - ⚠️  ISSUE: Using vanilla version but mod loader installed!");
+        }
+        
+        diagnostics.push(instance_diag);
+    }
+    
+    Ok(diagnostics)
+}
+
+/// Fix instances that are incorrectly marked as vanilla
+#[command]
+pub async fn fix_vanilla_instances() -> Result<Vec<String>, String> {
+    let mut fixed_instances = Vec::new();
+    
+    let mut storage_manager = storage::StorageManager::new().await
+        .map_err(|e| format!("Failed to initialize storage: {}", e))?;
+    
+    let instances = storage_manager.get_all_instances().clone();
+    
+    for mut instance in instances {
+        let instance_path = &instance.game_dir;
+        let mods_dir = instance_path.join("mods");
+        let versions_dir = instance_path.join("versions");
+        
+        // Check if mods directory exists and has mods
+        let mods_count = if mods_dir.exists() {
+            std::fs::read_dir(&mods_dir)
+                .map(|entries| entries.filter_map(|e| e.ok()).filter(|e| {
+                    e.path().extension().map_or(false, |ext| ext == "jar")
+                }).count())
+                .unwrap_or(0)
+        } else {
+            0
+        };
+        
+        // Check for mod loader profiles
+        let mut mod_loader_profile = None;
+        if versions_dir.exists() {
+            if let Ok(entries) = std::fs::read_dir(&versions_dir) {
+                for entry in entries.filter_map(|e| e.ok()) {
+                    let name = entry.file_name().to_string_lossy().to_string();
+                    if name.contains("fabric-loader") || name.contains("quilt-loader") || name.contains("forge") {
+                        mod_loader_profile = Some(name);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        let mut needs_update = false;
+        let mut changes = Vec::new();
+        
+        // Fix modded status
+        if !instance.is_modded && (mod_loader_profile.is_some() || mods_count > 0) {
+            instance.is_modded = true;
+            needs_update = true;
+            changes.push("marked as modded".to_string());
+        }
+        
+        // Fix mod count
+        if instance.mods_count != mods_count {
+            instance.mods_count = mods_count;
+            needs_update = true;
+            changes.push(format!("updated mod count to {}", mods_count));
+        }
+        
+        // Fix version profile
+        if let Some(ref profile) = mod_loader_profile {
+            if instance.version != *profile {
+                instance.version = profile.clone();
+                needs_update = true;
+                changes.push(format!("updated version to {}", profile));
+            }
+        }
+        
+        // Update tags
+        if instance.is_modded && !instance.tags.contains(&"modded".to_string()) {
+            instance.tags.push("modded".to_string());
+            needs_update = true;
+            changes.push("added modded tag".to_string());
+        }
+        
+        if needs_update {
+            storage_manager.update_instance(instance.clone()).await
+                .map_err(|e| format!("Failed to update instance {}: {}", instance.name, e))?;
+            
+            fixed_instances.push(format!("Fixed '{}': {}", instance.name, changes.join(", ")));
+        }
+    }
+    
+    Ok(fixed_instances)
+}
+
 /// Get mod categories from all platforms
 #[command]
 pub async fn get_mod_categories() -> Result<Vec<String>, String> {
