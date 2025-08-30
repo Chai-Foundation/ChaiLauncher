@@ -23,8 +23,9 @@ pub enum Error {
 
 impl From<furse::Error> for Error {
     fn from(err: furse::Error) -> Self {
-        if let furse::Error::ReqwestError(source) = &err {
-            if Some(StatusCode::NOT_FOUND) == source.status() {
+    if let furse::Error::ReqwestError(source) = &err {
+        if let Some(status) = source.status() {
+            if status.as_u16() == StatusCode::NOT_FOUND.as_u16() {
                 Self::DoesNotExist
             } else {
                 Self::CurseForgeError(err)
@@ -32,13 +33,17 @@ impl From<furse::Error> for Error {
         } else {
             Self::CurseForgeError(err)
         }
+    } else {
+        Self::CurseForgeError(err)
+    }
     }
 }
 
 impl From<ferinth::Error> for Error {
     fn from(err: ferinth::Error) -> Self {
-        if let ferinth::Error::ReqwestError(source) = &err {
-            if Some(StatusCode::NOT_FOUND) == source.status() {
+    if let ferinth::Error::ReqwestError(source) = &err {
+        if let Some(status) = source.status() {
+            if status.as_u16() == StatusCode::NOT_FOUND.as_u16() {
                 Self::DoesNotExist
             } else {
                 Self::ModrinthError(err)
@@ -46,6 +51,9 @@ impl From<ferinth::Error> for Error {
         } else {
             Self::ModrinthError(err)
         }
+    } else {
+        Self::ModrinthError(err)
+    }
     }
 }
 
