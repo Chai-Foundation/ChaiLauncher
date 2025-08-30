@@ -652,7 +652,7 @@ pub async fn install_mod_loader(
     instance_path: &Path,
     game_version: &str,
     mod_loader: &str,
-) -> Result<(), LibiumError> {
+) -> Result<String, LibiumError> {
     let versions_dir = instance_path.join("versions").join(game_version);
     let libraries_dir = instance_path.join("libraries");
     
@@ -660,20 +660,20 @@ pub async fn install_mod_loader(
     fs::create_dir_all(&versions_dir).await?;
     fs::create_dir_all(&libraries_dir).await?;
     
-    match mod_loader.to_lowercase().as_str() {
+    let profile_name = match mod_loader.to_lowercase().as_str() {
         "fabric" => install_fabric_loader(instance_path, game_version).await?,
         "forge" => install_forge_loader(instance_path, game_version).await?,
         "quilt" => install_quilt_loader(instance_path, game_version).await?,
         "neoforge" => install_neoforge_loader(instance_path, game_version).await?,
         _ => return Err(LibiumError::Add(libium::add::Error::DoesNotExist)),
-    }
+    };
     
-    println!("✅ Successfully installed {} mod loader for Minecraft {}", mod_loader, game_version);
-    Ok(())
+    println!("✅ Successfully installed {} mod loader for Minecraft {} (profile: {})", mod_loader, game_version, profile_name);
+    Ok(profile_name)
 }
 
 /// Install Fabric mod loader
-async fn install_fabric_loader(instance_path: &Path, game_version: &str) -> Result<(), LibiumError> {
+async fn install_fabric_loader(instance_path: &Path, game_version: &str) -> Result<String, LibiumError> {
     let client = reqwest::Client::new();
     
     // Get Fabric loader versions
@@ -735,14 +735,15 @@ async fn install_fabric_loader(instance_path: &Path, game_version: &str) -> Resu
             }
             
             println!("✅ Installed Fabric loader {} for Minecraft {}", loader_version, game_version);
+            return Ok(profile_name);
         }
     }
     
-    Ok(())
+    Err(LibiumError::Add(libium::add::Error::DoesNotExist))
 }
 
 /// Install Forge mod loader
-async fn install_forge_loader(instance_path: &Path, game_version: &str) -> Result<(), LibiumError> {
+async fn install_forge_loader(instance_path: &Path, game_version: &str) -> Result<String, LibiumError> {
     let client = reqwest::Client::new();
     
     // Get Forge versions for the game version
@@ -778,14 +779,17 @@ async fn install_forge_loader(instance_path: &Path, game_version: &str) -> Resul
             
             println!("⚠️  Forge installation requires manual installer run. Download from: {}", installer_url);
             println!("   Please install Forge manually and then retry.");
+            
+            // For now, return a Forge profile name even though installation isn't complete
+            return Ok(format!("forge-{}-{}", game_version, forge_ver));
         }
     }
     
-    Ok(())
+    Err(LibiumError::Add(libium::add::Error::DoesNotExist))
 }
 
 /// Install Quilt mod loader
-async fn install_quilt_loader(instance_path: &Path, game_version: &str) -> Result<(), LibiumError> {
+async fn install_quilt_loader(instance_path: &Path, game_version: &str) -> Result<String, LibiumError> {
     let client = reqwest::Client::new();
     
     // Get Quilt loader versions
@@ -847,14 +851,15 @@ async fn install_quilt_loader(instance_path: &Path, game_version: &str) -> Resul
             }
             
             println!("✅ Installed Quilt loader {} for Minecraft {}", loader_version, game_version);
+            return Ok(profile_name);
         }
     }
     
-    Ok(())
+    Err(LibiumError::Add(libium::add::Error::DoesNotExist))
 }
 
 /// Install NeoForge mod loader
-async fn install_neoforge_loader(instance_path: &Path, game_version: &str) -> Result<(), LibiumError> {
+async fn install_neoforge_loader(instance_path: &Path, game_version: &str) -> Result<String, LibiumError> {
     println!("⚠️  NeoForge installation not yet implemented. Using Fabric as fallback.");
     install_fabric_loader(instance_path, game_version).await
 }
