@@ -374,8 +374,8 @@ impl ModpackManager {
         // Add modpack to config
         self.manager.get_config_mut().modpacks.push(modpack);
         
-        // Install modpack based on platform
-        match request.platform.as_str() {
+        // Install modpack based on platform and get mod count
+        let mod_count = match request.platform.as_str() {
             "modrinth" => {
                 self.install_modrinth_modpack(
                     &request.modpack_id,
@@ -383,7 +383,7 @@ impl ModpackManager {
                     &instance_path,
                     request.install_overrides,
                     &progress_callback,
-                ).await?;
+                ).await?
             }
             "curseforge" => {
                 self.install_curseforge_modpack(
@@ -392,18 +392,29 @@ impl ModpackManager {
                     &instance_path,
                     request.install_overrides,
                     &progress_callback,
-                ).await?;
+                ).await?
             }
             _ => return Err(LibiumError::Add(libium::add::Error::DoesNotExist)),
-        }
+        };
         
         progress_callback(90, 100, "Registering instance".to_string());
+        
+        // Get modpack details for proper instance metadata
+        let (game_version, mod_loader) = self.get_modpack_details(&request.modpack_id, &request.version_id, &request.platform).await
+            .unwrap_or_else(|_| ("1.20.1".to_string(), "fabric".to_string()));
+        
+        // Use the mod loader profile name as the version for the instance
+        let instance_version = if let Ok(profile_name) = self.get_modpack_profile_name(&request.modpack_id, &request.version_id, &request.platform).await {
+            profile_name
+        } else {
+            game_version.clone()
+        };
         
         // Register instance in ChaiLauncher storage
         let instance_metadata = crate::storage::InstanceMetadata {
             id: uuid::Uuid::new_v4().to_string(),
             name: request.instance_name.clone(),
-            version: "1.20.1".to_string(), // Will be determined from modpack
+            version: instance_version,
             game_dir: instance_path,
             java_path: None,
             jvm_args: None,
@@ -411,13 +422,13 @@ impl ModpackManager {
             total_play_time: 0,
             icon: None,
             is_modded: true,
-            mods_count: 0, // Will be counted after installation
+            mods_count: mod_count, // Use actual mod count from installation
             modpack: Some(request.instance_name.clone()),
             modpack_version: Some(request.version_id.clone()),
             created_at: chrono::Utc::now().to_rfc3339(),
             size_mb: None,
-            description: None,
-            tags: vec!["modpack".to_string(), request.platform.clone()],
+            description: Some(format!("Modpack instance with {} for Minecraft {}", mod_loader, game_version)),
+            tags: vec!["modpack".to_string(), request.platform.clone(), mod_loader.clone()],
             resolved_java_version: None,
             java_analysis_date: None,
         };
@@ -441,7 +452,7 @@ impl ModpackManager {
         instance_path: &Path,
         install_overrides: bool,
         progress_callback: &impl Fn(u64, u64, String),
-    ) -> Result<(), LibiumError> {
+    ) -> Result<u32, LibiumError> {
         progress_callback(10, 100, "Fetching modpack information".to_string());
         
         // Get modpack version information from Modrinth API
@@ -471,8 +482,8 @@ impl ModpackManager {
         
         progress_callback(20, 100, format!("Installing {} mod loader for {}", loaders, game_versions));
         
-        // Install the mod loader first
-        crate::libium_integration::install_mod_loader(instance_path, game_versions, loaders).await?;
+        // Install the mod loader first and get the profile name
+        let mod_loader_profile = crate::libium_integration::install_mod_loader(instance_path, game_versions, loaders).await?;
         
         progress_callback(30, 100, "Downloading Modrinth modpack".to_string());
         
@@ -508,6 +519,9 @@ impl ModpackManager {
                         let mods_dir = instance_path.join("mods");
                         fs::create_dir_all(&mods_dir).await?;
                         
+                        let mut mods_extracted = 0;
+                        let mut overrides_extracted = 0;
+                        
                         // Extract mods and overrides
                         for i in 0..archive.len() {
                             let mut file = archive.by_index(i)
@@ -525,6 +539,9 @@ impl ModpackManager {
                                     .map_err(|e| LibiumError::Io(e))?;
                                 std::io::copy(&mut file, &mut outfile)
                                     .map_err(|e| LibiumError::Io(e))?;
+                                
+                                mods_extracted += 1;
+                                println!("📦 Extracted mod: {}", file.name());
                             } else if install_overrides && file.name().starts_with("overrides/") {
                                 // Strip "overrides/" prefix when extracting
                                 let relative_path = file.name().strip_prefix("overrides/").unwrap_or(file.name());
@@ -539,13 +556,20 @@ impl ModpackManager {
                                     .map_err(|e| LibiumError::Io(e))?;
                                 std::io::copy(&mut file, &mut outfile)
                                     .map_err(|e| LibiumError::Io(e))?;
+                                
+                                overrides_extracted += 1;
+                                println!("📁 Extracted override: {}", relative_path);
                             }
                         }
+                        
+                        println!("✅ Extracted {} mods and {} overrides from modpack", mods_extracted, overrides_extracted);
                         
                         // Clean up the downloaded modpack file
                         let _ = fs::remove_file(&modpack_file).await;
                         
-                        break;
+                        progress_callback(80, 100, "Finalizing installation".to_string());
+                        
+                        return Ok(mods_extracted);
                     }
                 }
             }
@@ -553,7 +577,7 @@ impl ModpackManager {
         
         progress_callback(80, 100, "Finalizing installation".to_string());
         
-        Ok(())
+        Ok(0) // No mods found
     }
     
     /// Install a CurseForge modpack
@@ -564,7 +588,7 @@ impl ModpackManager {
         instance_path: &Path,
         install_overrides: bool,
         progress_callback: &impl Fn(u64, u64, String),
-    ) -> Result<(), LibiumError> {
+    ) -> Result<u32, LibiumError> {
         progress_callback(10, 100, "Fetching CurseForge modpack information".to_string());
         
         // For CurseForge, we need to implement proper API calls
@@ -573,7 +597,7 @@ impl ModpackManager {
         // For now, install Fabric as default mod loader for CurseForge modpacks
         progress_callback(20, 100, "Installing Fabric mod loader (default for CurseForge)".to_string());
         
-        crate::libium_integration::install_mod_loader(instance_path, "1.20.1", "fabric").await?;
+        let _mod_loader_profile = crate::libium_integration::install_mod_loader(instance_path, "1.20.1", "fabric").await?;
         
         progress_callback(30, 100, "Setting up CurseForge modpack structure".to_string());
         
@@ -592,7 +616,112 @@ impl ModpackManager {
         println!("   The mod loader has been installed and directory structure created.");
         println!("   Full CurseForge modpack support requires additional API integration.");
         
-        Ok(())
+        Ok(0) // No mods installed for CurseForge yet
+    }
+    
+    /// Get modpack profile name based on the mod loader that was installed
+    async fn get_modpack_profile_name(
+        &self,
+        modpack_id: &str,
+        version_id: &str,
+        platform: &str,
+    ) -> Result<String, LibiumError> {
+        let (game_version, mod_loader) = self.get_modpack_details(modpack_id, version_id, platform).await?;
+        
+        // This should match the profile name created by install_mod_loader
+        match mod_loader.as_str() {
+            "fabric" => {
+                // Get latest Fabric loader version to match the profile name
+                let versions_url = format!("https://meta.fabricmc.net/v2/versions/loader/{}", game_version);
+                let response = self.client.get(&versions_url)
+                    .header("User-Agent", "ChaiLauncher/1.0")
+                    .send()
+                    .await
+                    .map_err(|e| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
+                
+                let loader_versions: serde_json::Value = response.json().await
+                    .map_err(|e| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, e)))?;
+                
+                if let Some(latest_loader) = loader_versions.as_array().and_then(|arr| arr.first()) {
+                    if let Some(loader_version) = latest_loader.get("loader").and_then(|l| l.get("version")).and_then(|v| v.as_str()) {
+                        return Ok(format!("fabric-loader-{}-{}", loader_version, game_version));
+                    }
+                }
+            }
+            "quilt" => {
+                // Get latest Quilt loader version to match the profile name
+                let versions_url = format!("https://meta.quiltmc.org/v3/versions/loader/{}", game_version);
+                let response = self.client.get(&versions_url)
+                    .header("User-Agent", "ChaiLauncher/1.0")
+                    .send()
+                    .await
+                    .map_err(|e| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
+                
+                let loader_versions: serde_json::Value = response.json().await
+                    .map_err(|e| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, e)))?;
+                
+                if let Some(latest_loader) = loader_versions.as_array().and_then(|arr| arr.first()) {
+                    if let Some(loader_version) = latest_loader.get("loader").and_then(|l| l.get("version")).and_then(|v| v.as_str()) {
+                        return Ok(format!("quilt-loader-{}-{}", loader_version, game_version));
+                    }
+                }
+            }
+            "forge" => {
+                // For Forge, use the game version since Forge isn't fully implemented
+                return Ok(format!("forge-{}", game_version));
+            }
+            _ => {
+                // Default to game version for unknown loaders
+                return Ok(game_version);
+            }
+        }
+        
+        // Fallback to game version
+        Ok(game_version)
+    }
+    
+    /// Get modpack details (game version and mod loader) from platform APIs
+    async fn get_modpack_details(
+        &self,
+        modpack_id: &str,
+        version_id: &str,
+        platform: &str,
+    ) -> Result<(String, String), LibiumError> {
+        match platform {
+            "modrinth" => {
+                let version_url = format!("https://api.modrinth.com/v2/version/{}", version_id);
+                let version_response = self.client.get(&version_url)
+                    .header("User-Agent", "ChaiLauncher/1.0")
+                    .send()
+                    .await
+                    .map_err(|e| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
+                
+                let version_data: serde_json::Value = version_response.json().await
+                    .map_err(|e| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, e)))?;
+                
+                let game_version = version_data.get("game_versions")
+                    .and_then(|v| v.as_array())
+                    .and_then(|arr| arr.first())
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("1.20.1")
+                    .to_string();
+                
+                let mod_loader = version_data.get("loaders")
+                    .and_then(|v| v.as_array())
+                    .and_then(|arr| arr.first())
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("fabric")
+                    .to_string();
+                
+                Ok((game_version, mod_loader))
+            }
+            "curseforge" => {
+                // For CurseForge, we'd need to fetch project details
+                // For now, return default values
+                Ok(("1.20.1".to_string(), "fabric".to_string()))
+            }
+            _ => Ok(("1.20.1".to_string(), "fabric".to_string())),
+        }
     }
     
     /// Update a modpack to a newer version
