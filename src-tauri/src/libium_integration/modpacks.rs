@@ -35,12 +35,15 @@ impl ModpackManager {
     ) -> Result<Vec<ModpackSearchResult>, LibiumError> {
         match platform {
             "modrinth" => {
+                println!("Searching Modrinth for modpacks...");
                 self.search_modrinth_modpacks(query, game_version, mod_loader, limit, offset).await
             }
             "curseforge" => {
+                println!("Searching CurseForge for modpacks...");
                 self.search_curseforge_modpacks(query, game_version, mod_loader, limit, offset).await
             }
             "all" => {
+                println!("Searching all platforms for modpacks...");
                 let mut all_results = Vec::new();
                 
                 // Search Modrinth first
@@ -148,11 +151,15 @@ impl ModpackManager {
             limit,
             offset
         );
-        
+
+        println!("CurseForge search URL: {}", url);
+
         if let Some(version) = game_version {
             url.push_str(&format!("&gameVersion={}", version));
         }
-        
+
+        println!("CurseForge search URL: {}", url);
+
         if let Some(loader) = mod_loader {
             let loader_id = match loader.as_str() {
                 "fabric" => 4,
@@ -163,11 +170,15 @@ impl ModpackManager {
             };
             url.push_str(&format!("&modLoaderType={}", loader_id));
         }
-        
+
+        println!("CurseForge search URL: {}", url);
+
         // Get CurseForge API key from environment or use default
         let api_key = std::env::var("CURSEFORGE_API_KEY")
             .unwrap_or_else(|_| "$2a$10$sI.yRk4h4R49XYF94IIijOrO4i3W3dAFZ4ssOlNE10GYrDhc2j8K.".to_string());
-        
+
+        println!("CurseForge API key: {}", api_key);
+
         let response = self.client
             .get(&url)
             .header("Accept", "application/json")
@@ -176,13 +187,17 @@ impl ModpackManager {
             .send()
             .await
             .map_err(|e| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
-            
+
+        println!("CurseForge search response: {:?}", response);
+
         // Use the same CurseForgeSearchResponse from mod.rs
         let search_response: crate::libium_integration::CurseForgeSearchResponse = response
             .json()
             .await
             .map_err(|e| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, e)))?;
-        
+
+        println!("CurseForge search response (parsed): {:?}", search_response);
+
         let results = search_response.data.into_iter().map(|hit| {
             let author = hit.authors.first()
                 .map(|a| a.name.clone())
@@ -227,6 +242,8 @@ impl ModpackManager {
                 categories,
             }
         }).collect();
+
+        println!("CurseForge search results: {:?}", results);
         
         Ok(results)
     }
