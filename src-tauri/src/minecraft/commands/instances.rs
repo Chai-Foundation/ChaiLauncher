@@ -3,6 +3,7 @@ use tauri::{command, AppHandle, Emitter};
 use tokio::fs;
 use reqwest;
 use serde_json;
+use std::str::FromStr;
 
 use crate::storage::{StorageManager, InstanceMetadata};
 use crate::minecraft::{MinecraftInstance, AuthInfo};
