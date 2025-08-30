@@ -22,7 +22,7 @@ import {
   Upload,
   FolderOpen
 } from 'lucide-react';
-import { ModrinthPack, ModrinthVersion, ModpackInstallProgress, LauncherSettings } from '../types';
+import { ModpackSearchResult, ModrinthVersion, ModpackInstallProgress, LauncherSettings } from '../types';
 import { useInfiniteModpacks } from '../hooks/useInfiniteModpacks';
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
 
@@ -38,12 +38,12 @@ interface ModpackBrowserProps {
 
 export default function ModpackBrowser({ onCreateInstance, launcherSettings }: ModpackBrowserProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const selectedPlatform = 'modrinth';
+  const [selectedPlatform, setSelectedPlatform] = useState('modrinth');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [installError, setInstallError] = useState<string | null>(null);
   const [installProgress, setInstallProgress] = useState<Map<string, ModpackInstallProgress>>(new Map());
   const [showVersionModal, setShowVersionModal] = useState(false);
-  const [selectedPack, setSelectedPack] = useState<ModrinthPack | null>(null);
+  const [selectedPack, setSelectedPack] = useState<ModpackSearchResult | null>(null);
   const [availableVersions, setAvailableVersions] = useState<ModrinthVersion[]>([]);
   const [loadingVersions, setLoadingVersions] = useState(false);
   
@@ -88,7 +88,7 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
     // The hook will automatically refresh when searchQuery changes
   };
 
-  const showVersionSelector = async (pack: ModrinthPack) => {
+  const showVersionSelector = async (pack: ModpackSearchResult) => {
     if (!launcherSettings) {
       setInstallError('Launcher settings not available');
       return;
@@ -101,8 +101,8 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
       
       // Fetch available versions
       const versions = await invoke<ModrinthVersion[]>('get_modpack_versions', {
-        projectId: pack.project_id,
-        platform: selectedPlatform
+        modpack_id: pack.id,
+        platform: pack.project_type
       });
       
       setAvailableVersions(versions);
@@ -115,7 +115,7 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
     }
   };
 
-  const installModpack = async (pack: ModrinthPack, selectedVersion: ModrinthVersion) => {
+  const installModpack = async (pack: ModpackSearchResult, selectedVersion: ModrinthVersion) => {
     if (!launcherSettings) {
       setInstallError('Launcher settings not available');
       return;
@@ -125,10 +125,12 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
       // Start installation - backend will register the instance  
       const instanceName = `${pack.name}_${selectedVersion.version_number}`;
       await invoke('install_modpack', {
-        instanceName: instanceName,
-        gameDir: launcherSettings.instances_dir,
-        projectId: pack.project_id,
-        versionId: selectedVersion.id
+        instance_name: instanceName,
+        modpack_id: pack.id,
+        version_id: selectedVersion.id,
+        platform: pack.project_type,
+        game_directory: launcherSettings.instances_dir,
+        install_overrides: true
       });
 
       // Notify parent to refresh instances list since backend registered the instance
@@ -159,7 +161,7 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
     }
   };
 
-  const renderModpackCard = (pack: ModrinthPack, index: number) => {
+  const renderModpackCard = (pack: ModpackSearchResult, index: number) => {
     // Check for progress with any version suffix
     let progress = null;
     for (const [key, value] of installProgress.entries()) {
@@ -171,7 +173,7 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
     
     return (
       <motion.div
-        key={pack.project_id}
+        key={pack.id}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: (index % 20) * 0.05 }}
@@ -249,7 +251,7 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-white mb-2">Modpack Browser</h1>
-          <p className="text-gray-300">Discover and install modpacks from Modrinth</p>
+          <p className="text-gray-300">Discover and install modpacks from Modrinth and CurseForge</p>
         </div>
 
         {/* Controls */}
@@ -267,6 +269,15 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
                   className="w-full pl-10 pr-4 py-2 bg-primary-800/90 border border-secondary-600/30 rounded-lg text-white placeholder-primary-400 focus:outline-none focus:border-secondary-500/50"
                 />
               </div>
+              <select
+                value={selectedPlatform}
+                onChange={(e) => setSelectedPlatform(e.target.value)}
+                className="px-3 py-2 bg-primary-800/90 border border-secondary-600/30 rounded-lg text-white focus:outline-none focus:border-secondary-500/50"
+              >
+                <option value="modrinth">Modrinth</option>
+                <option value="curseforge">CurseForge</option>
+                <option value="all">Both</option>
+              </select>
               <button
                 type="submit"
                 disabled={loading}

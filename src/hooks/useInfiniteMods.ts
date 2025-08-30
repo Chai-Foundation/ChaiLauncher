@@ -37,15 +37,15 @@ export const useInfiniteMods = ({
       if (isSearch && searchQuery.trim()) {
         results = await invoke<ModInfo[]>('search_mods', {
           query: searchQuery,
-          gameVersion,
-          modLoader: null,
+          game_version: gameVersion,
+          mod_loader: null,
           limit,
           offset
         });
       } else if (!isSearch) {
         results = await invoke<ModInfo[]>('get_featured_mods', {
-          gameVersion,
-          modLoader: null,
+          game_version: gameVersion,
+          mod_loader: null,
           limit,
           offset,
           category: selectedCategory || null

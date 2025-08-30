@@ -195,3 +195,19 @@ export interface InstallCompleteEvent {
   error?: string;
 }
 
+// Generic modpack search result that supports both Modrinth and CurseForge
+export interface ModpackSearchResult {
+  id: string;
+  name: string;
+  description: string;
+  author: string;
+  downloads: number;
+  icon_url?: string;
+  project_type: string; // "modrinth", "curseforge"
+  game_versions: string[];
+  mod_loaders: string[];
+  created_at: string;
+  updated_at: string;
+  categories: string[];
+}
+

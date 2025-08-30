@@ -1,15 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { ModrinthPack } from '../types';
+import { ModpackSearchResult } from '../types';
 
 interface UseInfiniteModpacksParams {
   searchQuery?: string;
   platform?: string;
+  gameVersion?: string;
+  modLoader?: string;
   limit?: number;
 }
 
 interface UseInfiniteModpacksReturn {
-  modpacks: ModrinthPack[];
+  modpacks: ModpackSearchResult[];
   loading: boolean;
   hasMore: boolean;
   error: string | null;
@@ -20,20 +22,24 @@ interface UseInfiniteModpacksReturn {
 export const useInfiniteModpacks = ({
   searchQuery = '',
   platform = 'modrinth',
+  gameVersion,
+  modLoader,
   limit = 20
 }: UseInfiniteModpacksParams): UseInfiniteModpacksReturn => {
-  const [modpacks, setModpacks] = useState<ModrinthPack[]>([]);
+  const [modpacks, setModpacks] = useState<ModpackSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentOffset, setCurrentOffset] = useState(0);
 
-  const fetchModpacksPage = useCallback(async (offset: number): Promise<ModrinthPack[]> => {
+  const fetchModpacksPage = useCallback(async (offset: number): Promise<ModpackSearchResult[]> => {
     try {
       const query = searchQuery.trim() || 'featured';
-      const results = await invoke<ModrinthPack[]>('search_modpacks', {
+      const results = await invoke<ModpackSearchResult[]>('search_modpacks', {
         query,
         platform,
+        game_version: gameVersion,
+        mod_loader: modLoader,
         limit,
         offset
       });
@@ -52,7 +58,7 @@ export const useInfiniteModpacks = ({
       console.error('Failed to fetch modpacks page:', err);
       throw err;
     }
-  }, [searchQuery, platform, limit]);
+  }, [searchQuery, platform, gameVersion, modLoader, limit]);
 
   const loadMore = useCallback(async () => {
     if (loading || !hasMore) return;
@@ -101,7 +107,7 @@ export const useInfiniteModpacks = ({
   // Trigger refresh when search parameters change
   useEffect(() => {
     refresh();
-  }, [searchQuery, platform]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [searchQuery, platform, gameVersion, modLoader]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     modpacks,
