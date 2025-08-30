@@ -101,7 +101,7 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
       
       // Fetch available versions
       const versions = await invoke<ModrinthVersion[]>('get_modpack_versions', {
-        projectId: pack.project_id,
+        modpackId: pack.project_id,
         platform: selectedPlatform
       });
       
@@ -125,13 +125,15 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
       // Start installation - backend will register the instance  
       const instanceName = `${pack.name}_${selectedVersion.version_number}`;
       await invoke('install_modpack', {
-        instanceName: instanceName,
-        gameDir: launcherSettings.instances_dir,
-        projectId: pack.project_id,
-        versionId: selectedVersion.id
+        request: {
+          instance_name: instanceName,
+          modpack_id: pack.project_id,
+          version_id: selectedVersion.id,
+          platform: selectedPlatform,
+          game_directory: launcherSettings.instances_dir,
+          install_overrides: false
+        }
       });
-
-      // Notify parent to refresh instances list since backend registered the instance
       if (onCreateInstance) {
         // Call with dummy data just to trigger refresh - backend handles actual instance creation
         onCreateInstance({
@@ -163,7 +165,7 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
     // Check for progress with any version suffix
     let progress = null;
     for (const [key, value] of installProgress.entries()) {
-      if (key.includes(pack.name)) {
+      if (typeof key === 'string' && key.includes(pack.name)) {
         progress = value;
         break;
       }

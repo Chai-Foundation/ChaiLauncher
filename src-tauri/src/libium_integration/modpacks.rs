@@ -330,6 +330,19 @@ impl ModpackManager {
         _app_handle: AppHandle,
         progress_callback: impl Fn(u64, u64, String) + Send + Clone + 'static,
     ) -> Result<String, LibiumError> {
+        // Validate required fields
+        if request.instance_name.is_empty() {
+            return Err(LibiumError::Add(libium::add::Error::DoesNotExist));
+        }
+        if request.modpack_id.is_empty() {
+            return Err(LibiumError::Add(libium::add::Error::DoesNotExist));
+        }
+        if request.version_id.is_empty() {
+            return Err(LibiumError::Add(libium::add::Error::DoesNotExist));
+        }
+        if request.platform.is_empty() {
+            return Err(LibiumError::Add(libium::add::Error::DoesNotExist));
+        }
         progress_callback(0, 100, "Starting modpack installation".to_string());
         
         // Create instance directory

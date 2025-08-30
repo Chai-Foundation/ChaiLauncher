@@ -31,23 +31,29 @@ export const useInfiniteModpacks = ({
   const fetchModpacksPage = useCallback(async (offset: number): Promise<ModrinthPack[]> => {
     try {
       const query = searchQuery.trim() || 'featured';
-      const results = await invoke<ModrinthPack[]>('search_modpacks', {
+      const results = await invoke<any[]>('search_modpacks', {
         query,
         platform,
         limit,
         offset
       });
-      
-      if (results.length === 0) {
+
+      // Map backend 'id' to frontend 'project_id'
+      const mappedResults: ModrinthPack[] = results.map((pack) => ({
+        ...pack,
+        project_id: pack.id,
+      }));
+
+      if (mappedResults.length === 0) {
         setHasMore(false);
         return [];
       }
 
-      if (results.length < limit) {
+      if (mappedResults.length < limit) {
         setHasMore(false);
       }
 
-      return results;
+      return mappedResults;
     } catch (err) {
       console.error('Failed to fetch modpacks page:', err);
       throw err;
