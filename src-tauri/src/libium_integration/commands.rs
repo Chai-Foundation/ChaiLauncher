@@ -335,10 +335,22 @@ pub async fn create_modded_instance(
     mod_loader: Option<String>,
     app_handle: AppHandle,
 ) -> Result<String, String> {
+    let _ = app_handle.emit("instance_creation_progress", serde_json::json!({
+        "instance_name": instance_name,
+        "stage": "initializing",
+        "progress": 0
+    }));
+    
     let mut manager = LibiumManager::new().await
         .map_err(|e| format!("Failed to initialize libium: {}", e))?;
     
     // Create instance directory
+    let _ = app_handle.emit("instance_creation_progress", serde_json::json!({
+        "instance_name": instance_name,
+        "stage": "creating_directories",
+        "progress": 10
+    }));
+    
     let instances_dir = storage::get_launcher_dir().join("instances");
     let instance_path = instances_dir.join(&instance_name);
     
@@ -358,6 +370,23 @@ pub async fn create_modded_instance(
         ModLoader::Fabric // Default to Fabric
     };
     
+    // Install the mod loader first
+    let _ = app_handle.emit("instance_creation_progress", serde_json::json!({
+        "instance_name": instance_name,
+        "stage": "installing_mod_loader",
+        "progress": 30
+    }));
+    
+    let loader_name = format!("{:?}", loader).to_lowercase();
+    crate::libium_integration::install_mod_loader(&instance_path, &game_version, &loader_name).await
+        .map_err(|e| format!("Failed to install mod loader: {}", e))?;
+    
+    let _ = app_handle.emit("instance_creation_progress", serde_json::json!({
+        "instance_name": instance_name,
+        "stage": "configuring_profile",
+        "progress": 60
+    }));
+    
     // Create libium profile for this instance
     manager.ensure_instance_profile(&instance_name, &instance_path).await
         .map_err(|e| format!("Failed to create instance profile: {}", e))?;
@@ -366,6 +395,12 @@ pub async fn create_modded_instance(
         .map_err(|e| format!("Failed to update profile filters: {}", e))?;
     
     // Create instance metadata
+    let _ = app_handle.emit("instance_creation_progress", serde_json::json!({
+        "instance_name": instance_name,
+        "stage": "registering_instance",
+        "progress": 80
+    }));
+    
     let game_version_clone = game_version.clone();
     let instance_metadata = storage::InstanceMetadata {
         id: Uuid::new_v4().to_string(),
@@ -395,6 +430,12 @@ pub async fn create_modded_instance(
     storage_manager.add_instance(instance_metadata).await
         .map_err(|e| format!("Failed to register instance: {}", e))?;
     
+    let _ = app_handle.emit("instance_creation_progress", serde_json::json!({
+        "instance_name": instance_name,
+        "stage": "completed",
+        "progress": 100
+    }));
+    
     let _ = app_handle.emit("instance_created", serde_json::json!({
         "instance_name": &instance_name,
         "mod_loader": format!("{:?}", loader),
@@ -402,6 +443,68 @@ pub async fn create_modded_instance(
     }));
     
     Ok(instance_name)
+}
+
+/// Install mod loader for an existing instance
+#[command]
+pub async fn install_instance_mod_loader(
+    instance_id: String,
+    mod_loader: String,
+    game_version: String,
+    app_handle: AppHandle,
+) -> Result<(), String> {
+    let _ = app_handle.emit("mod_loader_install_started", json!({
+        "instance_id": instance_id,
+        "mod_loader": mod_loader,
+        "game_version": game_version
+    }));
+    
+    // Get instance path
+    let instance_path = get_instance_path(&instance_id)?;
+    
+    // Install the mod loader
+    crate::libium_integration::install_mod_loader(&instance_path, &game_version, &mod_loader).await
+        .map_err(|e| format!("Failed to install mod loader: {}", e))?;
+    
+    // Update instance metadata to mark it as modded
+    let mut storage_manager = storage::StorageManager::new().await
+        .map_err(|e| format!("Failed to initialize storage: {}", e))?;
+    
+    if let Some(mut instance) = storage_manager.get_instance(&instance_id).cloned() {
+        instance.is_modded = true;
+        instance.tags.push("modded".to_string());
+        instance.tags.push(mod_loader.clone());
+        instance.description = Some(format!(
+            "Instance with {} mod loader for Minecraft {}", 
+            mod_loader, 
+            game_version
+        ));
+        
+        storage_manager.update_instance(instance).await
+            .map_err(|e| format!("Failed to update instance metadata: {}", e))?;
+    }
+    
+    // Create libium profile for mod management
+    let mut manager = LibiumManager::new().await
+        .map_err(|e| format!("Failed to initialize libium: {}", e))?;
+    
+    manager.ensure_instance_profile(&instance_id, &instance_path).await
+        .map_err(|e| format!("Failed to create instance profile: {}", e))?;
+    
+    let loader = libium::config::structs::ModLoader::from_str(&mod_loader)
+        .map_err(|_| format!("Invalid mod loader: {}", mod_loader))?;
+    
+    manager.update_profile_filters(&instance_id, vec![game_version.clone()], loader).await
+        .map_err(|e| format!("Failed to update profile filters: {}", e))?;
+    
+    let _ = app_handle.emit("mod_loader_install_completed", json!({
+        "instance_id": instance_id,
+        "mod_loader": mod_loader,
+        "game_version": game_version
+    }));
+    
+    println!("✅ Successfully installed {} mod loader for instance {}", mod_loader, instance_id);
+    Ok(())
 }
 
 /// Get available mod loaders
