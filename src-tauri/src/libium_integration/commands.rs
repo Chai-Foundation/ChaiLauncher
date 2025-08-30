@@ -527,9 +527,9 @@ pub async fn diagnose_instances() -> Result<Vec<String>, String> {
     let storage_manager = storage::StorageManager::new().await
         .map_err(|e| format!("Failed to initialize storage: {}", e))?;
     
-    let instances = storage_manager.get_all_instances();
+    let instances: Vec<_> = storage_manager.get_all_instances().iter().cloned().collect();
     
-    for instance in instances {
+    for mut instance in instances {
         let instance_path = &instance.game_dir;
         let mods_dir = instance_path.join("mods");
         let versions_dir = instance_path.join("versions");
@@ -602,10 +602,14 @@ pub async fn fix_vanilla_instances() -> Result<Vec<String>, String> {
     
     let mut storage_manager = storage::StorageManager::new().await
         .map_err(|e| format!("Failed to initialize storage: {}", e))?;
+
+    // Collect instances into a Vec to avoid borrowing storage_manager
+    let instances_vec = {
+        let instances = storage_manager.get_all_instances();
+        instances.iter().cloned().collect::<Vec<_>>()
+    };
     
-    let instances = storage_manager.get_all_instances().clone();
-    
-    for mut instance in instances {
+    for instance in instances_vec {
         let instance_path = &instance.game_dir;
         let mods_dir = instance_path.join("mods");
         let versions_dir = instance_path.join("versions");
@@ -637,42 +641,43 @@ pub async fn fix_vanilla_instances() -> Result<Vec<String>, String> {
         
         let mut needs_update = false;
         let mut changes = Vec::new();
+        let mut updated_instance = instance.clone();
         
         // Fix modded status
-        if !instance.is_modded && (mod_loader_profile.is_some() || mods_count > 0) {
-            instance.is_modded = true;
+        if !updated_instance.is_modded && (mod_loader_profile.is_some() || mods_count > 0) {
+            updated_instance.is_modded = true;
             needs_update = true;
             changes.push("marked as modded".to_string());
         }
         
         // Fix mod count
-        if instance.mods_count != mods_count {
-            instance.mods_count = mods_count;
+        if updated_instance.mods_count != mods_count as u32 {
+            updated_instance.mods_count = mods_count as u32;
             needs_update = true;
             changes.push(format!("updated mod count to {}", mods_count));
         }
         
         // Fix version profile
         if let Some(ref profile) = mod_loader_profile {
-            if instance.version != *profile {
-                instance.version = profile.clone();
+            if updated_instance.version != *profile {
+                updated_instance.version = profile.clone();
                 needs_update = true;
                 changes.push(format!("updated version to {}", profile));
             }
         }
         
         // Update tags
-        if instance.is_modded && !instance.tags.contains(&"modded".to_string()) {
-            instance.tags.push("modded".to_string());
+        if updated_instance.is_modded && !updated_instance.tags.contains(&"modded".to_string()) {
+            updated_instance.tags.push("modded".to_string());
             needs_update = true;
             changes.push("added modded tag".to_string());
         }
         
         if needs_update {
-            storage_manager.update_instance(instance.clone()).await
-                .map_err(|e| format!("Failed to update instance {}: {}", instance.name, e))?;
+            storage_manager.update_instance(updated_instance.clone()).await
+                .map_err(|e| format!("Failed to update instance {}: {}", updated_instance.name, e))?;
             
-            fixed_instances.push(format!("Fixed '{}': {}", instance.name, changes.join(", ")));
+            fixed_instances.push(format!("Fixed '{}': {}", updated_instance.name, changes.join(", ")));
         }
     }
     
