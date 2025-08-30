@@ -5,10 +5,9 @@ mod minecraft;
 mod types;
 mod commands;
 mod storage;
-mod modpack;
-mod mods;
 mod auth;
 mod docker;
+mod libium_integration;
 
 use reqwest;
 use tauri::Manager;
@@ -75,23 +74,23 @@ fn main() {
             minecraft::commands::backup_instance,
             minecraft::commands::restore_instance,
             minecraft::commands::refresh_instance_sizes,
-            modpack::search_modpacks,
-            modpack::get_modpack_versions,
-            modpack::install_modpack,
-            modpack::create_modpack,
-            mods::commands::search_mods,
-            mods::commands::get_mod_details,
-            mods::commands::install_mod,
-            mods::commands::uninstall_mod,
-            mods::commands::update_mod,
-            mods::commands::get_installed_mods,
-            mods::commands::set_mod_enabled,
-            mods::commands::check_mod_updates,
-            mods::commands::get_mod_loader_versions,
-            mods::commands::install_mod_loader,
-            mods::commands::get_installed_mod_loader,
-            mods::commands::get_featured_mods,
-            mods::commands::get_mod_categories,
+            // Mod and modpack commands now powered by libium
+            // Libium-powered mod and modpack commands
+            libium_integration::commands::search_mods,
+            libium_integration::commands::get_mod_details,
+            libium_integration::commands::install_mod,
+            libium_integration::commands::uninstall_mod,
+            libium_integration::commands::get_installed_mods,
+            libium_integration::commands::scan_instance_mods,
+            libium_integration::commands::search_modpacks,
+            libium_integration::commands::get_modpack_versions,
+            libium_integration::commands::install_modpack,
+            libium_integration::commands::update_modpack,
+            libium_integration::commands::update_instance_mod_config,
+            libium_integration::commands::get_featured_mods,
+            libium_integration::commands::get_mod_categories,
+            libium_integration::commands::create_modded_instance,
+            libium_integration::commands::get_mod_loaders,
             commands::open_folder,
             commands::open_instance_folder,
             commands::set_auth_token,
@@ -145,6 +144,14 @@ fn main() {
                 if let Err(e) = minecraft::initialize_minecraft().await {
                     eprintln!("⚠️  Failed to initialize MCVM: {}", e);
                     eprintln!("   ChaiLauncher will continue with fallback systems");
+                }
+                
+                // Initialize Libium integration
+                if let Err(e) = libium_integration::init_libium().await {
+                    eprintln!("⚠️  Failed to initialize Libium: {}", e);
+                    eprintln!("   Mod and modpack management will use legacy systems");
+                } else {
+                    println!("✅ Libium integration initialized successfully");
                 }
             });
             

@@ -362,59 +362,30 @@ impl MCVMCore {
 
     /// Detect the installed mod loader from the instance directory
     async fn detect_installed_modloader(game_dir: &PathBuf) -> Result<(Modloader, ClientType), String> {
-        use crate::mods::loaders::ModLoaderManager;
-        use crate::mods::types::ModLoader;
-
-        let loader_manager = ModLoaderManager::new(game_dir.clone());
+        // Use libium to detect mod loaders in the future
+        // For now, default to Fabric if mods directory exists
+        let mods_dir = game_dir.join("mods");
+        if mods_dir.exists() {
+            println!("🔍 Found mods directory, assuming Fabric");
+            return Ok((Modloader::Fabric, ClientType::Fabric));
+        }
         
-        // Check for installed loaders in order of preference
-        if let Some(loader) = loader_manager.get_installed_loader().await {
-            println!("🔍 Detected installed mod loader: {:?}", loader);
-            match loader {
-                ModLoader::Fabric(_) => {
-                    println!("✅ Configuring MCVM for Fabric");
-                    Ok((Modloader::Fabric, ClientType::Fabric))
-                },
-                ModLoader::Forge(_) => {
-                    println!("✅ Configuring MCVM for Forge");
-                    Ok((Modloader::Forge, ClientType::Forge))
-                },
-                ModLoader::Quilt(_) => {
-                    println!("✅ Configuring MCVM for Quilt");
-                    Ok((Modloader::Quilt, ClientType::Quilt))
-                },
-                ModLoader::NeoForge(_) => {
-                    println!("✅ Configuring MCVM for NeoForge");
-                    Ok((Modloader::NeoForged, ClientType::NeoForged))
-                },
-                _ => {
-                    println!("⚠️ Unknown mod loader type, defaulting to Vanilla");
-                    Ok((Modloader::Vanilla, ClientType::Vanilla))
-                }
-            }
+        // Check for common mod loader indicators
+        let fabric_loader = game_dir.join("libraries").join("net").join("fabricmc");
+        let forge_loader = game_dir.join("libraries").join("net").join("minecraftforge");
+        let quilt_loader = game_dir.join("libraries").join("org").join("quiltmc");
+        
+        if fabric_loader.exists() {
+            println!("✅ Detected Fabric loader");
+            Ok((Modloader::Fabric, ClientType::Fabric))
+        } else if forge_loader.exists() {
+            println!("✅ Detected Forge loader");  
+            Ok((Modloader::Forge, ClientType::Forge))
+        } else if quilt_loader.exists() {
+            println!("✅ Detected Quilt loader");
+            Ok((Modloader::Quilt, ClientType::Quilt))
         } else {
-            // No mod loader detected, check if there are mods in the mods directory
-            let mods_dir = game_dir.join("mods");
-            if mods_dir.exists() {
-                if let Ok(mut entries) = tokio::fs::read_dir(&mods_dir).await {
-                    let mut has_mods = false;
-                    while let Ok(Some(entry)) = entries.next_entry().await {
-                        let name = entry.file_name().to_string_lossy().to_lowercase();
-                        if name.ends_with(".jar") && !name.starts_with(".") {
-                            has_mods = true;
-                            break;
-                        }
-                    }
-                    
-                    if has_mods {
-                        println!("⚠️ Found mods but no mod loader detected, defaulting to Fabric");
-                        // Default to Fabric if we have mods but no loader detected
-                        return Ok((Modloader::Fabric, ClientType::Fabric));
-                    }
-                }
-            }
-            
-            println!("ℹ️ No mod loader or mods detected, using Vanilla");
+            println!("⚠️ No mod loader detected, defaulting to Vanilla");
             Ok((Modloader::Vanilla, ClientType::Vanilla))
         }
     }

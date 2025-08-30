@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Package, Download, Settings } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Package, Download, Settings, Wrench } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { invoke } from '@tauri-apps/api/core';
 import { MinecraftVersion, ModpackInfo } from '../../../types/minecraft';
 import { Modal, Button } from '../../ui';
 
@@ -12,6 +13,7 @@ interface CreateInstanceModalProps {
     version: string;
     modpack?: string;
     modpackVersion?: string;
+    modLoader?: string;
   }) => void;
   minecraftVersions: MinecraftVersion[];
   versionsLoading?: boolean;
@@ -19,7 +21,7 @@ interface CreateInstanceModalProps {
   popularModpacks: ModpackInfo[];
 }
 
-type InstanceType = 'vanilla' | 'modpack' | 'custom';
+type InstanceType = 'vanilla' | 'modpack' | 'modded' | 'custom';
 
 const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({
   isOpen,
@@ -35,7 +37,25 @@ const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({
   const [instanceName, setInstanceName] = useState('');
   const [selectedVersion, setSelectedVersion] = useState('');
   const [selectedModpack, setSelectedModpack] = useState<ModpackInfo | null>(null);
+  const [selectedModLoader, setSelectedModLoader] = useState<string>('fabric');
+  const [availableModLoaders, setAvailableModLoaders] = useState<string[]>([]);
   const [showSnapshots, setShowSnapshots] = useState(false);
+
+  // Load available mod loaders on mount
+  useEffect(() => {
+    const loadModLoaders = async () => {
+      try {
+        const loaders = await invoke<string[]>('get_mod_loaders');
+        setAvailableModLoaders(loaders);
+      } catch (error) {
+        console.error('Failed to load mod loaders:', error);
+      }
+    };
+    
+    if (isOpen) {
+      loadModLoaders();
+    }
+  }, [isOpen]);
 
   const handleNext = () => {
     if (step < 3) setStep(step + 1);
@@ -51,6 +71,7 @@ const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({
       version: selectedVersion,
       modpack: selectedModpack?.name,
       modpackVersion: selectedModpack?.version,
+      modLoader: instanceType === 'modded' ? selectedModLoader : undefined,
     });
     onClose();
     resetForm();
@@ -62,6 +83,7 @@ const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({
     setInstanceName('');
     setSelectedVersion('');
     setSelectedModpack(null);
+    setSelectedModLoader('fabric');
     setShowSnapshots(false);
   };
 
@@ -74,7 +96,12 @@ const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({
       case 1:
         return instanceType !== null;
       case 2:
-        return instanceType === 'modpack' ? selectedModpack !== null : selectedVersion !== '';
+        if (instanceType === 'modpack') {
+          return selectedModpack !== null;
+        } else if (instanceType === 'modded') {
+          return selectedVersion !== '' && selectedModLoader !== '';
+        }
+        return selectedVersion !== '';
       case 3:
         return instanceName.trim() !== '';
       default:
@@ -126,6 +153,23 @@ const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({
             <div>
               <h4 className="text-white font-medium">Vanilla Minecraft</h4>
               <p className="text-primary-400 text-sm">Pure Minecraft experience</p>
+            </div>
+          </div>
+        </button>
+
+        <button
+          onClick={() => setInstanceType('modded')}
+          className={`p-4 rounded-lg border-2 text-left transition-all ${
+            instanceType === 'modded'
+              ? 'border-secondary-600 bg-secondary-600/10'
+              : 'border-primary-600 hover:border-primary-500'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <Wrench className="text-secondary-500" size={24} />
+            <div>
+              <h4 className="text-white font-medium">Modded</h4>
+              <p className="text-primary-400 text-sm">Start with a mod loader ready to add mods</p>
             </div>
           </div>
         </button>
@@ -200,6 +244,90 @@ const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({
                 </div>
               </button>
             ))}
+          </div>
+        </motion.div>
+      );
+    }
+
+    if (instanceType === 'modded') {
+      return (
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          className="space-y-4"
+        >
+          <h3 className="text-lg font-medium text-white mb-4">Configure Modded Instance</h3>
+          
+          {/* Mod Loader Selection */}
+          <div>
+            <label className="block text-sm text-primary-300 mb-2">Mod Loader</label>
+            <div className="grid grid-cols-2 gap-3">
+              {availableModLoaders.map((loader) => (
+                <button
+                  key={loader}
+                  onClick={() => setSelectedModLoader(loader)}
+                  className={`p-3 rounded-lg border-2 text-left transition-all capitalize ${
+                    selectedModLoader === loader
+                      ? 'border-secondary-600 bg-secondary-600/10'
+                      : 'border-primary-600 hover:border-primary-500'
+                  }`}
+                >
+                  <span className="text-white font-medium">{loader}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Version Selection */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm text-primary-300">Minecraft Version</label>
+              <label className="flex items-center gap-2 text-sm text-primary-300">
+                <input
+                  type="checkbox"
+                  checked={showSnapshots}
+                  onChange={(e) => setShowSnapshots(e.target.checked)}
+                  className="rounded"
+                />
+                Include snapshots
+              </label>
+            </div>
+
+            {versionsError && (
+              <div className="p-3 bg-red-900/20 border border-red-700/50 rounded-lg text-red-400 text-sm mb-3">
+                {versionsError}
+              </div>
+            )}
+
+            <div className="max-h-48 overflow-y-auto border border-primary-700 rounded-lg">
+              {versionsLoading ? (
+                <div className="p-4 text-center text-primary-400">Loading versions...</div>
+              ) : (
+                <div className="divide-y divide-primary-700">
+                  {filteredVersions.map((version) => (
+                    <button
+                      key={version.id}
+                      onClick={() => setSelectedVersion(version.id)}
+                      className={`w-full p-3 text-left hover:bg-primary-800 transition-colors ${
+                        selectedVersion === version.id ? 'bg-secondary-900/30' : ''
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-white">{version.id}</span>
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          version.type === 'release'
+                            ? 'bg-green-900/30 text-green-400'
+                            : 'bg-orange-900/30 text-orange-400'
+                        }`}>
+                          {version.type}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </motion.div>
       );
@@ -290,6 +418,9 @@ const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({
           <p><span className="text-primary-400">Version:</span> {selectedVersion}</p>
           {selectedModpack && (
             <p><span className="text-primary-400">Modpack:</span> {selectedModpack.name} v{selectedModpack.version}</p>
+          )}
+          {instanceType === 'modded' && (
+            <p><span className="text-primary-400">Mod Loader:</span> {selectedModLoader}</p>
           )}
         </div>
       </div>
