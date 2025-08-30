@@ -38,7 +38,7 @@ interface ModpackBrowserProps {
 
 export default function ModpackBrowser({ onCreateInstance, launcherSettings }: ModpackBrowserProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const selectedPlatform = 'modrinth';
+  const [selectedPlatform, setSelectedPlatform] = useState<'modrinth' | 'curseforge' | 'all'>('modrinth');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [installError, setInstallError] = useState<string | null>(null);
   const [installProgress, setInstallProgress] = useState<Map<string, ModpackInstallProgress>>(new Map());
@@ -249,7 +249,7 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-white mb-2">Modpack Browser</h1>
-          <p className="text-gray-300">Discover and install modpacks from Modrinth</p>
+          <p className="text-gray-300">Discover and install modpacks from Modrinth and CurseForge</p>
         </div>
 
         {/* Controls */}
@@ -276,6 +276,20 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
                 Search
               </button>
             </form>
+            
+            {/* Platform Filter */}
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-gray-400" />
+              <select
+                value={selectedPlatform}
+                onChange={(e) => setSelectedPlatform(e.target.value as 'modrinth' | 'curseforge' | 'all')}
+                className="px-3 py-2 bg-primary-800/90 border border-secondary-600/30 rounded-lg text-white focus:outline-none focus:border-secondary-500/50"
+              >
+                <option value="modrinth">Modrinth Only</option>
+                <option value="curseforge">CurseForge Only</option>
+                <option value="all">All Platforms</option>
+              </select>
+            </div>
           </div>
 
           {/* Action Buttons and View Controls */}

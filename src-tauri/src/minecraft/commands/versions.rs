@@ -377,8 +377,8 @@ pub async fn download_minecraft_assets_with_progress(
                                         *failed += 1;
                                     }
                                     
-                                    // Update progress every 50 assets
-                                    if current_downloaded % 50 == 0 {
+                                    // Update progress more frequently for better UX
+                                    if current_downloaded % 10 == 0 || current_downloaded == total {
                                         let progress = 20 + ((current_downloaded as f64 / total as f64) * 70.0) as u32;
                                         let _ = app_handle.emit("download_progress", serde_json::json!({
                                             "instance_id": instance_id,
@@ -386,7 +386,7 @@ pub async fn download_minecraft_assets_with_progress(
                                             "progress": progress,
                                             "message": format!("Downloaded {}/{} assets", current_downloaded, total)
                                         }));
-                                        println!("📊 Progress: {}/{} assets downloaded", current_downloaded, total);
+                                        println!("📊 Progress: {}/{} assets downloaded ({}%)", current_downloaded, total, progress);
                                     }
                                     
                                     success

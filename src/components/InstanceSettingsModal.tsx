@@ -238,8 +238,8 @@ export default function InstanceSettingsModal({
 
       const results = await invoke<ModInfo[]>('search_mods', {
         query: searchQuery,
-        gameVersion: instance.version,
-        modLoader: installedLoader,
+        game_version: instance.version,
+        mod_loader: installedLoader,
         limit: 20,
         offset: offset
       });
