@@ -107,7 +107,7 @@ pub async fn create_instance_with_loader(
     
     println!("✅ Instance '{}' created successfully with assets", name);
     Ok(())
-
+}
 
 // Global map to track running instances by ID
 lazy_static! {
