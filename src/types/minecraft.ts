@@ -32,9 +32,11 @@ export interface MinecraftInstance {
   sizeMb?: number;
   description?: string;
   tags?: string[];
-  status?: 'ready' | 'installing' | 'failed' | 'invalid';
+  status?: 'ready' | 'installing' | 'failed' | 'invalid' | 'running';
   installProgress?: number;
   errorMessage?: string;
+  followLogs?: boolean;
+  processId?: number;
 }
 
 export interface MinecraftVersion {

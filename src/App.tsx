@@ -32,8 +32,10 @@ function App() {
   const { 
     instances, 
     instancesRef, 
+    runningInstances,
     createInstance, 
     launchInstance, 
+    stopInstance,
     deleteInstance, 
     openInstanceFolder,
     getInstallingInstances 
@@ -176,6 +178,7 @@ function App() {
             })}
             onCreateInstance={() => setShowCreateModal(true)}
             onPlayInstance={handlePlayInstance}
+            onStopInstance={stopInstance}
             onEditInstance={setEditingInstance}
             onDeleteInstance={deleteInstance}
             onOpenFolder={openInstanceFolder}
@@ -187,6 +190,7 @@ function App() {
             instances={instances}
             onCreateInstance={() => setShowCreateModal(true)}
             onPlayInstance={handlePlayInstance}
+            onStopInstance={stopInstance}
             onEditInstance={setEditingInstance}
             onDeleteInstance={deleteInstance}
             onOpenFolder={openInstanceFolder}

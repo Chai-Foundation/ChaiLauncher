@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Settings, Package, Folder, Trash2, Download, Star, Search, Filter, Grid, List, RefreshCw, Loader, AlertCircle, ExternalLink, User, Calendar, Image, Monitor, Cpu, HardDrive, Camera, FolderOpen, Plus, Minus, MemoryStick } from 'lucide-react';
+import { X, Settings, Package, Folder, Trash2, Download, Star, Search, Filter, Grid, List, RefreshCw, Loader, AlertCircle, ExternalLink, User, Calendar, Image, Monitor, Cpu, HardDrive, Camera, FolderOpen, Plus, Minus, MemoryStick, Terminal } from 'lucide-react';
 import { MinecraftInstance } from '../types/minecraft';
 import { ModInfo } from '../types/mods';
 import { invoke } from '@tauri-apps/api/core';
@@ -606,6 +606,41 @@ export default function InstanceSettingsModal({
           <div className="text-sm text-white">
             {instance.lastPlayed ? new Date(instance.lastPlayed).toLocaleDateString() : 'Never'}
           </div>
+        </div>
+      </div>
+
+      <div className="bg-primary-900/20 border border-primary-700/30 rounded-lg p-4 backdrop-blur-sm">
+        <div className="flex items-center gap-2 mb-4">
+          <Terminal size={20} className="text-secondary-400" />
+          <h3 className="text-lg font-semibold text-white">Launch Settings</h3>
+        </div>
+        
+        <div className="space-y-4">
+          <label className="flex items-center justify-between">
+            <div>
+              <span className="text-sm font-medium text-white">Follow Logs</span>
+              <p className="text-xs text-primary-400 mt-1">
+                Automatically open and follow console logs when this instance is launched
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                const newValue = !instance.followLogs;
+                if (onUpdateInstance) {
+                  onUpdateInstance({ ...instance, followLogs: newValue });
+                }
+              }}
+              className={`w-12 h-6 rounded-full transition-colors relative ${
+                instance.followLogs ? 'bg-secondary-600' : 'bg-primary-600'
+              }`}
+            >
+              <div
+                className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${
+                  instance.followLogs ? 'translate-x-6' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+          </label>
         </div>
       </div>
     </div>

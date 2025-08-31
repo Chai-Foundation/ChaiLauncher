@@ -6,6 +6,7 @@ import InstanceCard from '../InstanceCard';
 interface InstanceListProps {
   instances: MinecraftInstance[];
   onPlay: (instance: MinecraftInstance) => void;
+  onStop?: (instance: MinecraftInstance) => void;
   onEdit: (instance: MinecraftInstance) => void;
   onDelete: (instance: MinecraftInstance) => void;
   onOpenFolder?: (instance: MinecraftInstance) => void;
@@ -16,6 +17,7 @@ interface InstanceListProps {
 const InstanceList: React.FC<InstanceListProps> = ({
   instances,
   onPlay,
+  onStop,
   onEdit,
   onDelete,
   onOpenFolder,
@@ -72,6 +74,7 @@ const InstanceList: React.FC<InstanceListProps> = ({
             key={instance.id}
             instance={instance}
             onPlay={onPlay}
+            onStop={onStop}
             onEdit={onEdit}
             onDelete={onDelete}
             onOpenFolder={onOpenFolder}
