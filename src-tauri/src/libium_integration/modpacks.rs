@@ -544,14 +544,23 @@ impl ModpackManager {
         // Get modpack version information from Modrinth API
         let client = reqwest::Client::new();
         let version_url = format!("https://api.modrinth.com/v2/version/{}", version_id);
+        println!("Fetching Modrinth version info from: {}", version_url);
+        
         let version_response = client.get(&version_url)
             .header("User-Agent", "ChaiLauncher/1.0")
             .send()
             .await
-            .map_err(|e| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
+            .map_err(|e| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::Other, 
+                format!("Failed to fetch Modrinth version {}: {}", version_id, e))))?;
+        
+        if !version_response.status().is_success() {
+            return Err(LibiumError::Io(std::io::Error::new(std::io::ErrorKind::NotFound, 
+                format!("Modrinth version '{}' not found (HTTP {})", version_id, version_response.status()))));
+        }
         
         let version_data: serde_json::Value = version_response.json().await
-            .map_err(|e| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, e)))?;
+            .map_err(|e| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, 
+                format!("Failed to parse Modrinth version data for {}: {}", version_id, e))))?;
         
         // Extract mod loader and game version from modpack
         let game_versions = version_data.get("game_versions")
