@@ -80,8 +80,15 @@ export const useInstances = (launcherSettings: LauncherSettings | null) => {
         // Load external instances
         const externalInstances = await InstanceService.detectExternalInstances();
         
-        // Combine both
-        const allInstances = [...storedInstances, ...externalInstances];
+        // Get running instances from backend
+        const runningInstanceIds = await InstanceService.getRunningInstances();
+        setRunningInstances(new Set(runningInstanceIds));
+        
+        // Combine instances and set running status
+        const allInstances = [...storedInstances, ...externalInstances].map(instance => ({
+          ...instance,
+          status: runningInstanceIds.includes(instance.id) ? 'running' as const : instance.status
+        }));
         console.log('Final combined instances:', allInstances);
         setInstances(allInstances);
         

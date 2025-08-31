@@ -1,12 +1,20 @@
 use std::path::PathBuf;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use tauri::{command, AppHandle, Emitter};
 use tokio::fs;
 use reqwest;
 use serde_json;
+use lazy_static::lazy_static;
 
 use crate::storage::{StorageManager, InstanceMetadata};
 use crate::minecraft::{MinecraftInstance, AuthInfo};
 use super::versions::{download_minecraft_assets_with_progress, download_minecraft_assets_with_progress_auto, download_version_manifest};
+
+// Global map to track running instances by ID
+lazy_static! {
+    static ref RUNNING_INSTANCES: Arc<Mutex<HashMap<String, u32>>> = Arc::new(Mutex::new(HashMap::new()));
+}
 
 /// Create a new Minecraft instance
 #[command]
@@ -131,6 +139,12 @@ pub async fn launch_instance(
     match crate::minecraft::launch_minecraft(&instance, Some(auth_info), memory).await {
         Ok(result) => {
             if result.success {
+                // Track the running instance
+                {
+                    let mut running = RUNNING_INSTANCES.lock().unwrap();
+                    running.insert(instance.id.clone(), result.process_id);
+                }
+                
                 println!("✓ Minecraft launched successfully with PID: {}", result.process_id);
                 Ok(())
             } else {
@@ -146,12 +160,88 @@ pub async fn launch_instance(
 pub async fn stop_instance(instance_id: String) -> Result<(), String> {
     println!("🛑 Stopping instance: {}", instance_id);
     
-    // For now, we'll just log that we're stopping the instance
-    // In a full implementation, we would track process IDs and terminate them
-    // This is a placeholder implementation
+    // Get the process ID from our tracking map
+    let process_id = {
+        let running = RUNNING_INSTANCES.lock().unwrap();
+        running.get(&instance_id).copied()
+    };
     
-    println!("✅ Instance '{}' stop signal sent", instance_id);
-    Ok(())
+    if let Some(pid) = process_id {
+        // Try to terminate the process
+        match terminate_process(pid).await {
+            Ok(_) => {
+                // Remove from tracking map
+                {
+                    let mut running = RUNNING_INSTANCES.lock().unwrap();
+                    running.remove(&instance_id);
+                }
+                println!("✅ Instance '{}' stopped successfully (PID: {})", instance_id, pid);
+                Ok(())
+            }
+            Err(e) => {
+                // Still remove from tracking map even if termination failed
+                {
+                    let mut running = RUNNING_INSTANCES.lock().unwrap();
+                    running.remove(&instance_id);
+                }
+                Err(format!("Failed to stop instance: {}", e))
+            }
+        }
+    } else {
+        println!("⚠️  Instance '{}' is not tracked as running", instance_id);
+        Ok(()) // Not an error if it's not running
+    }
+}
+
+/// Helper function to terminate a process by PID
+async fn terminate_process(pid: u32) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::process::Command;
+        
+        let output = Command::new("taskkill")
+            .args(&["/F", "/PID", &pid.to_string()])
+            .output()
+            .map_err(|e| format!("Failed to execute taskkill: {}", e))?;
+            
+        if output.status.success() {
+            Ok(())
+        } else {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            Err(format!("taskkill failed: {}", stderr))
+        }
+    }
+    
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    {
+        use std::process::Command;
+        
+        let output = Command::new("kill")
+            .args(&["-TERM", &pid.to_string()])
+            .output()
+            .map_err(|e| format!("Failed to execute kill: {}", e))?;
+            
+        if output.status.success() {
+            Ok(())
+        } else {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            Err(format!("kill failed: {}", stderr))
+        }
+    }
+}
+
+/// Get list of currently running instance IDs
+#[command]
+pub async fn get_running_instances() -> Result<Vec<String>, String> {
+    let running = RUNNING_INSTANCES.lock().unwrap();
+    Ok(running.keys().cloned().collect())
+}
+
+/// Check if an instance is running
+#[command]
+pub async fn is_instance_running(instance_id: String) -> Result<bool, String> {
+    let running = RUNNING_INSTANCES.lock().unwrap();
+    Ok(running.contains_key(&instance_id))
 }
 
 /// Load instances from storage

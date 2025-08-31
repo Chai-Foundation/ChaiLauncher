@@ -63,6 +63,8 @@ fn main() {
             minecraft::commands::detect_all_external_instances,
             minecraft::commands::launch_instance,
             minecraft::commands::stop_instance,
+            minecraft::commands::get_running_instances,
+            minecraft::commands::is_instance_running,
             minecraft::commands::launch_external_instance,
             minecraft::commands::load_instances,
             minecraft::commands::import_orphaned_instances,
