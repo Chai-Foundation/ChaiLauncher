@@ -98,6 +98,18 @@ export class InstanceService {
     await invoke('launch_instance', params);
   }
 
+  static async stopInstance(instanceId: string): Promise<void> {
+    await invoke('stop_instance', { instanceId });
+  }
+
+  static async getRunningInstances(): Promise<string[]> {
+    return await invoke('get_running_instances');
+  }
+
+  static async isInstanceRunning(instanceId: string): Promise<boolean> {
+    return await invoke('is_instance_running', { instanceId });
+  }
+
   static async deleteInstance(instanceId: string): Promise<void> {
     await invoke('delete_instance', { instanceId });
   }

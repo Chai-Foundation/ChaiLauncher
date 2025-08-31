@@ -4,12 +4,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MinecraftInstance } from '../types/minecraft';
 import { InstanceList } from './instance';
 import ModpackCreator from './ModpackCreator';
+import InstanceLogsModal from './InstanceLogsModal';
+import StopInstanceModal from './StopInstanceModal';
 import { Button } from './ui';
 
 interface InstancesViewProps {
   instances: MinecraftInstance[];
   onCreateInstance: () => void;
   onPlayInstance: (instance: MinecraftInstance) => void;
+  onStopInstance?: (instance: MinecraftInstance) => void;
   onEditInstance: (instance: MinecraftInstance) => void;
   onDeleteInstance: (instance: MinecraftInstance) => void;
   onOpenFolder?: (instance: MinecraftInstance) => void;
@@ -19,6 +22,7 @@ const InstancesView: React.FC<InstancesViewProps> = ({
   instances,
   onCreateInstance,
   onPlayInstance,
+  onStopInstance,
   onEditInstance,
   onDeleteInstance,
   onOpenFolder,
@@ -38,6 +42,12 @@ const InstancesView: React.FC<InstancesViewProps> = ({
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [filterModded, setFilterModded] = useState<'all' | 'modded' | 'vanilla'>('all');
   const [showModpackCreator, setShowModpackCreator] = useState(false);
+  
+  // Modal states
+  const [showLogsModal, setShowLogsModal] = useState(false);
+  const [selectedLogsInstance, setSelectedLogsInstance] = useState<MinecraftInstance | null>(null);
+  const [showStopModal, setShowStopModal] = useState(false);
+  const [selectedStopInstance, setSelectedStopInstance] = useState<MinecraftInstance | null>(null);
 
   // Remove local modal state for editing
   // const [showInstanceSettings, setShowInstanceSettings] = useState(false);
@@ -46,6 +56,27 @@ const InstancesView: React.FC<InstancesViewProps> = ({
   // Use only the global edit handler
   const handleEditInstance = (instance: MinecraftInstance) => {
     onEditInstance(instance);
+  };
+
+  const handlePlayInstance = (instance: MinecraftInstance) => {
+    // Open logs modal if followLogs is enabled
+    if (instance.followLogs) {
+      setSelectedLogsInstance(instance);
+      setShowLogsModal(true);
+    }
+    
+    onPlayInstance(instance);
+  };
+
+  const handleStopInstance = (instance: MinecraftInstance) => {
+    setSelectedStopInstance(instance);
+    setShowStopModal(true);
+  };
+
+  const handleConfirmStop = () => {
+    if (selectedStopInstance && onStopInstance) {
+      onStopInstance(selectedStopInstance);
+    }
   };
 
   const filteredInstances = instances
@@ -157,7 +188,8 @@ const InstancesView: React.FC<InstancesViewProps> = ({
 
       <InstanceList
         instances={filteredInstances}
-        onPlay={onPlayInstance}
+        onPlay={handlePlayInstance}
+        onStop={handleStopInstance}
         onEdit={handleEditInstance}
         onDelete={onDeleteInstance}
         onOpenFolder={onOpenFolder}
@@ -175,6 +207,26 @@ const InstancesView: React.FC<InstancesViewProps> = ({
           }}
         />
       )}
+
+      {/* Instance Logs Modal */}
+      <InstanceLogsModal
+        isOpen={showLogsModal}
+        onClose={() => setShowLogsModal(false)}
+        instance={selectedLogsInstance || instances[0]}
+        onStopInstance={() => {
+          if (selectedLogsInstance) {
+            handleStopInstance(selectedLogsInstance);
+          }
+        }}
+      />
+
+      {/* Stop Instance Confirmation Modal */}
+      <StopInstanceModal
+        isOpen={showStopModal}
+        onClose={() => setShowStopModal(false)}
+        onConfirm={handleConfirmStop}
+        instance={selectedStopInstance}
+      />
     </div>
   );
 };
