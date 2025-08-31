@@ -701,18 +701,73 @@ impl ModpackManager {
         
         // Use libium's built-in modpack download functionality
         println!("Attempting to download CurseForge modpack with project_id: {}", project_id);
-        let modpack_filepath = identifier.download_file(
-            |_total| {
-                // Simple callback without capturing progress_callback to avoid thread safety issues
-            },
-            |_additional| {
-                // Progress callback for download
-            },
-        ).await.map_err(|e| {
-            eprintln!("Failed to download CurseForge modpack {}: {:?}", project_id, e);
-            LibiumError::Io(std::io::Error::new(std::io::ErrorKind::Other, 
-                format!("Failed to download CurseForge modpack '{}' (ID: {}): {:?}", modpack_id, project_id, e)))
-        })?;
+        
+        // Try to get project info first to verify it exists
+        let project = match libium::CURSEFORGE_API.get_mod(project_id).await {
+            Ok(project) => {
+                println!("Found CurseForge project: {} (ID: {})", project.name, project.id);
+                println!("Project has {} files", project.latest_files.len());
+                
+                // List available file IDs to see if version_id exists
+                println!("Available file IDs:");
+                for file in &project.latest_files {
+                    println!("  - File ID: {}, Name: {}", file.id, file.file_name);
+                }
+                
+                // Check if the requested version_id exists
+                let version_id_num: u64 = version_id.parse().unwrap_or(0);
+                let file_exists = project.latest_files.iter().any(|f| f.id as u64 == version_id_num);
+                if !file_exists {
+                    return Err(LibiumError::Io(std::io::Error::new(std::io::ErrorKind::NotFound, 
+                        format!("File {} not found in CurseForge modpack {}. Available files: {:?}", 
+                                version_id, project_id, project.latest_files.iter().map(|f| f.id).collect::<Vec<_>>()))));
+                }
+                
+                project
+            }
+            Err(e) => {
+                eprintln!("Failed to fetch CurseForge project {}: {:?}", project_id, e);
+                return Err(LibiumError::Io(std::io::Error::new(std::io::ErrorKind::NotFound, 
+                    format!("CurseForge project {} not found or inaccessible: {:?}", project_id, e))));
+            }
+        };
+        
+        // Download the modpack file directly instead of using libium's broken download
+        // TODO: Fix this in libium
+        let version_id_num: u64 = version_id.parse().unwrap_or(0);
+        let file_to_download = project.latest_files.iter()
+            .find(|f| f.id as u64 == version_id_num)
+            .ok_or_else(|| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::NotFound, 
+                format!("File {} not found in modpack {}", version_id, project_id))))?;
+        
+        let modpack_filepath = if let Some(download_url) = &file_to_download.download_url {
+            println!("Downloading from: {}", download_url);
+            
+            let client = reqwest::Client::new();
+            let response = client.get(download_url.as_str())
+                .header("User-Agent", "ChaiLauncher/1.0")
+                .send()
+                .await
+                .map_err(|e| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::Other, 
+                    format!("Failed to download modpack file: {}", e))))?;
+            
+            let file_bytes = response.bytes().await
+                .map_err(|e| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::Other, 
+                    format!("Failed to read modpack file bytes: {}", e))))?;
+            
+            // Save to temporary file
+            let temp_dir = std::env::temp_dir();
+            let modpack_filepath = temp_dir.join(format!("curseforge_modpack_{}_{}.zip", project_id, version_id));
+            fs::write(&modpack_filepath, &file_bytes).await
+                .map_err(|e| LibiumError::Io(e))?;
+            
+            println!("Downloaded modpack to: {:?}", modpack_filepath);
+            
+            modpack_filepath
+        } else {
+            return Err(LibiumError::Io(std::io::Error::new(std::io::ErrorKind::NotFound, 
+                format!("No download URL available for CurseForge file {}", version_id))));
+        };
         
         progress_callback(40, 100, "Extracting CurseForge modpack".to_string());
         
@@ -743,6 +798,13 @@ impl ModpackManager {
         let manifest: serde_json::Value = serde_json::from_str(&manifest_content)
             .map_err(|e| LibiumError::Serde(e))?;
         
+        println!("Manifest parsed successfully");
+        if let Some(files) = manifest.get("files").and_then(|f| f.as_array()) {
+            println!("Found {} mod files to download from CurseForge", files.len());
+        } else {
+            println!("No files array found in manifest");
+        }
+        
         let minecraft_version = manifest.get("minecraft").and_then(|m| m.get("version"))
             .and_then(|v| v.as_str()).unwrap_or("1.20.1");
         
@@ -751,17 +813,77 @@ impl ModpackManager {
             .and_then(|ml| ml.as_array()).unwrap_or(&default_loaders);
         
         let mod_loader = if let Some(loader) = mod_loaders.first() {
-            loader.get("id").and_then(|id| id.as_str()).unwrap_or("fabric")
+            let loader_id = loader.get("id").and_then(|id| id.as_str()).unwrap_or("fabric");
+            
+            println!("Raw mod loader ID from manifest: {}", loader_id);
+            
+            // Extract just the loader name from full version strings like "forge-14.23.5.2860"
+            let parsed_loader = if loader_id.starts_with("forge-") {
+                "forge"
+            } else if loader_id.starts_with("fabric-") {
+                "fabric"
+            } else if loader_id.starts_with("quilt-") {
+                "quilt"  
+            } else if loader_id.starts_with("neoforge-") {
+                "neoforge"
+            } else {
+                loader_id  // Use as-is if no version suffix
+            };
+            
+            println!("Parsed mod loader: {}", parsed_loader);
+            parsed_loader
         } else {
             "fabric"
         };
         
         progress_callback(50, 100, format!("Installing {} mod loader for Minecraft {}", mod_loader, minecraft_version));
         
-        // Install the mod loader
-        let _mod_loader_profile = crate::libium_integration::install_mod_loader(instance_path, minecraft_version, mod_loader).await?;
+        println!("About to install mod loader: {} for Minecraft {}", mod_loader, minecraft_version);
+        println!("Instance path: {:?}", instance_path);
         
-        progress_callback(60, 100, "Extracting mods and overrides".to_string());
+        // Install the mod loader
+        let _mod_loader_profile = crate::libium_integration::install_mod_loader(instance_path, minecraft_version, mod_loader).await
+            .map_err(|e| {
+                eprintln!("Mod loader installation failed: {:?}", e);
+                e
+            })?;
+        
+        progress_callback(60, 100, "Downloading mods from CurseForge".to_string());
+        
+        // Download mods from CurseForge based on manifest
+        let mut mods_downloaded = 0;
+        if let Some(files) = manifest.get("files").and_then(|f| f.as_array()) {
+            let mods_dir = instance_path.join("mods");
+            fs::create_dir_all(&mods_dir).await?;
+            
+            println!("Downloading {} mods from CurseForge...", files.len());
+            
+            for file_entry in files {
+                if let (Some(project_id), Some(file_id)) = (
+                    file_entry.get("projectID").and_then(|id| id.as_u64()),
+                    file_entry.get("fileID").and_then(|id| id.as_u64())
+                ) {
+                    match self.download_curseforge_mod(project_id, file_id, &mods_dir).await {
+                        Ok(mod_name) => {
+                            mods_downloaded += 1;
+                            println!("✅ Downloaded mod: {}", mod_name);
+                            
+                            if mods_downloaded % 10 == 0 {
+                                let progress = 60 + (mods_downloaded * 20 / files.len() as u32);
+                                progress_callback(progress as u64, 100, format!("Downloaded {}/{} mods", mods_downloaded, files.len()));
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("❌ Failed to download mod {}/{}: {:?}", project_id, file_id, e);
+                        }
+                    }
+                }
+            }
+            
+            println!("📦 Downloaded {} mods from CurseForge", mods_downloaded);
+        }
+        
+        progress_callback(80, 100, "Extracting overrides".to_string());
         
         // Reset archive for extraction
         let file = std::fs::File::open(&modpack_filepath)
@@ -821,9 +943,74 @@ impl ModpackManager {
         
         progress_callback(90, 100, "CurseForge modpack installation completed".to_string());
         
-        println!("✅ Extracted {} mods and {} overrides from CurseForge modpack", mods_extracted, overrides_extracted);
+        println!("✅ Downloaded {} mods and extracted {} overrides from CurseForge modpack", mods_downloaded, overrides_extracted);
         
-        Ok(mods_extracted)
+        Ok(mods_downloaded + overrides_extracted)
+    }
+    
+    /// Download a single mod from CurseForge
+    async fn download_curseforge_mod(
+        &self,
+        project_id: u64,
+        file_id: u64,
+        mods_dir: &Path,
+    ) -> Result<String, LibiumError> {
+        // Get file information from CurseForge API
+        let api_key = std::env::var("CURSEFORGE_API_KEY")
+            .unwrap_or_else(|_| "$2a$10$sI.yRk4h4R49XYF94IIijOrO4i3W3dAFZ4ssOlNE10GYrDhc2j8K.".to_string());
+        
+        let file_url = format!("https://api.curseforge.com/v1/mods/{}/files/{}", project_id, file_id);
+        let response = self.client.get(&file_url)
+            .header("Accept", "application/json")
+            .header("x-api-key", &api_key)
+            .header("User-Agent", "ChaiLauncher/1.0")
+            .send()
+            .await
+            .map_err(|e| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::Other, 
+                format!("Failed to fetch mod info {}/{}: {}", project_id, file_id, e))))?;
+        
+        if !response.status().is_success() {
+            return Err(LibiumError::Io(std::io::Error::new(std::io::ErrorKind::NotFound, 
+                format!("CurseForge file {}/{} not found (HTTP {})", project_id, file_id, response.status()))));
+        }
+        
+        let file_data: serde_json::Value = response.json().await
+            .map_err(|e| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, 
+                format!("Failed to parse mod file data for {}/{}: {}", project_id, file_id, e))))?;
+        
+        if let Some(data) = file_data.get("data") {
+            let file_name = data.get("fileName")
+                .and_then(|n| n.as_str())
+                .ok_or_else(|| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, 
+                    format!("No filename for mod {}/{}", project_id, file_id))))?;
+            
+            let download_url = data.get("downloadUrl")
+                .and_then(|u| u.as_str())
+                .ok_or_else(|| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::NotFound, 
+                    format!("No download URL for mod {}/{}", project_id, file_id))))?;
+            
+            // Download the mod file
+            let mod_response = self.client.get(download_url)
+                .header("User-Agent", "ChaiLauncher/1.0")
+                .send()
+                .await
+                .map_err(|e| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::Other, 
+                    format!("Failed to download mod {}: {}", file_name, e))))?;
+            
+            let mod_bytes = mod_response.bytes().await
+                .map_err(|e| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::Other, 
+                    format!("Failed to read mod file bytes {}: {}", file_name, e))))?;
+            
+            // Save to mods directory
+            let mod_path = mods_dir.join(file_name);
+            fs::write(&mod_path, &mod_bytes).await
+                .map_err(|e| LibiumError::Io(e))?;
+            
+            Ok(file_name.to_string())
+        } else {
+            Err(LibiumError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, 
+                format!("Invalid response format for mod {}/{}", project_id, file_id))))
+        }
     }
     
     /// Get modpack profile name based on the mod loader that was installed

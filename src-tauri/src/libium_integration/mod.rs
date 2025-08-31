@@ -735,10 +735,12 @@ pub async fn install_mod_loader(
 
 /// Install Fabric mod loader
 async fn install_fabric_loader(instance_path: &Path, game_version: &str) -> Result<String, LibiumError> {
+    println!("Installing Fabric loader for Minecraft {}", game_version);
     let client = reqwest::Client::new();
     
     // Get Fabric loader versions
     let versions_url = format!("https://meta.fabricmc.net/v2/versions/loader/{}", game_version);
+    println!("Fetching Fabric versions from: {}", versions_url);
     let response = client.get(&versions_url)
         .header("User-Agent", "ChaiLauncher/1.0")
         .send()
@@ -797,18 +799,25 @@ async fn install_fabric_loader(instance_path: &Path, game_version: &str) -> Resu
             
             println!("✅ Installed Fabric loader {} for Minecraft {}", loader_version, game_version);
             return Ok(profile_name);
+        } else {
+            eprintln!("Failed to get Fabric loader version from latest loader entry");
         }
+    } else {
+        eprintln!("No Fabric loader versions found for Minecraft {}", game_version);
     }
     
+    eprintln!("Fabric loader installation failed for {}", game_version);
     Err(LibiumError::Add(libium::add::Error::DoesNotExist))
 }
 
 /// Install Forge mod loader
 async fn install_forge_loader(instance_path: &Path, game_version: &str) -> Result<String, LibiumError> {
+    println!("Installing Forge loader for Minecraft {}", game_version);
     let client = reqwest::Client::new();
     
     // Get Forge versions for the game version
     let versions_url = format!("https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json");
+    println!("Fetching Forge versions from: {}", versions_url);
     let response = client.get(&versions_url)
         .header("User-Agent", "ChaiLauncher/1.0")
         .send()
@@ -822,7 +831,11 @@ async fn install_forge_loader(instance_path: &Path, game_version: &str) -> Resul
     let version_key = format!("{}-recommended", game_version);
     let latest_key = format!("{}-latest", game_version);
     
+    println!("Looking for Forge version keys: {} or {}", version_key, latest_key);
+    
     if let Some(promos) = forge_data.get("promos") {
+        println!("Available Forge promotion keys: {:?}", 
+                 promos.as_object().map(|o| o.keys().collect::<Vec<_>>()));
         let forge_version = promos.get(&version_key)
             .or_else(|| promos.get(&latest_key))
             .and_then(|v| v.as_str());
@@ -843,9 +856,14 @@ async fn install_forge_loader(instance_path: &Path, game_version: &str) -> Resul
             
             // For now, return a Forge profile name even though installation isn't complete
             return Ok(format!("forge-{}-{}", game_version, forge_ver));
+        } else {
+            eprintln!("No Forge version found for Minecraft {}", game_version);
         }
+    } else {
+        eprintln!("Failed to parse Forge promotions data");
     }
     
+    eprintln!("Forge loader installation failed for {}", game_version);
     Err(LibiumError::Add(libium::add::Error::DoesNotExist))
 }
 
