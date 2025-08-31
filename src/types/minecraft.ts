@@ -58,6 +58,7 @@ export interface ModpackInfo {
 
 // Enhanced modpack types matching Rust backend
 export interface ModrinthPack {
+  project_type: string;
   project_id: string;
   version_id: string;
   name: string;

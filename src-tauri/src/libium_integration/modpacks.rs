@@ -73,8 +73,9 @@ impl ModpackManager {
         limit: u32,
         offset: u32,
     ) -> Result<Vec<ModpackSearchResult>, LibiumError> {
+        // TODO: see if theres a better way to write the facets query param
         let mut url = format!(
-            "https://api.modrinth.com/v2/search?query={}&limit={}&offset={}&project_type=modpack",
+            "https://api.modrinth.com/v2/search?query={}&limit={}&offset={}&facets=%5B%5B%22project_type%3Amodpack%22%5D%5D",
             urlencoding::encode(query),
             limit,
             offset
