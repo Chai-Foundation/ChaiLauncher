@@ -394,6 +394,25 @@ impl ModpackManager {
         println!("Installing modpack: ID={}, Version={}, Platform={}", 
                 request.modpack_id, request.version_id, request.platform);
         
+        // Validate platform/ID compatibility
+        let is_numeric_id = request.modpack_id.parse::<i32>().is_ok();
+        match request.platform.as_str() {
+            "curseforge" => {
+                if !is_numeric_id {
+                    return Err(LibiumError::Io(std::io::Error::new(
+                        std::io::ErrorKind::InvalidInput,
+                        format!("CurseForge modpack ID '{}' must be numeric, but got a string ID (possibly from Modrinth?)", request.modpack_id)
+                    )));
+                }
+            }
+            "modrinth" => {
+                if is_numeric_id {
+                    println!("Warning: Modrinth modpack ID '{}' appears to be numeric (possibly from CurseForge?)", request.modpack_id);
+                }
+            }
+            _ => {}
+        }
+        
         // Create instance directory
         let instances_dir = crate::storage::get_launcher_dir().join("instances");
         let instance_path = instances_dir.join(&request.instance_name);
