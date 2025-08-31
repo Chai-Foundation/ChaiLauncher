@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Settings, Trash2, Clock, Package, Folder, Download, AlertTriangle, X } from 'lucide-react';
+import { Play, Settings, Trash2, Clock, Package, Folder, Download, AlertTriangle, X, Square } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { MinecraftInstance } from '../../../types/minecraft';
 import { ContextMenu, ContextMenuItem, ProgressBar } from '../../ui';
@@ -7,6 +7,7 @@ import { ContextMenu, ContextMenuItem, ProgressBar } from '../../ui';
 interface InstanceCardProps {
   instance: MinecraftInstance;
   onPlay: (instance: MinecraftInstance) => void;
+  onStop?: (instance: MinecraftInstance) => void;
   onEdit: (instance: MinecraftInstance) => void;
   onDelete: (instance: MinecraftInstance) => void;
   onOpenFolder?: (instance: MinecraftInstance) => void;
@@ -15,6 +16,7 @@ interface InstanceCardProps {
 const InstanceCard: React.FC<InstanceCardProps> = React.memo(({ 
   instance, 
   onPlay, 
+  onStop,
   onEdit, 
   onDelete, 
   onOpenFolder 
@@ -45,11 +47,13 @@ const InstanceCard: React.FC<InstanceCardProps> = React.memo(({
       case 'installing': return 'border-secondary-500/50';
       case 'failed': return 'border-secondary-500/50';
       case 'invalid': return 'border-secondary-600/50';
+      case 'running': return 'border-green-500/50';
       default: return 'border-secondary-600/30';
     }
   };
 
   const isDisabled = instance.status === 'installing' || instance.status === 'failed' || instance.status === 'invalid';
+  const isRunning = instance.status === 'running';
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -59,12 +63,16 @@ const InstanceCard: React.FC<InstanceCardProps> = React.memo(({
   };
 
   const contextMenuItems: ContextMenuItem[] = [
-    {
+    ...(isRunning && onStop ? [{
+      label: 'Stop',
+      icon: Square,
+      onClick: () => onStop(instance)
+    }] : [{
       label: 'Play',
       icon: Play,
       onClick: () => onPlay(instance),
       disabled: isDisabled
-    },
+    }]),
     {
       label: 'Settings',
       icon: Settings,
@@ -84,6 +92,17 @@ const InstanceCard: React.FC<InstanceCardProps> = React.memo(({
   ];
 
   const renderStatusOverlay = () => {
+    if (instance.status === 'running') {
+      return (
+        <div className="absolute top-2 right-2">
+          <div className="flex items-center gap-1 bg-green-600/90 text-white px-2 py-1 rounded-full text-xs backdrop-blur-sm">
+            <div className="w-2 h-2 bg-green-300 rounded-full animate-pulse" />
+            Running
+          </div>
+        </div>
+      );
+    }
+
     if (instance.status === 'installing') {
       return (
         <motion.div
@@ -184,7 +203,7 @@ const InstanceCard: React.FC<InstanceCardProps> = React.memo(({
             </div>
           )}
 
-          {/* Play icon overlay - only on hover */}
+          {/* Play/Stop icon overlay - only on hover */}
           {!isDisabled && isHovered && (
             <div className="absolute inset-0 pointer-events-none">
               <div className="absolute inset-0 bg-black/40 opacity-100 transition-opacity duration-200 pointer-events-none" />
@@ -196,12 +215,16 @@ const InstanceCard: React.FC<InstanceCardProps> = React.memo(({
                 whileHover={{ scale: 1.15 }}
                 transition={{ type: "spring", stiffness: 260, damping: 20 }}
               >
-                <Play size={48} className="text-white drop-shadow-lg" />
+                {isRunning ? (
+                  <Square size={48} className="text-red-400 drop-shadow-lg" />
+                ) : (
+                  <Play size={48} className="text-white drop-shadow-lg" />
+                )}
               </motion.div>
               <button
-                onClick={() => onPlay(instance)}
+                onClick={() => isRunning && onStop ? onStop(instance) : onPlay(instance)}
                 className="absolute inset-0 w-full h-full cursor-pointer"
-                aria-label="Play"
+                aria-label={isRunning ? "Stop" : "Play"}
                 tabIndex={-1}
                 style={{ background: "transparent", border: "none", pointerEvents: "auto" }}
               />

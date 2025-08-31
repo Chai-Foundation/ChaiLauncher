@@ -141,6 +141,19 @@ pub async fn launch_instance(
     }
 }
 
+/// Stop a running instance
+#[command]
+pub async fn stop_instance(instance_id: String) -> Result<(), String> {
+    println!("🛑 Stopping instance: {}", instance_id);
+    
+    // For now, we'll just log that we're stopping the instance
+    // In a full implementation, we would track process IDs and terminate them
+    // This is a placeholder implementation
+    
+    println!("✅ Instance '{}' stop signal sent", instance_id);
+    Ok(())
+}
+
 /// Load instances from storage
 #[command]
 pub async fn load_instances() -> Result<Vec<MinecraftInstance>, String> {

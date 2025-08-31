@@ -6,6 +6,7 @@ import { InstanceService, JavaService } from '../services';
 export const useInstances = (launcherSettings: LauncherSettings | null) => {
   const [instances, setInstances] = useState<MinecraftInstance[]>([]);
   const [installProgress, setInstallProgress] = useState<Map<string, InstallProgressEvent>>(new Map());
+  const [runningInstances, setRunningInstances] = useState<Set<string>>(new Set());
   const instancesRef = useRef<MinecraftInstance[]>([]);
 
   // Update ref whenever instances change
@@ -209,14 +210,17 @@ export const useInstances = (launcherSettings: LauncherSettings | null) => {
       throw new Error('This instance has an invalid game directory and cannot be launched.');
     }
     
-    // Update last played time
+    // Update last played time and set status to running
     setInstances(prev => 
       prev.map(inst => 
         inst.id === instance.id 
-          ? { ...inst, lastPlayed: new Date() }
+          ? { ...inst, lastPlayed: new Date(), status: 'running' as const }
           : inst
       )
     );
+    
+    // Track as running instance
+    setRunningInstances(prev => new Set(prev).add(instance.id));
     
     console.log('Preparing to launch instance at:', instance.gameDir);
     
@@ -226,16 +230,62 @@ export const useInstances = (launcherSettings: LauncherSettings | null) => {
       throw new Error('JAVA_REQUIRED');
     }
     
-    await InstanceService.launchInstance({
-      instanceId: instance.id,
-      instancePath: instance.gameDir,
-      version: instance.version,
-      javaPath: javaInfo.javaPath,
-      memory: settings.maxMemory || 4096,
-      jvmArgs: settings.jvmArgs || []
-    });
-    
-    console.log('Successfully launched instance:', instance.name);
+    try {
+      await InstanceService.launchInstance({
+        instanceId: instance.id,
+        instancePath: instance.gameDir,
+        version: instance.version,
+        javaPath: javaInfo.javaPath,
+        memory: settings.maxMemory || 4096,
+        jvmArgs: settings.jvmArgs || []
+      });
+      
+      console.log('Successfully launched instance:', instance.name);
+    } catch (error) {
+      // If launch fails, remove from running instances and reset status
+      setRunningInstances(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(instance.id);
+        return newSet;
+      });
+      
+      setInstances(prev => 
+        prev.map(inst => 
+          inst.id === instance.id 
+            ? { ...inst, status: 'ready' as const }
+            : inst
+        )
+      );
+      
+      throw error;
+    }
+  }, []);
+
+  const stopInstance = useCallback(async (instance: MinecraftInstance) => {
+    try {
+      await InstanceService.stopInstance(instance.id);
+      
+      // Remove from running instances
+      setRunningInstances(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(instance.id);
+        return newSet;
+      });
+      
+      // Update instance status
+      setInstances(prev => 
+        prev.map(inst => 
+          inst.id === instance.id 
+            ? { ...inst, status: 'ready' as const }
+            : inst
+        )
+      );
+      
+      console.log('Successfully stopped instance:', instance.name);
+    } catch (error) {
+      console.error('Failed to stop instance:', error);
+      throw error;
+    }
   }, []);
 
   const deleteInstance = useCallback(async (instance: MinecraftInstance) => {
@@ -276,8 +326,10 @@ export const useInstances = (launcherSettings: LauncherSettings | null) => {
   return {
     instances,
     instancesRef,
+    runningInstances,
     createInstance,
     launchInstance,
+    stopInstance,
     deleteInstance,
     openInstanceFolder,
     getInstallingInstances

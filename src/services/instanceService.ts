@@ -98,6 +98,10 @@ export class InstanceService {
     await invoke('launch_instance', params);
   }
 
+  static async stopInstance(instanceId: string): Promise<void> {
+    await invoke('stop_instance', { instanceId });
+  }
+
   static async deleteInstance(instanceId: string): Promise<void> {
     await invoke('delete_instance', { instanceId });
   }

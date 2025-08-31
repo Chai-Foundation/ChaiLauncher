@@ -11,6 +11,7 @@ interface HomeViewProps {
   recentInstances: MinecraftInstance[];
   onCreateInstance: () => void;
   onPlayInstance: (instance: MinecraftInstance) => void;
+  onStopInstance?: (instance: MinecraftInstance) => void;
   onEditInstance: (instance: MinecraftInstance) => void;
   onDeleteInstance: (instance: MinecraftInstance) => void;
   onOpenFolder?: (instance: MinecraftInstance) => void;
@@ -20,6 +21,7 @@ const HomeView: React.FC<HomeViewProps> = ({
   recentInstances,
   onCreateInstance,
   onPlayInstance,
+  onStopInstance,
   onEditInstance,
   onDeleteInstance,
   onOpenFolder,
@@ -133,6 +135,7 @@ const HomeView: React.FC<HomeViewProps> = ({
                 key={instance.id}
                 instance={instance}
                 onPlay={onPlayInstance}
+                onStop={onStopInstance}
                 onEdit={onEditInstance}
                 onDelete={onDeleteInstance}
                 onOpenFolder={onOpenFolder}
