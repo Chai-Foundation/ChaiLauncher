@@ -49,13 +49,13 @@ struct ModrinthSearchHit {
 
 // CurseForge API structures
 #[derive(Deserialize, Debug)]
-struct CurseForgeSearchResponse {
-    data: Vec<CurseForgeSearchHit>,
-    pagination: CurseForgePagination,
+pub struct CurseForgeSearchResponse {
+    pub data: Vec<CurseForgeSearchHit>,
+    pub pagination: CurseForgePagination,
 }
 
 #[derive(Deserialize, Debug)]
-struct CurseForgePagination {
+pub struct CurseForgePagination {
     index: u32,
     #[serde(rename = "pageSize")]
     page_size: u32,
@@ -66,7 +66,7 @@ struct CurseForgePagination {
 }
 
 #[derive(Deserialize, Debug)]
-struct CurseForgeSearchHit {
+pub struct CurseForgeSearchHit {
     #[serde(rename = "screenshots")]
     screenshots: Vec<CurseForgeScreenshot>,
     id: u64,
@@ -116,7 +116,7 @@ struct CurseForgeSearchHit {
 }
 
 #[derive(Deserialize, Debug)]
-struct CurseForgeLinks {
+pub struct CurseForgeLinks {
     #[serde(rename = "websiteUrl")]
     website_url: String,
     #[serde(rename = "wikiUrl")]
@@ -128,7 +128,7 @@ struct CurseForgeLinks {
 }
 
 #[derive(Deserialize, Debug)]
-struct CurseForgeCategory {
+pub struct CurseForgeCategory {
     id: u64,
     #[serde(rename = "gameId")]
     game_id: u64,
@@ -150,7 +150,7 @@ struct CurseForgeCategory {
 }
 
 #[derive(Deserialize, Debug)]
-struct CurseForgeAuthor {
+pub struct CurseForgeAuthor {
     id: u64,
     name: String,
     url: String,
@@ -159,10 +159,10 @@ struct CurseForgeAuthor {
 }
 
 #[derive(Deserialize, Debug)]
-struct CurseForgeLogo {
+pub struct CurseForgeLogo {
     id: u64,
     #[serde(rename = "modId")]
-    mod_id: u64,
+    mod_id: Option<u64>,
     title: String,
     description: String,
     #[serde(rename = "thumbnailUrl")]
@@ -171,10 +171,10 @@ struct CurseForgeLogo {
 }
 
 #[derive(Deserialize, Debug)]
-struct CurseForgeScreenshot {
+pub struct CurseForgeScreenshot {
     id: u64,
     #[serde(rename = "modId")]
-    mod_id: u64,
+    mod_id: Option<u64>,
     title: String,
     description: String,
     #[serde(rename = "thumbnailUrl")]
@@ -183,7 +183,7 @@ struct CurseForgeScreenshot {
 }
 
 #[derive(Deserialize, Debug)]
-struct CurseForgeFile {
+pub struct CurseForgeFile {
     id: u64,
     #[serde(rename = "gameId")]
     game_id: u64,
@@ -225,7 +225,7 @@ struct CurseForgeFile {
 }
 
 #[derive(Deserialize, Debug)]
-struct CurseForgeFileIndex {
+pub struct CurseForgeFileIndex {
     #[serde(rename = "gameVersion")]
     game_version: String,
     #[serde(rename = "fileId")]
@@ -240,13 +240,13 @@ struct CurseForgeFileIndex {
 }
 
 #[derive(Deserialize, Debug)]
-struct CurseForgeHash {
+pub struct CurseForgeHash {
     value: String,
     algo: u32,
 }
 
 #[derive(Deserialize, Debug)]
-struct CurseForgeSortableGameVersion {
+pub struct CurseForgeSortableGameVersion {
     #[serde(rename = "gameVersionName")]
     game_version_name: String,
     #[serde(rename = "gameVersionPadded")]
@@ -260,13 +260,13 @@ struct CurseForgeSortableGameVersion {
 }
 
 #[derive(Deserialize, Debug)]
-struct CurseForgeDependency {
-    mod_id: u64,
+pub struct CurseForgeDependency {
+    mod_id: Option<u64>,
     relation_type: u32,
 }
 
 #[derive(Deserialize, Debug)]
-struct CurseForgeModule {
+pub struct CurseForgeModule {
     name: String,
     fingerprint: u64,
 }
