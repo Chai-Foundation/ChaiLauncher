@@ -145,17 +145,17 @@ impl ModpackManager {
         limit: u32,
         offset: u32,
     ) -> Result<Vec<ModpackSearchResult>, LibiumError> {
-        let mut url = if query.is_empty() {
-            // No search filter, omit searchFilter param
+        let mut url = if query.is_empty() || query == "featured" {
+            // No search filter, omit searchFilter param - treat "featured" as empty search
             format!(
-                "https://api.curseforge.com/v1/mods/search?gameId=432&classId=4471&page_size={}&index={}",
+                "https://api.curseforge.com/v1/mods/search?gameId=432&classId=4471&pageSize={}&index={}",
                 limit,
                 offset
             )
         } else {
             // Include searchFilter param
             format!(
-                "https://api.curseforge.com/v1/mods/search?gameId=432&classId=4471&searchFilter={}&page_size={}&index={}",
+                "https://api.curseforge.com/v1/mods/search?gameId=432&classId=4471&searchFilter={}&pageSize={}&index={}",
                 urlencoding::encode(query),
                 limit,
                 offset

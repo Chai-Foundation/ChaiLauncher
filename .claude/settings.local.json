@@ -41,7 +41,8 @@
       "Read(C:\\Users\\redst\\OneDrive\\Documents\\GitHub\\ferium/**)",
       "Read(C:\\Users\\redst\\OneDrive\\Documents\\GitHub\\ferium/**)",
       "Read(C:\\Users\\redst\\OneDrive\\Documents\\GitHub\\ferium/**)",
-      "Bash(npm run lint)"
+      "Bash(npm run lint)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []
