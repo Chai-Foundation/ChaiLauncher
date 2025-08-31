@@ -12,24 +12,29 @@ use crate::storage::{StorageManager, InstanceMetadata};
 use crate::minecraft::{MinecraftInstance, AuthInfo};
 use super::versions::{download_minecraft_assets_with_progress, download_minecraft_assets_with_progress_auto, download_version_manifest};
 
-/// Create a new Minecraft instance with optional mod loader support
+/// Create a new Minecraft instance with optional mod loader and modpack support
 #[command]
 pub async fn create_instance_with_loader(
     name: String,
     version: String,
     game_dir: String,
     mod_loader: Option<String>,
+    modpack_id: Option<String>,
+    modpack_version_id: Option<String>,
+    modpack_platform: Option<String>,
+    install_overrides: Option<bool>,
     app_handle: AppHandle,
 ) -> Result<(), String> {
-    let is_modded = mod_loader.is_some();
-    let loader_name = mod_loader.clone().unwrap_or_else(|| "vanilla".to_string());
+    let is_modpack = modpack_id.is_some();
+    let is_modded = mod_loader.is_some() || is_modpack;
+    let loader_name = mod_loader.clone().unwrap_or_else(|| if is_modpack { "fabric" } else { "vanilla" }.to_string());
     
     let instance = InstanceMetadata {
         id: uuid::Uuid::new_v4().to_string(),
         name: name.clone(),
         version: version.clone(),
-        modpack: None,
-        modpack_version: None,
+        modpack: modpack_id.clone(),
+        modpack_version: modpack_version_id.clone(),
         game_dir: std::path::PathBuf::from(&game_dir),
         java_path: None,
         jvm_args: None,
@@ -40,12 +45,16 @@ pub async fn create_instance_with_loader(
         mods_count: 0,
         created_at: chrono::Utc::now().to_rfc3339(),
         size_mb: None,
-        description: if is_modded {
+        description: if is_modpack {
+            Some(format!("Modpack instance: {} ({})", modpack_id.as_ref().unwrap(), modpack_platform.as_ref().unwrap_or(&"unknown".to_string())))
+        } else if is_modded {
             Some(format!("Modded instance with {} for Minecraft {}", loader_name, version))
         } else {
             Some(format!("Vanilla Minecraft {} instance", version))
         },
-        tags: if is_modded {
+        tags: if is_modpack {
+            vec!["modpack".to_string(), modpack_platform.clone().unwrap_or_else(|| "unknown".to_string()), loader_name.clone()]
+        } else if is_modded {
             vec!["modded".to_string(), loader_name.clone()]
         } else {
             vec!["vanilla".to_string()]
@@ -57,10 +66,74 @@ pub async fn create_instance_with_loader(
     // Save the instance first
     save_instance(instance.clone(), app_handle.clone()).await?;
     
-    // Install mod loader if specified
-    if let Some(loader) = mod_loader {
+    let instance_path = std::path::PathBuf::from(&game_dir);
+    let mut final_version = version.clone();
+    let mut mods_count = 0;
+    let mut actual_minecraft_version = version.clone(); // For asset downloads
+    
+    // Handle modpack installation
+    if let (Some(pack_id), Some(pack_version_id), Some(platform)) = (&modpack_id, &modpack_version_id, &modpack_platform) {
+        println!("📦 Installing modpack '{}' from {} for instance '{}'...", pack_id, platform, name);
+        
+        // Use libium integration to install the modpack
+        let mut modpack_manager = crate::libium_integration::modpacks::ModpackManager::new().await
+            .map_err(|e| format!("Failed to initialize modpack manager: {}", e))?;
+        
+        let install_request = crate::libium_integration::types::InstallModpackRequest {
+            instance_name: name.clone(),
+            modpack_id: pack_id.clone(),
+            version_id: pack_version_id.clone(),
+            platform: platform.clone(),
+            game_directory: Some(game_dir.clone()),
+            install_overrides: install_overrides.unwrap_or(true),
+        };
+        
+        // Create progress callback for modpack installation
+        let app_handle_clone = app_handle.clone();
+        let instance_id_clone = instance.id.clone();
+        let progress_callback = move |current: u64, total: u64, message: String| {
+            let _ = app_handle_clone.emit("modpack_install_progress", serde_json::json!({
+                "instanceId": instance_id_clone,
+                "current": current,
+                "total": total,
+                "message": message
+            }));
+        };
+        
+        modpack_manager.install_modpack(&install_request, app_handle.clone(), progress_callback).await
+            .map_err(|e| format!("Failed to install modpack: {}", e))?;
+        
+        println!("✅ Modpack '{}' installed successfully", pack_id);
+        
+        // Get the actual Minecraft version from the modpack
+        let (game_version, mod_loader_name) = modpack_manager.get_modpack_details(pack_id, pack_version_id, platform).await
+            .unwrap_or_else(|_| (version.clone(), "fabric".to_string()));
+        actual_minecraft_version = game_version;
+        
+        // Get the mod count from the mods directory
+        let mods_dir = instance_path.join("mods");
+        if mods_dir.exists() {
+            if let Ok(entries) = tokio::fs::read_dir(&mods_dir).await {
+                let mut entries = entries;
+                while let Ok(Some(entry)) = entries.next_entry().await {
+                    if let Ok(file_type) = entry.file_type().await {
+                        if file_type.is_file() {
+                            if let Some(extension) = entry.path().extension() {
+                                if extension == "jar" {
+                                    mods_count += 1;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Don't install mod loader separately for modpacks since libium handles it
+        
+    } else if let Some(loader) = mod_loader {
+        // Install mod loader for non-modpack instances
         println!("🔧 Installing {} mod loader for instance '{}'...", loader, name);
-        let instance_path = std::path::PathBuf::from(&game_dir);
         
         // Create mods directory
         tokio::fs::create_dir_all(instance_path.join("mods")).await
@@ -70,12 +143,8 @@ pub async fn create_instance_with_loader(
         let mod_loader_profile = crate::libium_integration::install_mod_loader(&instance_path, &version, &loader).await
             .map_err(|e| format!("Failed to install mod loader: {}", e))?;
         
-        // Update instance version to use the mod loader profile
-        let mut updated_instance = instance.clone();
-        updated_instance.version = mod_loader_profile;
-        
-        // Save updated instance
-        save_instance(updated_instance, app_handle.clone()).await?;
+        // Update final version to use the mod loader profile
+        final_version = mod_loader_profile;
         
         // Set up libium profile for mod management
         let mut manager = crate::libium_integration::LibiumManager::new().await
@@ -93,10 +162,18 @@ pub async fn create_instance_with_loader(
         println!("✅ {} mod loader installed successfully", loader);
     }
     
-    // Download assets for the new instance
+    // Update instance with final version and mod count
+    if final_version != instance.version || mods_count > 0 {
+        let mut updated_instance = instance.clone();
+        updated_instance.version = final_version.clone();
+        updated_instance.mods_count = mods_count;
+        save_instance(updated_instance, app_handle.clone()).await?;
+    }
+    
+    // Download assets for the new instance (use actual Minecraft version for assets)
     println!("📦 Downloading assets for new instance '{}'...", name);
     download_minecraft_assets_with_progress_auto(
-        version,
+        actual_minecraft_version,  // Use actual Minecraft version extracted from modpack or original version
         game_dir,
         &instance.id,
         &app_handle,
@@ -939,6 +1016,7 @@ pub async fn refresh_instance_sizes() -> Result<(), String> {
     println!("✅ Refreshed sizes for {} instances", updated_count);
     Ok(())
 }
+
 
 // Helper functions
 

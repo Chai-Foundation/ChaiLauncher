@@ -42,7 +42,12 @@
       "Read(C:\\Users\\redst\\OneDrive\\Documents\\GitHub\\ferium/**)",
       "Read(C:\\Users\\redst\\OneDrive\\Documents\\GitHub\\ferium/**)",
       "Bash(npm run lint)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Read(C:\\Users\\redst\\OneDrive\\Documents\\GitHub\\ferium\\libium\\src\\modpack/**)",
+      "Read(C:\\Users\\redst\\OneDrive\\Documents\\GitHub\\ferium\\libium\\src\\modpack\\modrinth/**)",
+      "Read(C:\\Users\\redst\\OneDrive\\Documents\\GitHub\\ferium\\src/**)",
+      "Read(C:\\Users\\redst\\OneDrive\\Documents\\GitHub\\ferium\\src\\subcommands\\modpack/**)",
+      "Read(C:\\Users\\redst\\OneDrive\\Documents\\GitHub\\ferium\\src\\subcommands\\modpack/**)"
     ],
     "deny": [],
     "ask": []

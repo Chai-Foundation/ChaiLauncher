@@ -8,7 +8,8 @@ use serde_json::json;
 use tokio::fs;
 use reqwest::Client;
 use uuid::Uuid;
-use std::io::Read;
+use std::io::{Read, Cursor};
+use std::io;
 
 pub struct ModpackManager {
     manager: LibiumManager,
@@ -364,18 +365,34 @@ impl ModpackManager {
     ) -> Result<String, LibiumError> {
         // Validate required fields
         if request.instance_name.is_empty() {
-            return Err(LibiumError::Add(libium::add::Error::DoesNotExist));
+            return Err(LibiumError::Io(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Instance name cannot be empty"
+            )));
         }
         if request.modpack_id.is_empty() {
-            return Err(LibiumError::Add(libium::add::Error::DoesNotExist));
+            return Err(LibiumError::Io(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Modpack ID cannot be empty"
+            )));
         }
         if request.version_id.is_empty() {
-            return Err(LibiumError::Add(libium::add::Error::DoesNotExist));
+            return Err(LibiumError::Io(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Version ID cannot be empty"
+            )));
         }
         if request.platform.is_empty() {
-            return Err(LibiumError::Add(libium::add::Error::DoesNotExist));
+            return Err(LibiumError::Io(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Platform cannot be empty"
+            )));
         }
         progress_callback(0, 100, "Starting modpack installation".to_string());
+        
+        // Debug logging
+        println!("Installing modpack: ID={}, Version={}, Platform={}", 
+                request.modpack_id, request.version_id, request.platform);
         
         // Create instance directory
         let instances_dir = crate::storage::get_launcher_dir().join("instances");
@@ -387,10 +404,18 @@ impl ModpackManager {
         // Create modpack configuration
         let identifier = match request.platform.as_str() {
             "modrinth" => ModpackIdentifier::ModrinthModpack(request.modpack_id.clone()),
-            "curseforge" => ModpackIdentifier::CurseForgeModpack(
-                request.modpack_id.parse().map_err(|_| LibiumError::Add(libium::add::Error::DoesNotExist))?
-            ),
-            _ => return Err(LibiumError::Add(libium::add::Error::DoesNotExist)),
+            "curseforge" => {
+                let project_id = request.modpack_id.parse::<i32>()
+                    .map_err(|_| LibiumError::Io(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData, 
+                        format!("Invalid CurseForge project ID '{}': must be a numeric ID", request.modpack_id)
+                    )))?;
+                ModpackIdentifier::CurseForgeModpack(project_id)
+            },
+            _ => return Err(LibiumError::Io(std::io::Error::new(
+                std::io::ErrorKind::InvalidData, 
+                format!("Unsupported platform: {}", request.platform)
+            ))),
         };
         
         let modpack = Modpack {
@@ -616,39 +641,150 @@ impl ModpackManager {
     async fn install_curseforge_modpack(
         &mut self,
         modpack_id: &str,
-        _version_id: &str,
+        version_id: &str,
         instance_path: &Path,
         install_overrides: bool,
         progress_callback: &impl Fn(u64, u64, String),
     ) -> Result<u32, LibiumError> {
         progress_callback(10, 100, "Fetching CurseForge modpack information".to_string());
         
-        // For CurseForge, we need to implement proper API calls
-        // This is more complex due to CurseForge's API requirements
+        // Try to use libium's built-in CurseForge support
+        let project_id: i32 = modpack_id.parse()
+            .map_err(|_| LibiumError::Io(std::io::Error::new(
+                std::io::ErrorKind::InvalidData, 
+                format!("Invalid CurseForge project ID '{}': must be a numeric ID", modpack_id)
+            )))?;
         
-        // For now, install Fabric as default mod loader for CurseForge modpacks
-        progress_callback(20, 100, "Installing Fabric mod loader (default for CurseForge)".to_string());
+        // Create a modpack identifier and use libium's download functionality
+        let identifier = libium::config::structs::ModpackIdentifier::CurseForgeModpack(project_id);
         
-        let _mod_loader_profile = crate::libium_integration::install_mod_loader(instance_path, "1.20.1", "fabric").await?;
+        progress_callback(20, 100, "Downloading CurseForge modpack file".to_string());
         
-        progress_callback(30, 100, "Setting up CurseForge modpack structure".to_string());
+        // Use libium's built-in modpack download functionality
+        println!("Attempting to download CurseForge modpack with project_id: {}", project_id);
+        let modpack_filepath = identifier.download_file(
+            |_total| {
+                // Simple callback without capturing progress_callback to avoid thread safety issues
+            },
+            |_additional| {
+                // Progress callback for download
+            },
+        ).await.map_err(|e| {
+            eprintln!("Failed to download CurseForge modpack {}: {:?}", project_id, e);
+            LibiumError::Io(std::io::Error::new(std::io::ErrorKind::Other, 
+                format!("Failed to download CurseForge modpack '{}' (ID: {}): {:?}", modpack_id, project_id, e)))
+        })?;
         
-        // Create necessary directories
-        let mods_dir = instance_path.join("mods");
-        let overrides_dir = instance_path.join("overrides");
+        progress_callback(40, 100, "Extracting CurseForge modpack".to_string());
         
-        fs::create_dir_all(&mods_dir).await?;
-        if install_overrides {
-            fs::create_dir_all(&overrides_dir).await?;
+        // Extract and install using the existing CurseForge logic from libium
+        let file = std::fs::File::open(&modpack_filepath)
+            .map_err(|e| LibiumError::Io(e))?;
+        let mut archive = zip::ZipArchive::new(file)
+            .map_err(|e| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, e)))?;
+        
+        // Read manifest.json to get modpack information
+        let mut manifest_content = String::new();
+        for i in 0..archive.len() {
+            let mut file = archive.by_index(i)
+                .map_err(|e| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, e)))?;
+            
+            if file.name() == "manifest.json" {
+                file.read_to_string(&mut manifest_content)
+                    .map_err(|e| LibiumError::Io(e))?;
+                break;
+            }
         }
         
-        progress_callback(80, 100, "CurseForge modpack setup completed".to_string());
+        if manifest_content.is_empty() {
+            return Err(LibiumError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, "No manifest.json found in modpack")));
+        }
         
-        println!("⚠️  CurseForge modpack installation is partially implemented.");
-        println!("   The mod loader has been installed and directory structure created.");
-        println!("   Full CurseForge modpack support requires additional API integration.");
+        // Parse manifest to get mod loader and Minecraft version
+        let manifest: serde_json::Value = serde_json::from_str(&manifest_content)
+            .map_err(|e| LibiumError::Serde(e))?;
         
-        Ok(0) // No mods installed for CurseForge yet
+        let minecraft_version = manifest.get("minecraft").and_then(|m| m.get("version"))
+            .and_then(|v| v.as_str()).unwrap_or("1.20.1");
+        
+        let default_loaders = vec![];
+        let mod_loaders = manifest.get("minecraft").and_then(|m| m.get("modLoaders"))
+            .and_then(|ml| ml.as_array()).unwrap_or(&default_loaders);
+        
+        let mod_loader = if let Some(loader) = mod_loaders.first() {
+            loader.get("id").and_then(|id| id.as_str()).unwrap_or("fabric")
+        } else {
+            "fabric"
+        };
+        
+        progress_callback(50, 100, format!("Installing {} mod loader for Minecraft {}", mod_loader, minecraft_version));
+        
+        // Install the mod loader
+        let _mod_loader_profile = crate::libium_integration::install_mod_loader(instance_path, minecraft_version, mod_loader).await?;
+        
+        progress_callback(60, 100, "Extracting mods and overrides".to_string());
+        
+        // Reset archive for extraction
+        let file = std::fs::File::open(&modpack_filepath)
+            .map_err(|e| LibiumError::Io(e))?;
+        let mut archive = zip::ZipArchive::new(file)
+            .map_err(|e| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, e)))?;
+        
+        let mods_dir = instance_path.join("mods");
+        fs::create_dir_all(&mods_dir).await?;
+        
+        let mut mods_extracted = 0;
+        let mut overrides_extracted = 0;
+        
+        // Extract mods and overrides
+        for i in 0..archive.len() {
+            let mut file = archive.by_index(i)
+                .map_err(|e| LibiumError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, e)))?;
+            
+            let outpath = instance_path.join(file.mangled_name());
+            
+            if file.name().starts_with("mods/") && file.name().ends_with(".jar") {
+                if let Some(parent) = outpath.parent() {
+                    std::fs::create_dir_all(parent)
+                        .map_err(|e| LibiumError::Io(e))?;
+                }
+                
+                let mut outfile = std::fs::File::create(&outpath)
+                    .map_err(|e| LibiumError::Io(e))?;
+                std::io::copy(&mut file, &mut outfile)
+                    .map_err(|e| LibiumError::Io(e))?;
+                
+                mods_extracted += 1;
+                println!("📦 Extracted CurseForge mod: {}", file.name());
+            } else if install_overrides && file.name().starts_with("overrides/") {
+                // Strip "overrides/" prefix when extracting
+                let file_name = file.name().to_string();
+                let relative_path = file_name.strip_prefix("overrides/").unwrap_or(&file_name);
+                let override_path = instance_path.join(relative_path);
+                
+                if let Some(parent) = override_path.parent() {
+                    std::fs::create_dir_all(parent)
+                        .map_err(|e| LibiumError::Io(e))?;
+                }
+                
+                let mut outfile = std::fs::File::create(&override_path)
+                    .map_err(|e| LibiumError::Io(e))?;
+                std::io::copy(&mut file, &mut outfile)
+                    .map_err(|e| LibiumError::Io(e))?;
+                
+                overrides_extracted += 1;
+                println!("📁 Extracted CurseForge override: {}", relative_path);
+            }
+        }
+        
+        // Clean up the downloaded modpack file
+        let _ = fs::remove_file(&modpack_filepath).await;
+        
+        progress_callback(90, 100, "CurseForge modpack installation completed".to_string());
+        
+        println!("✅ Extracted {} mods and {} overrides from CurseForge modpack", mods_extracted, overrides_extracted);
+        
+        Ok(mods_extracted)
     }
     
     /// Get modpack profile name based on the mod loader that was installed
@@ -713,7 +849,7 @@ impl ModpackManager {
     }
     
     /// Get modpack details (game version and mod loader) from platform APIs
-    async fn get_modpack_details(
+    pub async fn get_modpack_details(
         &self,
         modpack_id: &str,
         version_id: &str,
