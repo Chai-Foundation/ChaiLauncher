@@ -107,7 +107,7 @@ export const useInfiniteModpacks = ({
   // Trigger refresh when search parameters change
   useEffect(() => {
     refresh();
-  }, [searchQuery, platform]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [searchQuery, platform, refresh]);
 
   return {
     modpacks,

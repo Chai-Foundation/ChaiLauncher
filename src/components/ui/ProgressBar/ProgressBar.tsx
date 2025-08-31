@@ -36,16 +36,25 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
     <div className="w-full">
       <div className={`w-full bg-primary-800 rounded-full ${sizeClasses[size]} overflow-hidden`}>
         <motion.div
-          className={`${sizeClasses[size]} bg-gradient-to-r ${colorClasses[color]} progress-bar ${animated ? '' : ''}`}
+          className={`${sizeClasses[size]} bg-gradient-to-r ${colorClasses[color]} progress-bar will-change-transform`}
           initial={{ width: 0 }}
           animate={{ width: `${clampedProgress}%` }}
-          transition={{ duration: 0.3, ease: 'easeInOut' }}
+          transition={{ 
+            duration: animated ? 0.3 : 0, 
+            ease: 'easeInOut',
+            type: "tween"
+          }}
         />
       </div>
       {showPercentage && (
-        <div className="text-xs text-primary-300 mt-1 text-center">
+        <motion.div 
+          className="text-xs text-primary-300 mt-1 text-center min-h-[1rem] flex items-center justify-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1, duration: 0.2 }}
+        >
           {Math.round(clampedProgress)}%
-        </div>
+        </motion.div>
       )}
     </div>
   );

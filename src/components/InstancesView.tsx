@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MinecraftInstance } from '../types/minecraft';
 import { InstanceList } from './instance';
 import ModpackCreator from './ModpackCreator';
-import { Button } from './ui';
+import Button from './ui/Button/Button';
 
 interface InstancesViewProps {
   instances: MinecraftInstance[];
@@ -133,23 +133,36 @@ const InstancesView: React.FC<InstancesViewProps> = ({
               <option value="vanilla">Vanilla</option>
             </select>
             
-            <div className="flex bg-primary-700 rounded-lg border border-primary-600">
+            <div className="flex bg-primary-700 rounded-lg border border-primary-600 relative">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-l-lg transition-colors ${
-                  viewMode === 'grid' ? 'bg-secondary-600 text-white' : 'text-primary-400 hover:text-white'
+                className={`p-2 rounded-l-lg transition-all duration-200 z-10 relative ${
+                  viewMode === 'grid' ? 'text-white' : 'text-primary-400 hover:text-white'
                 }`}
               >
                 <Grid size={18} />
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`p-2 rounded-r-lg transition-colors ${
-                  viewMode === 'list' ? 'bg-secondary-600 text-white' : 'text-primary-400 hover:text-white'
+                className={`p-2 rounded-r-lg transition-all duration-200 z-10 relative ${
+                  viewMode === 'list' ? 'text-white' : 'text-primary-400 hover:text-white'
                 }`}
               >
                 <List size={18} />
               </button>
+              <motion.div
+                className="absolute inset-y-0 bg-secondary-600 rounded-lg"
+                animate={{
+                  x: viewMode === 'grid' ? 0 : '100%',
+                  width: '50%'
+                }}
+                transition={{
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 25,
+                  duration: 0.3
+                }}
+              />
             </div>
           </div>
         </div>

@@ -3,6 +3,7 @@ import { Save, Folder, HardDrive, Coffee, Palette, Shield, RotateCcw } from 'luc
 import { motion } from 'framer-motion';
 import { LauncherSettings } from '../types/minecraft';
 import { getCurrentPrimaryColor, getCurrentSecondaryColor, DEFAULT_PRIMARY_COLOR, DEFAULT_SECONDARY_COLOR } from '../utils/colors';
+import Button from './ui/Button/Button';
 
 interface SettingsViewProps {
   settings: LauncherSettings;
@@ -16,6 +17,26 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const [localSettings, setLocalSettings] = useState<LauncherSettings>(settings);
   const [hasChanges, setHasChanges] = useState(false);
+  const [backgroundImageInput, setBackgroundImageInput] = useState('');
+
+  // Helper function to truncate display value for performance
+  const getDisplayValue = (value: string | undefined): string => {
+    if (!value) return '';
+    if (value.startsWith('data:')) {
+      // For data URLs, show a friendly description instead of the full URL
+      return `[Data URL - ${Math.round(value.length / 1024)}KB]`;
+    }
+    if (value.length > 80) {
+      // For long paths, show beginning and end
+      return `${value.substring(0, 40)}...${value.substring(value.length - 35)}`;
+    }
+    return value;
+  };
+
+  // Update input display when settings change
+  React.useEffect(() => {
+    setBackgroundImageInput(getDisplayValue(localSettings.background_image));
+  }, [localSettings.background_image]);
 
   const handleSettingChange = (key: keyof LauncherSettings, value: any) => {
     const newSettings = { ...localSettings, [key]: value };
@@ -33,27 +54,51 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
     setHasChanges(false);
   };
 
+  const handleBackgroundImageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setBackgroundImageInput(value);
+    
+    // Only update the actual setting if it's not a truncated display value
+    if (!value.includes('[Data URL -') && !value.includes('...')) {
+      handleSettingChange('background_image', value || undefined);
+    }
+  };
+
   const handleBackgroundImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Check file size (limit to 10MB for performance)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Background image file is too large. Please choose a file under 10MB.');
+      e.target.value = ''; // Clear the input
+      return;
+    }
+
     try {
-      // For web file inputs, we need to read the file content directly
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const dataUrl = event.target?.result as string;
-        if (dataUrl) {
-          // Store the data URL directly - this works across all platforms
-          handleSettingChange('background_image', dataUrl);
-        }
-      };
-      reader.readAsDataURL(file);
+      // Use file path if available (Tauri/desktop), otherwise use data URL (web)
+      const path = (file as any).path;
+      if (path) {
+        // On desktop, use the file path
+        handleSettingChange('background_image', path.includes(' ') ? `"${path}"` : path);
+      } else {
+        // On web, use data URL but with size limit already checked
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const dataUrl = event.target?.result as string;
+          if (dataUrl) {
+            handleSettingChange('background_image', dataUrl);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
     } catch (error) {
       console.error('Failed to read background image:', error);
-      // Fallback to original path if reading fails
-      const path = (file as any).path || file.name;
-      handleSettingChange('background_image', path.includes(' ') ? `"${path}"` : path);
+      alert('Failed to load the background image. Please try a different file.');
     }
+    
+    // Clear the input to allow selecting the same file again if needed
+    e.target.value = '';
   };
 
   const tabs = [
@@ -72,19 +117,19 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
         </div>
         {hasChanges && (
           <div className="flex gap-2">
-            <button
+            <Button
               onClick={handleReset}
-              className="px-4 py-2 text-primary-400 hover:text-white transition-colors"
+              variant="ghost"
             >
               Reset
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleSave}
-              className="bg-secondary-600 hover:bg-secondary-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+              variant="primary"
+              icon={Save}
             >
-              <Save size={18} />
               Save Changes
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -133,12 +178,11 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                       onChange={(e) => handleSettingChange('instances_dir', e.target.value)}
                       className="flex-1 px-3 py-2 bg-primary-700 border border-primary-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-secondary-500"
                     />
-                    <button 
+                    <Button
                       onClick={() => onOpenFolder && onOpenFolder(localSettings.instances_dir)}
-                      className="bg-primary-600 hover:bg-primary-700 text-white px-3 py-2 rounded-lg transition-colors"
-                    >
-                      <Folder size={18} />
-                    </button>
+                      variant="secondary"
+                      icon={Folder}
+                    />
                   </div>
                   <p className="text-sm text-primary-400 mt-1">
                     Directory where Minecraft instances will be stored
@@ -156,12 +200,11 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                       onChange={(e) => handleSettingChange('downloads_dir', e.target.value)}
                       className="flex-1 px-3 py-2 bg-primary-700 border border-primary-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-secondary-500"
                     />
-                    <button 
+                    <Button
                       onClick={() => onOpenFolder && onOpenFolder(localSettings.downloads_dir)}
-                      className="bg-primary-600 hover:bg-primary-700 text-white px-3 py-2 rounded-lg transition-colors"
-                    >
-                      <Folder size={18} />
-                    </button>
+                      variant="secondary"
+                      icon={Folder}
+                    />
                   </div>
                   <p className="text-sm text-primary-400 mt-1">
                     Directory where downloads will be stored
@@ -241,9 +284,10 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                       placeholder="Auto-detect"
                       className="flex-1 px-3 py-2 bg-primary-700 border border-primary-600 rounded-lg text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-secondary-500"
                     />
-                    <button className="bg-primary-600 hover:bg-primary-700 text-white px-3 py-2 rounded-lg transition-colors">
-                      <Folder size={18} />
-                    </button>
+                    <Button
+                      variant="secondary"
+                      icon={Folder}
+                    />
                   </div>
                 </div>
 
@@ -292,13 +336,34 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                     Background Image
                   </label>
                   <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={localSettings.background_image || ''}
-                      onChange={(e) => handleSettingChange('background_image', e.target.value || undefined)}
-                      placeholder="Path to background image (optional)"
-                      className="flex-1 px-3 py-2 bg-primary-700 border border-primary-600 rounded-lg text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-secondary-500"
-                    />
+                    <div className="flex-1 relative">
+                      <input
+                        type="text"
+                        value={backgroundImageInput}
+                        onChange={handleBackgroundImageInputChange}
+                        placeholder="Path to background image (optional)"
+                        className="w-full px-3 py-2 pr-10 bg-primary-700 border border-primary-600 rounded-lg text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-secondary-500 font-mono text-sm"
+                        title={localSettings.background_image || 'Enter file path or select image'}
+                      />
+                      {localSettings.background_image && localSettings.background_image !== backgroundImageInput && (
+                        <div className="absolute inset-y-0 right-8 flex items-center">
+                          <div className="w-2 h-2 bg-secondary-500 rounded-full animate-pulse" title="File loaded" />
+                        </div>
+                      )}
+                      {localSettings.background_image && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleSettingChange('background_image', undefined);
+                            setBackgroundImageInput('');
+                          }}
+                          className="absolute inset-y-0 right-2 flex items-center text-primary-400 hover:text-red-400 transition-colors"
+                          title="Clear background image"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
                     <input
                       type="file"
                       accept="image/*"
@@ -306,16 +371,22 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                       className="hidden"
                       id="bg-image-picker"
                     />
-                    <button 
+                    <Button
                       type="button"
                       onClick={() => document.getElementById('bg-image-picker')?.click()}
-                      className="bg-primary-600 hover:bg-primary-700 text-white px-3 py-2 rounded-lg transition-colors"
-                    >
-                      <Folder size={18} />
-                    </button>
+                      variant="secondary"
+                      icon={Folder}
+                    />
                   </div>
                   <p className="text-sm text-primary-400 mt-1">
-                    Leave empty to use default background. Paths with spaces will be automatically quoted.
+                    Leave empty to use default background. Large files and long paths are truncated for performance.
+                    {localSettings.background_image && localSettings.background_image !== backgroundImageInput && (
+                      <span className="block mt-1 text-secondary-400">
+                        ✓ Background image loaded ({localSettings.background_image.startsWith('data:') 
+                          ? `${Math.round(localSettings.background_image.length / 1024)}KB data URL` 
+                          : 'file path'})
+                      </span>
+                    )}
                   </p>
                 </div>
 
@@ -351,18 +422,19 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                     <label className="text-sm font-medium text-primary-300">
                       Base Color Customization
                     </label>
-                    <button
+                    <Button
                       type="button"
                       onClick={() => {
                         handleSettingChange('primary_base_color', DEFAULT_PRIMARY_COLOR);
                         handleSettingChange('secondary_base_color', DEFAULT_SECONDARY_COLOR);
                       }}
-                      className="bg-secondary-600 hover:bg-secondary-700 text-white px-3 py-1 rounded text-xs transition-colors flex items-center gap-2"
+                      variant="primary"
+                      size="sm"
+                      icon={RotateCcw}
                       title="Reset both colors to default"
                     >
-                      <RotateCcw size={12} />
                       Reset All
-                    </button>
+                    </Button>
                   </div>
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
@@ -380,14 +452,14 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                         className="flex-1 px-3 py-1 bg-primary-700 border border-primary-600 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-secondary-500"
                         placeholder={DEFAULT_PRIMARY_COLOR}
                       />
-                      <button
+                      <Button
                         type="button"
                         onClick={() => handleSettingChange('primary_base_color', DEFAULT_PRIMARY_COLOR)}
-                        className="bg-primary-600 hover:bg-primary-700 text-white p-1 rounded transition-colors"
+                        variant="secondary"
+                        size="sm"
+                        icon={RotateCcw}
                         title="Reset to default"
-                      >
-                        <RotateCcw size={16} />
-                      </button>
+                      />
                     </div>
                     <div className="flex items-center gap-3">
                       <label className="w-20 text-sm text-primary-400">Secondary:</label>
@@ -404,14 +476,14 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                         className="flex-1 px-3 py-1 bg-primary-700 border border-primary-600 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-secondary-500"
                         placeholder={DEFAULT_SECONDARY_COLOR}
                       />
-                      <button
+                      <Button
                         type="button"
                         onClick={() => handleSettingChange('secondary_base_color', DEFAULT_SECONDARY_COLOR)}
-                        className="bg-primary-600 hover:bg-primary-700 text-white p-1 rounded transition-colors"
+                        variant="secondary"
+                        size="sm"
+                        icon={RotateCcw}
                         title="Reset to default"
-                      >
-                        <RotateCcw size={16} />
-                      </button>
+                      />
                     </div>
                   </div>
                   <p className="text-sm text-primary-400 mt-2">
@@ -440,21 +512,33 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                 </div>
 
                 <div className="space-y-4">
-                  <button className="w-full bg-secondary-600 hover:bg-secondary-700 text-white py-2 px-4 rounded-lg transition-colors">
+                  <Button
+                    variant="danger"
+                    fullWidth
+                  >
                     Clear All Instance Data
-                  </button>
+                  </Button>
                   
-                  <button className="w-full bg-secondary-600 hover:bg-secondary-700 text-white py-2 px-4 rounded-lg transition-colors">
+                  <Button
+                    variant="danger"
+                    fullWidth
+                  >
                     Reset Launcher Settings
-                  </button>
+                  </Button>
                   
-                  <button className="w-full bg-secondary-600 hover:bg-secondary-700 text-white py-2 px-4 rounded-lg transition-colors">
+                  <Button
+                    variant="primary"
+                    fullWidth
+                  >
                     Export Settings
-                  </button>
+                  </Button>
                   
-                  <button className="w-full bg-secondary-600 hover:bg-secondary-700 text-white py-2 px-4 rounded-lg transition-colors">
+                  <Button
+                    variant="primary"
+                    fullWidth
+                  >
                     Import Settings
-                  </button>
+                  </Button>
                 </div>
               </motion.div>
             )}

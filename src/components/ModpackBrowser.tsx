@@ -25,6 +25,9 @@ import {
 import { ModrinthPack, ModrinthVersion, ModpackInstallProgress, LauncherSettings } from '../types';
 import { useInfiniteModpacks } from '../hooks/useInfiniteModpacks';
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
+import Button from './ui/Button/Button';
+import Modal from './ui/Modal/Modal';
+import ProgressBar from './ui/ProgressBar/ProgressBar';
 
 interface ModpackBrowserProps {
   onCreateInstance?: (data: {
@@ -177,8 +180,12 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
         key={pack.project_id}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: (index % 20) * 0.05 }}
-        className={`bg-primary-800/90 backdrop-blur-sm border border-secondary-600/30 rounded-lg overflow-hidden hover:border-secondary-500/50 transition-all duration-200 ${
+        whileHover={{ scale: 1.02, y: -4 }}
+        transition={{ 
+          delay: (index % 20) * 0.05,
+          hover: { duration: 0.2, ease: "easeOut" }
+        }}
+        className={`bg-primary-800/90 backdrop-blur-sm border border-secondary-600/30 rounded-lg overflow-hidden hover:border-secondary-500/50 hover:shadow-xl hover:shadow-secondary-500/10 transition-all duration-300 ${
           viewMode === 'list' ? 'flex' : ''
         }`}
       >
@@ -221,23 +228,29 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
             </div>
             
             {progress ? (
-              <div className="flex items-center gap-2">
-                <div className="w-24 h-2 bg-primary-700 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-secondary-500 transition-all duration-300"
-                    style={{ width: `${progress.progress}%` }}
-                  />
-                </div>
-                <span className="text-xs text-secondary-400">{Math.round(progress.progress)}%</span>
-              </div>
-            ) : (
-              <button
-                onClick={() => showVersionSelector(pack)}
-                className="flex items-center gap-1 px-3 py-1 bg-secondary-600 hover:bg-secondary-500 text-white rounded text-sm transition-colors"
+              <motion.div 
+                className="w-32"
+                initial={{ width: 0 }}
+                animate={{ width: 128 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
               >
-                <Download className="w-3 h-3" />
+                <ProgressBar
+                  progress={progress.progress}
+                  size="sm"
+                  color="secondary"
+                  showPercentage={true}
+                  animated={true}
+                />
+              </motion.div>
+            ) : (
+              <Button
+                onClick={() => showVersionSelector(pack)}
+                size="sm"
+                variant="primary"
+                icon={Download}
+              >
                 Install
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -270,14 +283,14 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
                   className="w-full pl-10 pr-4 py-2 bg-primary-800/90 border border-secondary-600/30 rounded-lg text-white placeholder-primary-400 focus:outline-none focus:border-secondary-500/50"
                 />
               </div>
-              <button
+              <Button
                 type="submit"
                 disabled={loading}
-                className="px-4 py-2 bg-secondary-600 hover:bg-secondary-500 disabled:bg-primary-600 text-white rounded-lg transition-colors flex items-center gap-2"
+                loading={loading}
+                icon={Search}
               >
-                {loading ? <Loader className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                 Search
-              </button>
+              </Button>
             </form>
             
             {/* Platform Filter */}
@@ -298,58 +311,72 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
           {/* Action Buttons and View Controls */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <button
+              <Button
                 onClick={openModpackFile}
-                className="flex items-center gap-2 px-3 py-2 bg-primary-700 hover:bg-primary-600 text-white rounded-lg transition-colors"
+                variant="secondary"
+                icon={FileDown}
               >
-                <FileDown className="w-4 h-4" />
                 Import File
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={refresh}
                 disabled={loading}
-                className="flex items-center gap-2 px-3 py-2 bg-primary-700 hover:bg-primary-600 disabled:bg-primary-600 text-white rounded-lg transition-colors"
+                variant="secondary"
+                icon={RefreshCw}
               >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
-              </button>
+              </Button>
             </div>
 
             <div className="flex items-center gap-2">
-              <button
+              <motion.button
                 onClick={() => setViewMode('grid')}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
                 className={`p-2 rounded-lg transition-colors ${
                   viewMode === 'grid' ? 'bg-secondary-600 text-white' : 'bg-primary-700 text-gray-300 hover:bg-primary-600'
                 }`}
               >
                 <Grid className="w-4 h-4" />
-              </button>
-              <button
+              </motion.button>
+              <motion.button
                 onClick={() => setViewMode('list')}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
                 className={`p-2 rounded-lg transition-colors ${
                   viewMode === 'list' ? 'bg-secondary-600 text-white' : 'bg-primary-700 text-gray-300 hover:bg-primary-600'
                 }`}
               >
                 <List className="w-4 h-4" />
-              </button>
+              </motion.button>
             </div>
           </div>
         </div>
 
         {/* Error Message */}
         {(error || installError) && (
-          <div className="mb-6 p-4 bg-red-900/50 border border-red-500/50 rounded-lg flex items-center gap-2">
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="mb-6 p-4 bg-red-900/50 border border-red-500/50 rounded-lg flex items-center gap-2"
+          >
             <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
             <span className="text-red-200">{error || installError}</span>
-            <button
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => {
                 setInstallError(null);
               }}
-              className="ml-auto text-red-400 hover:text-red-300"
+              className="ml-auto text-red-400 hover:text-red-300 transition-colors duration-200 p-1 rounded"
             >
               ×
-            </button>
-          </div>
+            </motion.button>
+          </motion.div>
         )}
 
         {/* Results */}
@@ -360,15 +387,32 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
         </div>
 
         {modpacks.length === 0 && !loading ? (
-          <div className="text-center py-12">
-            <Package className="w-16 h-16 text-gray-500 mx-auto mb-4" />
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="text-center py-12"
+          >
+            <motion.div
+              animate={{ 
+                y: [0, -8, 0],
+                rotate: [0, 5, -5, 0]
+              }}
+              transition={{ 
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+            >
+              <Package className="w-16 h-16 text-gray-500 mx-auto mb-4" />
+            </motion.div>
             <h3 className="text-xl font-semibold text-gray-400 mb-2">
               {searchQuery ? 'No modpacks found' : 'No modpacks available'}
             </h3>
             <p className="text-gray-500">
               {searchQuery ? 'Try adjusting your search terms' : 'Featured modpacks will appear here'}
             </p>
-          </div>
+          </motion.div>
         ) : (
           <>
             <div className={
@@ -382,48 +426,46 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
             {/* Infinite scroll sentinel */}
             <div ref={sentinelRef} className="flex justify-center py-8">
               {loading && (
-                <div className="flex items-center gap-2 text-secondary-400">
-                  <Loader2 className="animate-spin" size={20} />
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                  className="flex items-center gap-2 text-secondary-400"
+                >
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  >
+                    <Loader2 size={20} />
+                  </motion.div>
                   <span>Loading more modpacks...</span>
-                </div>
+                </motion.div>
               )}
               {!hasMore && modpacks.length > 0 && (
-                <div className="text-primary-400 text-sm">
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5, ease: "easeOut" }}
+                  className="text-primary-400 text-sm"
+                >
                   No more modpacks to load
-                </div>
+                </motion.div>
               )}
             </div>
           </>
         )}
 
         {/* Version Selection Modal */}
-        {showVersionModal && selectedPack && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-primary-800 border border-secondary-600/30 rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
-            >
-              {/* Modal Header */}
-              <div className="px-6 py-4 border-b border-secondary-600/30">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-semibold text-white">
-                    Select Version for {selectedPack.name}
-                  </h2>
-                  <button
-                    onClick={() => setShowVersionModal(false)}
-                    className="text-gray-400 hover:text-white transition-colors"
-                  >
-                    ×
-                  </button>
-                </div>
-                <p className="text-sm text-gray-300 mt-1">
-                  Choose which version you'd like to install
-                </p>
-              </div>
-
-              {/* Modal Content */}
-              <div className="p-6 overflow-y-auto max-h-96">
+        <Modal
+          isOpen={showVersionModal && selectedPack !== null}
+          onClose={() => setShowVersionModal(false)}
+          title={`Select Version for ${selectedPack?.name || ''}`}
+          size="lg"
+        >
+          <div className="p-6">
+            <p className="text-sm text-gray-300 mb-4">
+              Choose which version you'd like to install
+            </p>
                 {loadingVersions ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="animate-spin w-6 h-6 text-secondary-400" />
@@ -465,22 +507,20 @@ export default function ModpackBrowser({ onCreateInstance, launcherSettings }: M
                               </div>
                             )}
                           </div>
-                          <button
-                            onClick={() => installModpack(selectedPack, version)}
-                            className="flex items-center gap-2 px-4 py-2 bg-secondary-600 hover:bg-secondary-500 text-white rounded transition-colors"
+                          <Button
+                            onClick={() => selectedPack && installModpack(selectedPack, version)}
+                            variant="primary"
+                            icon={Download}
                           >
-                            <Download className="w-4 h-4" />
                             Install
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-            </motion.div>
-          </div>
-        )}
+        </Modal>
       </div>
     </div>
   );
