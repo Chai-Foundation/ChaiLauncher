@@ -433,24 +433,35 @@ impl ModpackManager {
         // Install modpack based on platform and get mod count
         let mod_count = match request.platform.as_str() {
             "modrinth" => {
+                println!("Installing Modrinth modpack: {} (version: {})", request.modpack_id, request.version_id);
                 self.install_modrinth_modpack(
                     &request.modpack_id,
                     &request.version_id,
                     &instance_path,
                     request.install_overrides,
                     &progress_callback,
-                ).await?
+                ).await.map_err(|e| {
+                    eprintln!("Modrinth installation failed: {:?}", e);
+                    e
+                })?
             }
             "curseforge" => {
+                println!("Installing CurseForge modpack: {} (version: {})", request.modpack_id, request.version_id);
                 self.install_curseforge_modpack(
                     &request.modpack_id,
                     &request.version_id,
                     &instance_path,
                     request.install_overrides,
                     &progress_callback,
-                ).await?
+                ).await.map_err(|e| {
+                    eprintln!("CurseForge installation failed: {:?}", e);
+                    e
+                })?
             }
-            _ => return Err(LibiumError::Add(libium::add::Error::DoesNotExist)),
+            _ => return Err(LibiumError::Io(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("Unsupported platform: {}", request.platform)
+            ))),
         };
         
         progress_callback(90, 100, "Registering instance".to_string());
