@@ -7,7 +7,6 @@ import ModpackCreator from './ModpackCreator';
 import Button from './ui/Button/Button';
 import InstanceLogsModal from './InstanceLogsModal';
 import StopInstanceModal from './StopInstanceModal';
-import { Button } from './ui';
 
 interface InstancesViewProps {
   instances: MinecraftInstance[];
