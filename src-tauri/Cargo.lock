@@ -542,6 +542,7 @@ dependencies = [
  "async-trait",
  "bollard",
  "chrono",
+ "clap",
  "dirs",
  "futures",
  "hex",
@@ -1181,8 +1182,7 @@ dependencies = [
 [[package]]
 name = "ferinth"
 version = "2.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "869c5f9bf643c820ce759b545626c795112abfc0e70644b16ec67a1e07349d48"
+source = "git+https://github.com/Chai-Foundation/ferinth#ae76702de772470fec4808eaf3c0b77a0f04c982"
 dependencies = [
  "chrono",
  "lazy-regex",
@@ -1295,8 +1295,7 @@ dependencies = [
 [[package]]
 name = "furse"
 version = "1.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "acec6f117b664be261006ea3de8ab17fe7475f360c35c88162f9f5d60397eb63"
+source = "git+https://github.com/Chai-Foundation/furse#8dfb87b1807b11d46a6c094f03ddbc1c903e2208"
 dependencies = [
  "chrono",
  "murmur2",
@@ -2026,6 +2025,19 @@ dependencies = [
 
 [[package]]
 name = "hyper-tls"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6183ddfa99b85da61a140bea0efc93fdf56ceaa041b37d553518030827f9905"
+dependencies = [
+ "bytes",
+ "hyper 0.14.32",
+ "native-tls",
+ "tokio",
+ "tokio-native-tls",
+]
+
+[[package]]
+name = "hyper-tls"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "70206fc6890eaca9fde8a0bf71caa2ddfc9fe045ac9e5c70df101a7dbde866e0"
@@ -2643,7 +2655,7 @@ dependencies = [
  "futures-util",
  "octocrab",
  "regex",
- "reqwest 0.12.23",
+ "reqwest 0.11.27",
  "serde",
  "serde_json",
  "sha1",
@@ -4259,10 +4271,12 @@ dependencies = [
  "http-body 0.4.6",
  "hyper 0.14.32",
  "hyper-rustls 0.24.2",
+ "hyper-tls 0.5.0",
  "ipnet",
  "js-sys",
  "log",
  "mime",
+ "native-tls",
  "once_cell",
  "percent-encoding",
  "pin-project-lite",
@@ -4274,6 +4288,7 @@ dependencies = [
  "sync_wrapper 0.1.2",
  "system-configuration 0.5.1",
  "tokio",
+ "tokio-native-tls",
  "tokio-rustls 0.24.1",
  "tower-service",
  "url",
@@ -4301,7 +4316,7 @@ dependencies = [
  "http-body-util",
  "hyper 1.6.0",
  "hyper-rustls 0.27.7",
- "hyper-tls",
+ "hyper-tls 0.6.0",
  "hyper-util",
  "js-sys",
  "log",

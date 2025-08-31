@@ -6,6 +6,7 @@ import { InstanceCard } from './instance';
 import { useInfiniteNews } from '../hooks/useInfiniteNews';
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
 import { open } from '@tauri-apps/plugin-shell';
+import Button from './ui/Button/Button';
 
 interface HomeViewProps {
   recentInstances: MinecraftInstance[];
@@ -91,12 +92,14 @@ const HomeView: React.FC<HomeViewProps> = ({
           </div>
           <p className="text-primary-300 text-sm">Launch your last played instance</p>
           {recentInstances[0] && (
-            <button
+            <Button
               onClick={() => onPlayInstance(recentInstances[0])}
-              className="mt-3 bg-gradient-to-r from-secondary-600 to-secondary-500 hover:from-secondary-500 hover:to-secondary-400 text-white px-4 py-2 rounded-lg transition-all duration-300 w-full"
+              variant="primary"
+              fullWidth
+              className="mt-3"
             >
               Play {recentInstances[0].name}
-            </button>
+            </Button>
           )}
         </div>
 
@@ -145,12 +148,12 @@ const HomeView: React.FC<HomeViewProps> = ({
         ) : (
           <div className="text-center py-12">
             <p className="text-primary-300 mb-4">No instances yet</p>
-            <button
+            <Button
               onClick={onCreateInstance}
-              className="bg-gradient-to-r from-secondary-600 to-secondary-500 hover:from-secondary-500 hover:to-secondary-400 text-white px-6 py-2 rounded-xl transition-all duration-300 transform hover:scale-105"
+              variant="primary"
             >
               Create Your First Instance
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -158,13 +161,14 @@ const HomeView: React.FC<HomeViewProps> = ({
       <div>
         <div className="flex items-center gap-2 mb-4">
           <h2 className="text-xl font-semibold text-white">Latest News</h2>
-          <button
+          <Button
             onClick={refresh}
-            className="text-secondary-400 underline text-sm hover:text-secondary-300 transition-colors"
+            variant="ghost"
+            size="sm"
             title="Refresh news"
           >
             Refresh
-          </button>
+          </Button>
           <a
             href="https://www.minecraft.net/en-us/articles"
             target="_blank"
@@ -228,15 +232,30 @@ const HomeView: React.FC<HomeViewProps> = ({
         {/* Infinite scroll sentinel */}
         <div ref={sentinelRef} className="flex justify-center py-8">
           {loading && (
-            <div className="flex items-center gap-2 text-secondary-400">
-              <Loader2 className="animate-spin" size={20} />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="flex items-center gap-2 text-secondary-400"
+            >
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              >
+                <Loader2 size={20} />
+              </motion.div>
               <span>Loading more news...</span>
-            </div>
+            </motion.div>
           )}
           {!hasMore && news.length > 0 && (
-            <div className="text-primary-400 text-sm">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="text-primary-400 text-sm"
+            >
               No more news articles to load
-            </div>
+            </motion.div>
           )}
         </div>
       </div>

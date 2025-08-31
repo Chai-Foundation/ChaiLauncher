@@ -36,7 +36,8 @@ mcvm = { git = "https://github.com/tristanpoland/Chai-MCVM", rev = "b6b105b0b6fa
 #mcvm = { path = "C:\\Users\\redst\\OneDrive\\Documents\\GitHub\\chai-project\\mcvm" }
 bollard = "0.17.1"
 toml = "0.8.19"
-libium = { path = "C:\\Users\\redst\\OneDrive\\Documents\\GitHub\\ferium\\libium" }
+clap = { version = "4.0", features = ["derive"] }
+libium = { path = "./libium" }
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3.9", features = ["sysinfoapi", "memoryapi"] }

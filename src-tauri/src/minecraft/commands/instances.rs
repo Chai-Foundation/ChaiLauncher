@@ -5,11 +5,109 @@ use tauri::{command, AppHandle, Emitter};
 use tokio::fs;
 use reqwest;
 use serde_json;
+use std::str::FromStr;
 use lazy_static::lazy_static;
 
 use crate::storage::{StorageManager, InstanceMetadata};
 use crate::minecraft::{MinecraftInstance, AuthInfo};
 use super::versions::{download_minecraft_assets_with_progress, download_minecraft_assets_with_progress_auto, download_version_manifest};
+
+/// Create a new Minecraft instance with optional mod loader support
+#[command]
+pub async fn create_instance_with_loader(
+    name: String,
+    version: String,
+    game_dir: String,
+    mod_loader: Option<String>,
+    app_handle: AppHandle,
+) -> Result<(), String> {
+    let is_modded = mod_loader.is_some();
+    let loader_name = mod_loader.clone().unwrap_or_else(|| "vanilla".to_string());
+    
+    let instance = InstanceMetadata {
+        id: uuid::Uuid::new_v4().to_string(),
+        name: name.clone(),
+        version: version.clone(),
+        modpack: None,
+        modpack_version: None,
+        game_dir: std::path::PathBuf::from(&game_dir),
+        java_path: None,
+        jvm_args: None,
+        last_played: None,
+        total_play_time: 0,
+        icon: None,
+        is_modded,
+        mods_count: 0,
+        created_at: chrono::Utc::now().to_rfc3339(),
+        size_mb: None,
+        description: if is_modded {
+            Some(format!("Modded instance with {} for Minecraft {}", loader_name, version))
+        } else {
+            Some(format!("Vanilla Minecraft {} instance", version))
+        },
+        tags: if is_modded {
+            vec!["modded".to_string(), loader_name.clone()]
+        } else {
+            vec!["vanilla".to_string()]
+        },
+        resolved_java_version: None,
+        java_analysis_date: None,
+    };
+    
+    // Save the instance first
+    save_instance(instance.clone(), app_handle.clone()).await?;
+    
+    // Install mod loader if specified
+    if let Some(loader) = mod_loader {
+        println!("🔧 Installing {} mod loader for instance '{}'...", loader, name);
+        let instance_path = std::path::PathBuf::from(&game_dir);
+        
+        // Create mods directory
+        tokio::fs::create_dir_all(instance_path.join("mods")).await
+            .map_err(|e| format!("Failed to create mods directory: {}", e))?;
+        
+        // Install the mod loader
+        let mod_loader_profile = crate::libium_integration::install_mod_loader(&instance_path, &version, &loader).await
+            .map_err(|e| format!("Failed to install mod loader: {}", e))?;
+        
+        // Update instance version to use the mod loader profile
+        let mut updated_instance = instance.clone();
+        updated_instance.version = mod_loader_profile;
+        
+        // Save updated instance
+        save_instance(updated_instance, app_handle.clone()).await?;
+        
+        // Set up libium profile for mod management
+        let mut manager = crate::libium_integration::LibiumManager::new().await
+            .map_err(|e| format!("Failed to initialize libium: {}", e))?;
+        
+        manager.ensure_instance_profile(&instance.id, &instance_path).await
+            .map_err(|e| format!("Failed to create instance profile: {}", e))?;
+        
+        let libium_loader = libium::config::structs::ModLoader::from_str(&loader)
+            .map_err(|_| format!("Invalid mod loader: {}", loader))?;
+        
+        manager.update_profile_filters(&instance.id, vec![version.clone()], libium_loader).await
+            .map_err(|e| format!("Failed to update profile filters: {}", e))?;
+        
+        println!("✅ {} mod loader installed successfully", loader);
+    }
+    
+    // Download assets for the new instance
+    println!("📦 Downloading assets for new instance '{}'...", name);
+    download_minecraft_assets_with_progress_auto(
+        version,
+        game_dir,
+        &instance.id,
+        &app_handle,
+    ).await.map_err(|e| {
+        println!("⚠️  Asset download failed: {}", e);
+        format!("Instance created but asset download failed: {}", e)
+    })?;
+    
+    println!("✅ Instance '{}' created successfully with assets", name);
+    Ok(())
+
 
 // Global map to track running instances by ID
 lazy_static! {
@@ -110,26 +208,40 @@ pub async fn launch_instance(
     let java_version = crate::minecraft::versions::get_required_java_version(&version);
     println!("📋 Minecraft {} requires Java {}", version, java_version);
     
-    // Create instance from parameters
+    // Try to get the actual instance metadata to determine if it's modded
+    let storage = StorageManager::new().await
+        .map_err(|e| format!("Failed to initialize storage: {}", e))?;
+    
+    let (is_modded, modpack, modpack_version, mods_count) = if let Some(metadata) = storage.get_instance(&instance_id) {
+        println!("📋 Found instance metadata: modded={}, modpack={:?}", metadata.is_modded, metadata.modpack);
+        (metadata.is_modded, metadata.modpack.clone(), metadata.modpack_version.clone(), metadata.mods_count)
+    } else {
+        println!("⚠️  No instance metadata found for {}, assuming vanilla", instance_id);
+        (false, None, None, 0)
+    };
+    
+    // Create instance from parameters with correct modded status
     let instance = MinecraftInstance {
         id: instance_id,
         name: "temp".to_string(),
         version,
-        modpack: None,
-        modpack_version: None,
+        modpack,
+        modpack_version,
         game_dir: PathBuf::from(instance_path),
         java_path: Some(java_path),
         jvm_args: Some(jvm_args),
         last_played: None,
         total_play_time: 0,
         icon: None,
-        is_modded: false,
-        mods_count: 0,
+        is_modded,
+        mods_count,
         is_external: Some(false),
         external_launcher: None,
         resolved_java_version: None,
         java_analysis_date: None,
     };
+    
+    println!("🎮 Launching {} instance (modded: {})", if is_modded { "modded" } else { "vanilla" }, is_modded);
     
     // Try to get auth info from storage
     let auth_info = get_auth_info().await.unwrap_or_default();

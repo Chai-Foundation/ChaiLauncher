@@ -5,6 +5,7 @@ import { AccountCard } from './accounts/AccountCard';
 import { AddAccountModal } from './accounts/AddAccountModal';
 import { AuthTokenModal } from './accounts/AuthTokenModal';
 import { AuthTokenStatus } from './accounts/AuthTokenStatus';
+import Button from './ui/Button/Button';
 
 interface AccountsViewProps {
   onSetActiveAccount?: (accountId: string) => void;
@@ -64,20 +65,20 @@ const AccountsView: React.FC<AccountsViewProps> = ({
           <p className="text-primary-400">Manage your Minecraft accounts</p>
         </div>
         <div className="flex gap-2">
-          <button
+          <Button
             onClick={() => setShowAuthModal(true)}
-            className="bg-secondary-600 hover:bg-secondary-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+            variant="primary"
+            icon={Key}
           >
-            <Key size={18} />
             Auth Token
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setShowAddModal(true)}
-            className="bg-secondary-600 hover:bg-secondary-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+            variant="primary"
+            icon={Plus}
           >
-            <Plus size={18} />
             Add Account
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -103,12 +104,12 @@ const AccountsView: React.FC<AccountsViewProps> = ({
             <User size={64} className="mx-auto text-primary-600 mb-4" />
             <h3 className="text-lg font-semibold text-white mb-2">No accounts added</h3>
             <p className="text-primary-400 mb-4">Add an account to start playing Minecraft</p>
-            <button
+            <Button
               onClick={() => setShowAddModal(true)}
-              className="bg-secondary-600 hover:bg-secondary-700 text-white px-6 py-2 rounded-lg transition-colors"
+              variant="primary"
             >
               Add Your First Account
-            </button>
+            </Button>
           </div>
         )}
       </div>

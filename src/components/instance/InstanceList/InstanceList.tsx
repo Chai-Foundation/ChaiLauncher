@@ -78,6 +78,7 @@ const InstanceList: React.FC<InstanceListProps> = ({
             onEdit={onEdit}
             onDelete={onDelete}
             onOpenFolder={onOpenFolder}
+            viewMode={viewMode}
           />
         ))}
       </AnimatePresence>

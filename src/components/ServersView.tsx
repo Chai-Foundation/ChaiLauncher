@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { invoke } from '@tauri-apps/api/core';
 import { 
   Server, 
@@ -25,6 +26,7 @@ import {
 import DeployServerModal from './DeployServerModal';
 import DockerConnectionModal from './DockerConnectionModal';
 import ServerLogsModal from './ServerLogsModal';
+import Button from './ui/Button/Button';
 
 interface ServersViewProps {
   instances: MinecraftInstance[];
@@ -54,35 +56,8 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
     loadDockerConnections();
   }, []);
 
-  // Separate effect for periodic status refresh
-  useEffect(() => {
-    if (servers.length === 0) return;
-
-    // Set up periodic status refresh every 10 seconds
-    const statusInterval = setInterval(() => {
-      refreshServerStatuses();
-    }, 10000);
-
-    return () => {
-      clearInterval(statusInterval);
-    };
-  }, [servers.length]); // Only depend on the number of servers, not the full array
-
-  const loadServers = async () => {
-    try {
-      setLoading(true);
-      const serversData = await invoke<ServerInstance[]>('get_servers');
-      setServers(serversData);
-      // After loading servers, refresh their status from Docker
-      refreshServerStatuses(serversData);
-    } catch (error) {
-      console.error('Failed to load servers:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const refreshServerStatuses = async (serverList?: ServerInstance[]) => {
+  // Memoize refreshServerStatuses to prevent recreation on every render
+  const refreshServerStatuses = useCallback(async (serverList?: ServerInstance[]) => {
     const serversToCheck = serverList || servers;
     if (serversToCheck.length === 0) return;
 
@@ -110,7 +85,36 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
     } catch (error) {
       console.error('Failed to refresh server statuses:', error);
     }
+  }, []);
+
+  // Separate effect for periodic status refresh
+  useEffect(() => {
+    if (servers.length === 0) return;
+
+    // Set up periodic status refresh every 10 seconds
+    const statusInterval = setInterval(() => {
+      refreshServerStatuses(servers);
+    }, 10000);
+
+    return () => {
+      clearInterval(statusInterval);
+    };
+  }, [servers.length, refreshServerStatuses]); // Add refreshServerStatuses to deps
+
+  const loadServers = async () => {
+    try {
+      setLoading(true);
+      const serversData = await invoke<ServerInstance[]>('get_servers');
+      setServers(serversData);
+      // After loading servers, refresh their status from Docker
+      refreshServerStatuses(serversData);
+    } catch (error) {
+      console.error('Failed to load servers:', error);
+    } finally {
+      setLoading(false);
+    }
   };
+
 
   const handleStartServer = async (server: ServerInstance) => {
     try {
@@ -229,7 +233,25 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
   if (loading) {
     return (
       <div className="flex-1 p-6 flex items-center justify-center">
-        <div className="text-white text-lg">Loading servers...</div>
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="flex flex-col items-center gap-4"
+        >
+          <motion.div
+            animate={{ 
+              rotate: 360,
+              scale: [1, 1.1, 1] 
+            }}
+            transition={{ 
+              rotate: { duration: 2, repeat: Infinity, ease: "linear" },
+              scale: { duration: 1.5, repeat: Infinity, ease: "easeInOut" }
+            }}
+            className="w-12 h-12 border-4 border-secondary-600 border-t-transparent rounded-full"
+          />
+          <div className="text-white text-lg">Loading servers...</div>
+        </motion.div>
       </div>
     );
   }
@@ -244,14 +266,14 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
           <p className="text-primary-300">Deploy and manage Minecraft servers with Docker</p>
         </div>
         <div className="flex gap-3">
-          <button
+          <Button
             onClick={() => refreshServerStatuses()}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 rounded-lg transition-colors"
+            variant="secondary"
+            icon={RefreshCw}
             title="Refresh server statuses"
           >
-            <RefreshCw className="w-4 h-4" />
             Refresh Status
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -268,13 +290,13 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
                 <p className="text-primary-300 text-sm">Manage Docker environments for server deployment</p>
               </div>
             </div>
-            <button
+            <Button
               onClick={() => setShowConnectionModal(true)}
-              className="flex items-center gap-2 px-3 py-2 bg-secondary-600/20 hover:bg-secondary-600/30 rounded-lg transition-colors text-secondary-400"
+              variant="ghost"
+              icon={Plus}
             >
-              <Plus className="w-4 h-4" />
               Add Connection
-            </button>
+            </Button>
           </div>
           
           {dockerConnections.length === 0 ? (
@@ -321,16 +343,16 @@ const ServersView: React.FC<ServersViewProps> = ({ instances }) => {
                     <p className="text-primary-300 text-sm">Minecraft {instance.version}</p>
                   </div>
                 </div>
-                <button
+                <Button
                   onClick={() => {
                     setSelectedInstance(instance);
                     setShowDeployModal(true);
                   }}
-                  className="flex items-center gap-2 px-3 py-2 bg-secondary-600/20 hover:bg-secondary-600/30 rounded-lg transition-colors text-secondary-400"
+                  variant="ghost"
+                  icon={Plus}
                 >
-                  <Plus className="w-4 h-4" />
                   Deploy Server
-                </button>
+                </Button>
               </div>
 
               {instanceServers.length === 0 ? (

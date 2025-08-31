@@ -115,6 +115,8 @@ export const useInstanceSettings = (instance: MinecraftInstance, isOpen: boolean
     try {
       const results = await invoke<{ mods: ModInfo[]; hasMore: boolean }>('search_mods', {
         query: query.trim(),
+        game_version: instance.version,
+        mod_loader: null,
         offset,
         limit: 20
       });
