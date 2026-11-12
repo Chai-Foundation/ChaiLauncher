@@ -342,18 +342,3 @@
   .hover\:bg-secondary-600:hover { background-color: var(--secondary-600); }
   .hover\:bg-secondary-700:hover { background-color: var(--secondary-700); }
 }
-
-/*
- * WebKitGTK 2.54.0/2.54.1 composite backdrop-filter layers exponentially
- * (https://bugs.webkit.org/show_bug.cgi?id=327701): ~20+ blurred elements peg
- * a core and grow the web process until the OOM killer reaps it.
- * src-tauri/src/main.rs sets this attribute only for those engine versions, so
- * Chromium and WKWebView keep the blur.
- */
-html[data-disable-backdrop-blur='true'],
-html[data-disable-backdrop-blur='true'] *,
-html[data-disable-backdrop-blur='true'] *::before,
-html[data-disable-backdrop-blur='true'] *::after {
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
-}
