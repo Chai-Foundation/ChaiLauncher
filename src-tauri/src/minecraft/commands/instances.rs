@@ -1,3 +1,4 @@
+use std::io::{Read, Seek};
 use std::path::PathBuf;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -188,7 +189,105 @@ pub async fn create_instance_with_loader(
 
 // Global map to track running instances by ID
 lazy_static! {
-    static ref RUNNING_INSTANCES: Arc<Mutex<HashMap<String, u32>>> = Arc::new(Mutex::new(HashMap::new()));
+    static ref RUNNING_INSTANCES: Arc<Mutex<HashMap<String, std::process::Child>>> =
+        Arc::new(Mutex::new(HashMap::new()));
+}
+
+/// Watches a launched game: streams `<game_dir>/logs/latest.log` lines to the
+/// frontend as `minecraft_log` events, reports the exit code, and drops the
+/// instance from the running map when the process ends.
+fn spawn_instance_monitor(app_handle: AppHandle, instance_id: String, game_dir: PathBuf) {
+    std::thread::spawn(move || {
+        let log_path = game_dir.join("logs").join("latest.log");
+        let mut offset: u64 = 0;
+
+        fn emit_log(app: &AppHandle, instance_id: &str, level: &str, message: &str) {
+            let _ = app.emit(
+                "minecraft_log",
+                serde_json::json!({
+                    "instance": instance_id,
+                    "timestamp": chrono::Utc::now().to_rfc3339(),
+                    "level": level,
+                    "message": message,
+                }),
+            );
+        }
+
+        loop {
+            // Emit anything new from the game's own log file.
+            if let Ok(mut file) = std::fs::File::open(&log_path) {
+                if file.seek(std::io::SeekFrom::Start(offset)).is_ok() {
+                    let mut buf = Vec::new();
+                    if file.read_to_end(&mut buf).is_ok() && !buf.is_empty() {
+                        offset += buf.len() as u64;
+                        let chunk = String::from_utf8_lossy(&buf);
+                        for line in chunk.lines() {
+                            let level = if line.contains("/ERROR]") || line.contains("/FATAL]") {
+                                "error"
+                            } else if line.contains("/WARN]") {
+                                "warn"
+                            } else if line.contains("/DEBUG]") {
+                                "debug"
+                            } else {
+                                "info"
+                            };
+                            emit_log(&app_handle, &instance_id, level, line);
+                        }
+                    }
+                }
+            }
+
+            // Has the process finished?
+            let exit_status = {
+                let mut running = RUNNING_INSTANCES.lock().unwrap();
+                match running.get_mut(&instance_id) {
+                    Some(child) => match child.try_wait() {
+                        Ok(Some(status)) => {
+                            running.remove(&instance_id);
+                            Some(Some(status))
+                        }
+                        Ok(None) => Some(None),
+                        Err(e) => {
+                            running.remove(&instance_id);
+                            eprintln!("Failed to poll instance '{}': {}", instance_id, e);
+                            Some(None)
+                        }
+                    },
+                    None => None,
+                }
+            };
+
+            match exit_status {
+                None => break,
+                Some(None) => {}
+                Some(Some(status)) => {
+                    let summary = match status.code() {
+                        Some(code) => format!("Minecraft exited with code {}", code),
+                        None => format!("Minecraft exited ({})", status),
+                    };
+                    emit_log(&app_handle, &instance_id, if status.success() { "info" } else { "error" }, &summary);
+                    let _ = app_handle.emit("instances_updated", ());
+                    break;
+                }
+            }
+
+            std::thread::sleep(std::time::Duration::from_millis(400));
+        }
+    });
+}
+
+/// Registers a freshly launched child process and starts its monitor.
+fn track_launched_instance(
+    app_handle: &AppHandle,
+    instance_id: &str,
+    game_dir: &PathBuf,
+    child: std::process::Child,
+) {
+    RUNNING_INSTANCES
+        .lock()
+        .unwrap()
+        .insert(instance_id.to_string(), child);
+    spawn_instance_monitor(app_handle.clone(), instance_id.to_string(), game_dir.clone());
 }
 
 /// Create a new Minecraft instance
@@ -243,6 +342,7 @@ pub async fn create_instance(
 /// Launch Minecraft using the modular system
 #[command]
 pub async fn launch_minecraft(
+    app_handle: AppHandle,
     instance: MinecraftInstance,
     java_path: Option<String>,
     memory: u32,
@@ -256,10 +356,16 @@ pub async fn launch_minecraft(
     let auth_info = get_auth_info().await.unwrap_or_default();
     println!("🔐 Using authentication: {} ({})", auth_info.username, auth_info.user_type);
     
+    let game_dir = launch_instance.game_dir.clone();
+    let instance_id = launch_instance.id.clone();
+
     match crate::minecraft::launch_minecraft(&launch_instance, Some(auth_info), memory).await {
         Ok(result) => {
             if result.success {
                 println!("✓ Minecraft launched successfully with PID: {}", result.process_id);
+                if let Some(child) = result.child {
+                    track_launched_instance(&app_handle, &instance_id, &game_dir, child);
+                }
                 Ok(())
             } else {
                 Err(result.error.unwrap_or("Unknown launch error".to_string()))
@@ -272,6 +378,7 @@ pub async fn launch_minecraft(
 /// Main launch command that matches the original signature
 #[command]
 pub async fn launch_instance(
+    app_handle: AppHandle,
     instance_id: String,
     instance_path: String,
     version: String,
@@ -325,16 +432,16 @@ pub async fn launch_instance(
     println!("🔐 Using authentication: {} ({})", auth_info.username, auth_info.user_type);
     
     // Launch using the modular system
+    let game_dir = instance.game_dir.clone();
+    let instance_id = instance.id.clone();
+
     match crate::minecraft::launch_minecraft(&instance, Some(auth_info), memory).await {
         Ok(result) => {
             if result.success {
-                // Track the running instance
-                {
-                    let mut running = RUNNING_INSTANCES.lock().unwrap();
-                    running.insert(instance.id.clone(), result.process_id);
-                }
-                
                 println!("✓ Minecraft launched successfully with PID: {}", result.process_id);
+                if let Some(child) = result.child {
+                    track_launched_instance(&app_handle, &instance_id, &game_dir, child);
+                }
                 Ok(())
             } else {
                 Err(result.error.unwrap_or("Unknown launch error".to_string()))
@@ -348,73 +455,22 @@ pub async fn launch_instance(
 #[command]
 pub async fn stop_instance(instance_id: String) -> Result<(), String> {
     println!("🛑 Stopping instance: {}", instance_id);
-    
-    // Get the process ID from our tracking map
-    let process_id = {
-        let running = RUNNING_INSTANCES.lock().unwrap();
-        running.get(&instance_id).copied()
-    };
-    
-    if let Some(pid) = process_id {
-        // Try to terminate the process
-        match terminate_process(pid).await {
-            Ok(_) => {
-                // Remove from tracking map
-                {
-                    let mut running = RUNNING_INSTANCES.lock().unwrap();
-                    running.remove(&instance_id);
-                }
-                println!("✅ Instance '{}' stopped successfully (PID: {})", instance_id, pid);
-                Ok(())
-            }
-            Err(e) => {
-                // Still remove from tracking map even if termination failed
-                {
-                    let mut running = RUNNING_INSTANCES.lock().unwrap();
-                    running.remove(&instance_id);
-                }
-                Err(format!("Failed to stop instance: {}", e))
-            }
-        }
-    } else {
-        println!("⚠️  Instance '{}' is not tracked as running", instance_id);
-        Ok(()) // Not an error if it's not running
-    }
-}
 
-/// Helper function to terminate a process by PID
-async fn terminate_process(pid: u32) -> Result<(), String> {
-    #[cfg(target_os = "windows")]
-    {
-        use std::process::Command;
-        
-        let output = Command::new("taskkill")
-            .args(&["/F", "/PID", &pid.to_string()])
-            .output()
-            .map_err(|e| format!("Failed to execute taskkill: {}", e))?;
-            
-        if output.status.success() {
+    let child = RUNNING_INSTANCES.lock().unwrap().remove(&instance_id);
+
+    match child {
+        Some(mut child) => {
+            let pid = child.id();
+            child
+                .kill()
+                .map_err(|e| format!("Failed to stop instance (PID {}): {}", pid, e))?;
+            let _ = child.wait();
+            println!("✅ Instance '{}' stopped (PID: {})", instance_id, pid);
             Ok(())
-        } else {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            Err(format!("taskkill failed: {}", stderr))
         }
-    }
-    
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
-    {
-        use std::process::Command;
-        
-        let output = Command::new("kill")
-            .args(&["-TERM", &pid.to_string()])
-            .output()
-            .map_err(|e| format!("Failed to execute kill: {}", e))?;
-            
-        if output.status.success() {
-            Ok(())
-        } else {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            Err(format!("kill failed: {}", stderr))
+        None => {
+            println!("⚠️  Instance '{}' is not tracked as running", instance_id);
+            Ok(()) // Not an error if it's not running
         }
     }
 }

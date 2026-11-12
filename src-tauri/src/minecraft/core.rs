@@ -8,7 +8,7 @@
 use std::sync::OnceLock;
 use mcvm::io::paths::Paths;
 use mcvm::instance::{InstanceStoredConfig, Instance, InstKind};
-use mcvm::instance::launch::{LaunchSettings, InstanceHandle, LaunchOptions};
+use mcvm::instance::launch::{LaunchSettings, LaunchOptions};
 use mcvm::config::instance::{QuickPlay, ClientWindowConfig};
 use mcvm::shared::output::{MCVMOutput, MessageLevel};
 use mcvm::config::profile::GameModifications;
@@ -145,7 +145,7 @@ impl MCVMCore {
         access_token: String,
         app_handle: Option<AppHandle>,
         instance_name: String,
-    ) -> Result<InstanceHandle, String> {
+    ) -> Result<std::process::Child, String> {
         let paths = Self::paths()?;
         
         // Validate launch parameters
@@ -272,25 +272,19 @@ impl MCVMCore {
             error_msg
         })?;
         
-        output.display_text(
-            "✅ Launched with MCVM, handle created successfully".to_string(),
-            MessageLevel::Important
-        );
-        
-        output.display_text(
-            "[INFO] [Assets-1.0] Assets downloaded successfully".to_string(),
-            MessageLevel::Important
-        );
-        
-        output.display_text(
-            "✅ Minecraft launched successfully with MCVM (PID: 1)".to_string(),
-            MessageLevel::Important
-        );
-        
         // Restore the original working directory
         std::env::set_current_dir(&current_dir).ok();
-        
-        Ok(handle)
+
+        // Hand the child process back so the caller can report the real PID,
+        // watch for exit, and stop the game.
+        let child = handle.get_process();
+
+        output.display_text(
+            format!("✅ Minecraft launched successfully (PID: {})", child.id()),
+            MessageLevel::Important
+        );
+
+        Ok(child)
     }
     
     /// Get logs from a running MCVM instance
