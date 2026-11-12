@@ -37,10 +37,53 @@ fn get_app_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
 
+#[cfg(target_os = "linux")]
+extern "C" {
+    fn webkit_get_major_version() -> u32;
+    fn webkit_get_minor_version() -> u32;
+    fn webkit_get_micro_version() -> u32;
+}
+
+/// WebKitGTK 2.54.0/2.54.1 composite `backdrop-filter` layers exponentially:
+/// the k-th backdrop layer costs 2^(k-1) subtree repaints, so a page with ~20+
+/// of them pegs a core and grows the web process until it is OOM-killed.
+/// Fixed upstream in 2.54.2 (https://bugs.webkit.org/show_bug.cgi?id=327701,
+/// https://bugs.webkit.org/show_bug.cgi?id=328065).
+#[cfg(target_os = "linux")]
+fn webkitgtk_needs_backdrop_blur_workaround() -> bool {
+    // SAFETY: plain accessors exported by libwebkit2gtk-4.1, which wry links
+    // against on Linux.
+    let (major, minor, micro) = unsafe {
+        (
+            webkit_get_major_version(),
+            webkit_get_minor_version(),
+            webkit_get_micro_version(),
+        )
+    };
+    major == 2 && minor == 54 && micro < 2
+}
+
+#[cfg(not(target_os = "linux"))]
+fn webkitgtk_needs_backdrop_blur_workaround() -> bool {
+    false
+}
+
+/// Turns off every `backdrop-filter` in the app (see src/index.css) when the
+/// running engine cannot composite them.
+const BACKDROP_BLUR_WORKAROUND: &str =
+    "document.documentElement.setAttribute('data-disable-backdrop-blur','true')";
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
+        .on_page_load(|webview, payload| {
+            if payload.event() == tauri::webview::PageLoadEvent::Started {
+                if webkitgtk_needs_backdrop_blur_workaround() {
+                    let _ = webview.eval(BACKDROP_BLUR_WORKAROUND);
+                }
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             minecraft::commands::get_minecraft_versions,
             minecraft::commands::create_instance,
