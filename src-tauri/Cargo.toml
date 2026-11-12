@@ -32,7 +32,7 @@ lazy_static = "1.5.0"
 async-trait = "0.1.81"
 thiserror = "1.0.69"
 hex = "0.4.3"
-mcvm = { git = "https://github.com/tristanpoland/Chai-MCVM", rev = "b6b105b0b6fa1cbc0eb205607a935c6d18d4391b"}
+mcvm = { git = "https://github.com/tristonarmstrong/Chai-MCVM", rev = "3b7388f243eb7981ef01ed975867a860b37bef6e" }
 #mcvm = { path = "C:\\Users\\redst\\OneDrive\\Documents\\GitHub\\chai-project\\mcvm" }
 bollard = "0.17.1"
 toml = "0.8.19"
