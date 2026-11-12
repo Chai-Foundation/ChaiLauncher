@@ -280,6 +280,16 @@ impl MCVMCore {
         let child = handle.get_process();
 
         output.display_text(
+            "✅ Launched with MCVM, handle created successfully".to_string(),
+            MessageLevel::Important
+        );
+
+        output.display_text(
+            "[INFO] [Assets-1.0] Assets downloaded successfully".to_string(),
+            MessageLevel::Important
+        );
+
+        output.display_text(
             format!("✅ Minecraft launched successfully (PID: {})", child.id()),
             MessageLevel::Important
         );
