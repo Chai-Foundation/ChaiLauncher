@@ -73,6 +73,36 @@ fn webkitgtk_needs_backdrop_blur_workaround() -> bool {
 const BACKDROP_BLUR_WORKAROUND: &str =
     "document.documentElement.setAttribute('data-disable-backdrop-blur','true')";
 
+/// Tiling Wayland compositors have no minimize (Hyprland ignores
+/// `xdg_toplevel.set_minimized`) and usually suppress client maximize
+/// requests, so the titlebar swaps those two controls for a single fullscreen
+/// toggle. The frontend reads this flag off `<html>`, set before first paint.
+///
+/// Wayland only: under X11 the window manager handles iconify and maximize
+/// itself, even when it tiles the layout.
+#[cfg(target_os = "linux")]
+fn is_tiling_compositor() -> bool {
+    if std::env::var_os("WAYLAND_DISPLAY").is_none() {
+        return false;
+    }
+
+    let desktop = std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default();
+    let session = std::env::var("XDG_SESSION_DESKTOP").unwrap_or_default();
+    let name = format!("{} {}", desktop, session).to_lowercase();
+
+    ["hyprland", "sway", "niri", "river", "labwc"]
+        .iter()
+        .any(|compositor| name.contains(compositor))
+}
+
+#[cfg(not(target_os = "linux"))]
+fn is_tiling_compositor() -> bool {
+    false
+}
+
+const TILING_WM_MARKER: &str =
+    "document.documentElement.setAttribute('data-tiling-wm','true')";
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -81,6 +111,9 @@ fn main() {
             if payload.event() == tauri::webview::PageLoadEvent::Started {
                 if webkitgtk_needs_backdrop_blur_workaround() {
                     let _ = webview.eval(BACKDROP_BLUR_WORKAROUND);
+                }
+                if is_tiling_compositor() {
+                    let _ = webview.eval(TILING_WM_MARKER);
                 }
             }
         })

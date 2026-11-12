@@ -11,6 +11,7 @@ import AccountsView from './components/AccountsView';
 import JavaInstallModal from './components/JavaInstallModal';
 import InstanceSettingsModal from './components/InstanceSettingsModal';
 import { CreateInstanceModal, ExitConfirmationModal } from './components/modals';
+import { ResizeHandles } from './components/ui';
 import { MinecraftInstance, ModpackInfo } from './types/minecraft';
 import { useInstances, useSettings, useMinecraftVersions } from './hooks';
 import { JavaService } from './services';
@@ -260,8 +261,14 @@ function App() {
     }
   };
 
+  // Tiling Wayland compositors (Hyprland, sway, niri, ...) have no minimize,
+  // and commonly suppress client maximize requests, so src-tauri/src/main.rs
+  // tags the document at load time. Those controls become hide/fullscreen.
+  const isTilingWm = document.documentElement.dataset.tilingWm === 'true';
+
   return (
-    <div className="min-h-screen h-full w-full bg-primary-950 flex flex-col">
+    <div className="h-screen w-full bg-primary-950 flex flex-col overflow-hidden">
+      <ResizeHandles />
       {/* Hero Background Image */}
       <div className="absolute inset-0">
         <img
@@ -276,7 +283,7 @@ function App() {
       </div>
 
       {/* Main Content */}
-      <div className="relative z-10 flex w-full">
+      <div className="relative z-10 flex w-full flex-1 min-h-0">
         <LauncherSidebar
           activeView={activeView}
           onViewChange={setActiveView}
@@ -294,27 +301,33 @@ function App() {
               className="flex items-center gap-1 px-2"
               style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
             >
+              {!isTilingWm && (
+                <button
+                  className="w-6 h-6 flex items-center justify-center hover:bg-primary-800 rounded"
+                  title="Minimize"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    const { getCurrentWindow } = await import('@tauri-apps/api/window');
+                    const win = getCurrentWindow();
+                    await win.minimize();
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14">
+                    <rect x="3" y="10" width="8" height="1.5" fill="var(--secondary-500)" />
+                  </svg>
+                </button>
+              )}
               <button
                 className="w-6 h-6 flex items-center justify-center hover:bg-primary-800 rounded"
-                title="Minimize"
+                title={isTilingWm ? 'Fullscreen' : 'Maximize'}
                 onClick={async (e) => {
                   e.stopPropagation();
                   const { getCurrentWindow } = await import('@tauri-apps/api/window');
                   const win = getCurrentWindow();
-                  win.minimize();
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14">
-                  <rect x="3" y="10" width="8" height="1.5" fill="var(--secondary-500)" />
-                </svg>
-              </button>
-              <button
-                className="w-6 h-6 flex items-center justify-center hover:bg-primary-800 rounded"
-                title="Maximize"
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  const { getCurrentWindow } = await import('@tauri-apps/api/window');
-                  const win = getCurrentWindow();
+                  if (isTilingWm) {
+                    await win.setFullscreen(!(await win.isFullscreen()));
+                    return;
+                  }
                   const isMaximized = await win.isMaximized();
                   if (isMaximized) {
                     win.unmaximize();
@@ -345,7 +358,7 @@ function App() {
               </button>
             </div>
           </div>
-          <main className="overflow-y-auto" style={{ height: 'calc(100vh - 40px)' }}>
+          <main className="overflow-y-auto flex-1 min-h-0">
             {renderActiveView()}
           </main>
         </div>
