@@ -11,12 +11,40 @@ env:
 
 jobs:
   build:
-
-    runs-on: ubuntu-latest
+    # Tauri 2 links against webkit2gtk-4.1, which newer Ubuntu images no longer
+    # ship. The release workflow uses the same image for the same reason.
+    runs-on: ubuntu-22.04
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: Install Linux dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: lts/*
+        cache: 'npm'
+
+    # tauri-build reads frontendDist at compile time, so dist/ must exist
+    # before cargo runs.
+    - name: Build frontend
+      run: |
+        npm ci
+        npm run build
+
+    - name: Rust cache
+      uses: swatinem/rust-cache@v2
+      with:
+        workspaces: './src-tauri -> target'
+
     - name: Build
+      working-directory: src-tauri
       run: cargo build --verbose
+
     - name: Run tests
+      working-directory: src-tauri
       run: cargo test --verbose

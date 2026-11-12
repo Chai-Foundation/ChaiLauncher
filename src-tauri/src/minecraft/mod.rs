@@ -79,6 +79,8 @@ pub struct LaunchResult {
     pub process_id: u32,
     pub success: bool,
     pub error: Option<String>,
+    /// The game process, when one was actually spawned
+    pub child: Option<std::process::Child>,
 }
 
 /// Main entry point for Minecraft operations

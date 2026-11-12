@@ -13,7 +13,7 @@ interface LogEntry {
 interface InstanceLogsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  instance: MinecraftInstance;
+  instance?: MinecraftInstance | null;
   onStopInstance?: () => void;
 }
 
@@ -31,7 +31,7 @@ const InstanceLogsModal: React.FC<InstanceLogsModalProps> = ({
 
   // Listen for minecraft log events
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !instance) return;
 
     const unlisten = listen('minecraft_log', (event: any) => {
       const payload = event.payload;
@@ -56,7 +56,7 @@ const InstanceLogsModal: React.FC<InstanceLogsModalProps> = ({
     return () => {
       unlisten.then(fn => fn());
     };
-  }, [isOpen, instance.name, instance.id]);
+  }, [isOpen, instance?.name, instance?.id]);
 
   // Auto-scroll to bottom when new logs arrive
   useEffect(() => {
@@ -89,7 +89,7 @@ const InstanceLogsModal: React.FC<InstanceLogsModalProps> = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${instance.name}-logs-${new Date().toISOString().split('T')[0]}.txt`;
+    a.download = `${instance?.name ?? 'instance'}-logs-${new Date().toISOString().split('T')[0]}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -105,7 +105,7 @@ const InstanceLogsModal: React.FC<InstanceLogsModalProps> = ({
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !instance) return null;
 
   return (
     <AnimatePresence>
