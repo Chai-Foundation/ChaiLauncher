@@ -50,13 +50,15 @@ async fn try_mcvm_launch(
         auth.username.clone(),
         auth.uuid.clone(),
         auth.access_token.clone(),
-        None, // No app handle in this context
+        None, // No app handle in this context  
         instance.name.clone(),
     ).await?;
 
+    println!("✅ Launched with MCVM, handle created successfully");
+    
     let process_id = child.id();
     println!("✓ Minecraft launched successfully with PID: {}", process_id);
-
+    
     Ok(LaunchResult {
         process_id,
         success: true,
