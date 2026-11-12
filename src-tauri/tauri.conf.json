@@ -9,9 +9,7 @@
         "title": "ChaiLauncher",
         "width": 1600,
         "height": 900,
-        "minWidth": 720,
-        "minHeight": 480,
-        "resizable": true,
+        "resizable": false,
         "fullscreen": false,
         "decorations": false,
         "transparent": false
@@ -29,14 +27,8 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["deb", "rpm", "appimage", "msi", "nsis", "dmg", "app"],
+    "targets": ["deb", "rpm", "msi", "dmg", "app"],
     "icon": [
-      "icons/32x32.png",
-      "icons/64x64.png",
-      "icons/128x128.png",
-      "icons/128x128@2x.png",
-      "icons/icon.png",
-      "icons/icon.icns",
       "icons/icon.ico"
     ]
   },

@@ -264,9 +264,14 @@ function App() {
   // and commonly suppress client maximize requests, so src-tauri/src/main.rs
   // tags the document at load time. Those controls become hide/fullscreen.
   const isTilingWm = document.documentElement.dataset.tilingWm === 'true';
+  // Linux windows are resizable, so the shell must shrink with the window.
+  // Other platforms keep the fixed-size layout they ship with.
+  const isLinux = document.documentElement.dataset.platform === 'linux';
 
   return (
-    <div className="h-screen w-full bg-primary-950 flex flex-col overflow-hidden">
+    <div className={isLinux
+      ? "h-screen w-full bg-primary-950 flex flex-col overflow-hidden"
+      : "min-h-screen h-full w-full bg-primary-950 flex flex-col"}>
       {/* Hero Background Image */}
       <div className="absolute inset-0">
         <img
@@ -281,7 +286,7 @@ function App() {
       </div>
 
       {/* Main Content */}
-      <div className="relative z-10 flex w-full flex-1 min-h-0">
+      <div className={isLinux ? "relative z-10 flex w-full flex-1 min-h-0" : "relative z-10 flex w-full"}>
         <LauncherSidebar
           activeView={activeView}
           onViewChange={setActiveView}
@@ -356,7 +361,10 @@ function App() {
               </button>
             </div>
           </div>
-          <main className="overflow-y-auto flex-1 min-h-0">
+          <main
+            className={isLinux ? "overflow-y-auto flex-1 min-h-0" : "overflow-y-auto"}
+            style={isLinux ? undefined : { height: 'calc(100vh - 40px)' }}
+          >
             {renderActiveView()}
           </main>
         </div>

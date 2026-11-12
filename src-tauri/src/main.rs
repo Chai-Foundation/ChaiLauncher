@@ -76,6 +76,10 @@ fn main() {
                 if is_tiling_compositor() {
                     let _ = webview.eval(TILING_WM_MARKER);
                 }
+                #[cfg(target_os = "linux")]
+                {
+                    let _ = webview.eval("document.documentElement.setAttribute('data-platform','linux')");
+                }
             }
         })
         .invoke_handler(tauri::generate_handler![
