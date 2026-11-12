@@ -11,7 +11,6 @@ import AccountsView from './components/AccountsView';
 import JavaInstallModal from './components/JavaInstallModal';
 import InstanceSettingsModal from './components/InstanceSettingsModal';
 import { CreateInstanceModal, ExitConfirmationModal } from './components/modals';
-import { ResizeHandles } from './components/ui';
 import { MinecraftInstance, ModpackInfo } from './types/minecraft';
 import { useInstances, useSettings, useMinecraftVersions } from './hooks';
 import { JavaService } from './services';
@@ -268,7 +267,6 @@ function App() {
 
   return (
     <div className="h-screen w-full bg-primary-950 flex flex-col overflow-hidden">
-      <ResizeHandles />
       {/* Hero Background Image */}
       <div className="absolute inset-0">
         <img
